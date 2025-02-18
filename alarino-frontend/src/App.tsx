@@ -1,6 +1,4 @@
-// src/App.tsx
-
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Container, Heading, Box, Text } from '@chakra-ui/react'
 import TranslateForm from './components/TranslateForm'
 

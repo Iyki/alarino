@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import axios from 'axios'
 
 import {
@@ -11,6 +11,11 @@ import {
   useToast
 } from '@chakra-ui/react'
 
+// API response shape
+interface TranslateResponse {
+  translation: string
+}
+
 interface TranslateFormProps {
   onTranslation: (translatedText: string) => void
 }
@@ -21,18 +26,17 @@ const TranslateForm: React.FC<TranslateFormProps> = ({ onTranslation }) => {
   const [targetLanguage, setTargetLanguage] = useState('yo')
   const toast = useToast()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) : Promise<void> => {
     e.preventDefault()
-
     try {
-      const response = await axios.post('/api/translate', {
+      const response = await axios.post<TranslateResponse>('/api/translate', {
         text: inputText,
         source_lang: sourceLanguage,
         target_lang: targetLanguage
       })
 
-      const data = response.data
-      onTranslation(data.translation)
+      const {translation} = response.data
+      onTranslation(translation)
     } catch (error) {
       console.error('Error calling translation API:', error)
       onTranslation('Error translating text.')

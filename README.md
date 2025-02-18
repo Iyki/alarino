@@ -29,7 +29,7 @@ brew install npm
 npm install  // setting up from package lock
 npm run dev  
 
-# npm run build // npm run build (Vite) to generate static files in a /build or /dist folder.
+# npm run build // npm run build (Vite) to generate static files in a /build or /dist folder for production.
 ```
 
 ## Notes
@@ -44,6 +44,9 @@ npm install typescript@latest --save-dev
 
 npm i @chakra-ui/react @emotion/react
 npx @chakra-ui/cli snippet add
+
+npm install --save-dev rollup-plugin-visualizer
+
 */
 
 ```
