@@ -19,7 +19,7 @@ const TranslateForm: React.FC<TranslateFormProps> = ({ onTranslation }) => {
   const [inputText, setInputText] = useState('')
   const [sourceLanguage, setSourceLanguage] = useState('en')
   const [targetLanguage, setTargetLanguage] = useState('yo')
-//   const toast = useToast()
+  const toast = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,13 +36,13 @@ const TranslateForm: React.FC<TranslateFormProps> = ({ onTranslation }) => {
     } catch (error) {
       console.error('Error calling translation API:', error)
       onTranslation('Error translating text.')
-    //   toast({
-    //     title: 'Translation Error',
-    //     description: 'Could not translate. Please try again.',
-    //     status: 'error',
-    //     duration: 3000,
-    //     isClosable: true,
-    //   })
+      toast({
+        title: 'Translation Error',
+        description: 'Could not translate. Please try again.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      })
     }
   }
 
