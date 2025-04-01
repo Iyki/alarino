@@ -21,6 +21,10 @@ conda create --name alarino --file conda-requirements.txt
 ```
 python app.py
 ```
+### test the backend
+```
+pytest
+```
 
 ## Frontend setup [alarino-frontend](./alarino-frontend/)
 ```
