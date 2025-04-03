@@ -7,7 +7,7 @@ class ResponseData:
         self.source_word = source_word
         self.language = language
 
-    def to_dict(self):
+    def to_json(self):
         return {
             "translation": self.translation,
             "source_word": self.source_word,
@@ -22,16 +22,16 @@ class APIResponse:
         self.message = message
         self.data = data
 
-    def to_dict(self) -> dict:
+    def to_json(self) -> dict:
         return {
             "success": self.success,
             "status": self.status,
             "message": self.message,
-            "data": self.data.to_dict() if self.data else None
+            "data": self.data.to_json() if self.data else None
         }
 
     def as_response(self) -> tuple[dict, int]:
-        return self.to_dict(), self.status
+        return self.to_json(), self.status
 
     @classmethod
     def success(cls, message: str, data=None, status=200):

@@ -29,7 +29,7 @@ def get_translation():
 
     # Validate the required fields
     if not data or not all(k in data for k in ['text', 'source_lang', 'target_lang']):
-        return APIResponse.error("Invalid request body"), 400
+        return APIResponse.error("Invalid request body.", 400).as_response()
 
     try:
         text = data['text']
