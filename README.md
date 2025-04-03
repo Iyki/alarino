@@ -1,6 +1,6 @@
 # alarino
 
-## Backend setup [alarino-backend](./alarino-backend/)
+## Backend setup [alarino-backend](alarino_backend/)
 ```
 cd alarino-backend
 conda env create alarino

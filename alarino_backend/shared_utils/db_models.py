@@ -1,7 +1,5 @@
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-
-db = SQLAlchemy()
+from alarino_backend import db
 
 class Word(db.Model):
     __tablename__ = 'words'

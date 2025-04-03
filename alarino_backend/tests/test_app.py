@@ -1,5 +1,6 @@
 import pytest
-from app import app
+from alarino_backend import app
+from alarino_backend.shared_utils import Language
 
 @pytest.fixture
 def client():
@@ -17,8 +18,8 @@ def test_translate_no_data(client):
     We expect a 400 status code and an error message.
     """
     response = client.post('/api/translate')
-    assert response.status_code == 415
-    # assert response.is_json
+    assert response.status_code == 400
+    assert not response.is_json
     # data = response.get_json()
     # assert data.get("error") == "Invalid request body."
 
@@ -45,8 +46,8 @@ def test_translate_success(client):
     """
     payload = {
         "text": "Hello",
-        "source_lang": "en",
-        "target_lang": "yo"
+        "source_lang": Language.ENGLISH,
+        "target_lang": Language.YORUBA
     }
     response = client.post('/api/translate', json=payload)
 
@@ -66,8 +67,8 @@ def test_translate_custom_text(client):
     """
     payload = {
         "text": "This is a test",
-        "source_lang": "en",
-        "target_lang": "yo"
+        "source_lang": Language.ENGLISH,
+        "target_lang": Language.YORUBA
     }
     response = client.post('/api/translate', json=payload)
     assert response.status_code == 200
