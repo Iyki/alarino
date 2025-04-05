@@ -6,9 +6,6 @@ cd alarino-backend
 conda env create alarino
 conda activate alarino
 
-# python -m pip list --format=freeze > pip-requirements.txt  --to save python libraries used in conda
-# conda list -e > conda-requirements.txt -- save conda libraries
-
 conda create --name alarino --file conda-requirements.txt
 
 # or 
