@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Alarino - Discover Yoruba</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family: serif;
+      }
+    </style>
+  </head>
+  <body class="bg-gradient-to-b from-[#5c4525] to-[#e8dfca] min-h-screen text-[#2e200f]">
+    <!-- Navbar -->
+    <header class="flex justify-between items-center p-6 text-white">
+      <h1 class="text-2xl font-bold">Alarino</h1>
+      <nav class="space-x-6">
+        <a href="#" class="hover:underline">Learn Yoruba</a>
+        <a href="#" class="hover:underline">Community</a>
+        <a href="#" class="hover:underline">Contribute</a>
+      </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="text-center mt-12 px-4">
+      <h2 class="text-4xl font-bold text-white leading-tight">
+        Discover the Power <br /> of Words in Yoruba
+      </h2>
+      <button class="mt-6 bg-[#1b2f1d] text-white px-6 py-2 rounded-md font-semibold">
+        Start Translating
+      </button>
+    </section>
+
+    <!-- Translation Section -->
+    <section class="mt-16 bg-[#f4ecdd] mx-6 md:mx-auto md:max-w-3xl p-6 rounded-3xl">
+      <div class="flex gap-2 mb-4">
+        <input
+          id="englishWord"
+          type="text"
+          placeholder="Enter an English word..."
+          class="flex-grow px-4 py-2 rounded-md border border-gray-300"
+        />
+        <button
+          onclick="translateWord()"
+          class="bg-[#1b2f1d] text-white px-4 py-2 rounded-md"
+        >
+          Translate
+        </button>
+      </div>
+      <div id="translationResult" class="bg-white p-4 rounded-xl text-left">
+        <p class="text-xl font-bold">water</p>
+        <p class="italic text-gray-700">omi <span class="not-italic text-sm text-gray-500">n. noo</span></p>
+        <p class="mt-2 text-gray-600">A clear liquid that falls as rain.</p>
+      </div>
+    </section>
+
+    <!-- Learn, Proverbs, Practice -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-12 px-6 md:max-w-5xl md:mx-auto">
+      <!-- Learn Yoruba -->
+      <div class="bg-[#f4ecdd] rounded-xl p-4">
+        <h3 class="font-bold mb-2">Learn Yoruba</h3>
+        <div class="bg-white rounded-lg p-3">
+          <p class="text-sm text-gray-500">Word of the Day</p>
+          <p class="text-2xl font-semibold">ìfé</p>
+        </div>
+        <button class="mt-2 text-sm text-[#1b2f1d] underline">Definition</button>
+      </div>
+
+      <!-- Daily Proverbs -->
+      <div class="bg-[#f4ecdd] rounded-xl p-4">
+        <h3 class="font-bold mb-2">Daily Proverbs</h3>
+        <p class="italic">A kìí fì éékànná kọjá ojú ènìyàn</p>
+        <p class="text-sm text-gray-600 mt-1">One does not point a finger past another's face.</p>
+        <button class="mt-2 text-sm underline text-[#1b2f1d]">Suggest a better Translation</button>
+      </div>
+
+      <!-- Practice with Audio -->
+      <div class="bg-[#f4ecdd] rounded-xl p-4">
+        <h3 class="font-bold mb-2">Practice with Audio</h3>
+        <button class="block w-full mb-2 bg-white py-2 rounded-md text-sm">+ Add a word</button>
+        <button class="block w-full mb-2 bg-white py-2 rounded-md text-sm">Submit audio</button>
+        <button class="block w-full bg-white py-2 rounded-md text-sm">Suggest a Better transl.</button>
+      </div>
+    </section>
+
+    <script>
+      function translateWord() {
+        const input = document.getElementById("englishWord").value.toLowerCase();
+        const resultBox = document.getElementById("translationResult");
+
+        if (input === "water") {
+          resultBox.innerHTML = `
+            <p class="text-xl font-bold">water</p>
+            <p class="italic text-gray-700">omi <span class="not-italic text-sm text-gray-500">n. noo</span></p>
+            <p class="mt-2 text-gray-600">A clear liquid that falls as rain.</p>`;
+        } else {
+          resultBox.innerHTML = `
+            <p class="text-xl font-bold">${input}</p>
+            <p class="italic text-gray-700">(no translation found)</p>
+            <p class="mt-2 text-gray-600">We're still learning — try another word!</p>`;
+        }
+      }
+    </script>
+  </body>
+</html>
