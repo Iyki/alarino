@@ -15,6 +15,13 @@ conda create --name alarino --file conda-requirements.txt
 # pip install -r pip-requirements.txt if using python virtual environments
 ```
 
+#### Database setup
+```
+# export FLASK_APP=app.py
+# flask db init
+
+```
+
 ### Run backend app
 ```
 python app.py

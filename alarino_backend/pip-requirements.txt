@@ -1,6 +1,7 @@
 blinker==1.9.0
 click==8.1.7
 Flask==3.1.0
+Flask-Cors==3.0.10
 Flask-SQLAlchemy==3.1.1
 greenlet==3.1.1
 importlib_metadata==8.6.1
@@ -16,6 +17,7 @@ psycopg2-binary==2.9.9
 pytest==8.3.4
 python-dotenv==1.1.0
 setuptools==75.8.0
+six==1.16.0
 SQLAlchemy==2.0.40
 typing_extensions==4.13.0
 Werkzeug==3.1.3

@@ -1,13 +1,7 @@
-import sys
-import os
-
-# Add the parent of the current script (the repo root) to the path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from alarino_backend import app, logger
+from main import app, logger
 from flask import request, jsonify
-from alarino_backend.shared_utils import Language
-from alarino_backend.translate import translate, APIResponse
+from shared_utils import Language
+from translate import translate, APIResponse
 
 @app.route('/api/translate', methods=['POST'])
 def get_translation():

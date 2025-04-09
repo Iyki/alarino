@@ -1,9 +1,7 @@
-from alarino_backend import db, logger
-from alarino_backend.shared_utils import Word, Translation, MissingTranslation, Language
-from alarino_backend.translate.response import APIResponse, ResponseData
+from main import db, logger
+from shared_utils import Word, Translation, MissingTranslation, Language
+from translate.response import APIResponse, ResponseData
 
-class TranslationResult:
-    response_code = 200
 
 def translate(text: str, source: Language, target: Language, addr: str, user_agent: str) -> tuple[dict, int]:
     text = text.strip().lower()

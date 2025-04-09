@@ -1,5 +1,4 @@
-from alarino_backend import app
-from alarino_backend.shared_utils.db_models import db
+from main import app, db
 
 def create_tables():
     with app.app_context():

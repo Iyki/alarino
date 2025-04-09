@@ -1,8 +1,8 @@
 import pytest
-from alarino_backend import app
-from alarino_backend.shared_utils import Language
+from main import app
+from shared_utils import Language
 # import to get the route handler
-from alarino_backend.app import get_translation
+from main.app import get_translation
 
 @pytest.fixture
 def client():
@@ -10,6 +10,7 @@ def client():
     Creates a test client for our Flask app.
     """
     app.config['TESTING'] = True
+    #todo: make it a check to ensure "/api/translate" is in the url_map
     print("rules?")
     print([str(rule) for rule in app.url_map.iter_rules()])
     print("rules?")

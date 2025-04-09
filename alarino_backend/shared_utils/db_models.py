@@ -1,5 +1,5 @@
-from datetime import datetime
-from alarino_backend import db
+from datetime import date, datetime
+from main import db
 
 class Word(db.Model):
     __tablename__ = 'words'

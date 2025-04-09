@@ -1,9 +1,9 @@
 import json
 
-from alarino_backend.shared_utils import Language
-from alarino_backend.shared_utils.db_models import db, Word, Translation
+from shared_utils import Language
+from shared_utils.db_models import db, Word, Translation
 from sqlalchemy.exc import IntegrityError
-from alarino_backend import app, logger
+from main import app, logger
 
 def add_word(language: str, word_text: str, part_of_speech: str = None):
     word_text = word_text.strip().lower()
