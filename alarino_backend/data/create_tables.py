@@ -1,4 +1,5 @@
-from main import app, db
+from main import app
+from shared_utils.db_models import db, Word, DailyWord, Translation, MissingTranslation
 
 def create_tables():
     with app.app_context():

@@ -37,19 +37,18 @@ class Translation(db.Model):
         return f"<Translation {self.source_word.word} -> {self.target_word.word}>"
 
 
-class Example(db.Model):
-    __tablename__ = 'examples'
+class DailyWord(db.Model):
+    __tablename__ = "daily_words"
 
-    e_id = db.Column(db.Integer, primary_key=True)
-    translation_id = db.Column(db.Integer, db.ForeignKey('translations.t_id', ondelete='CASCADE'), nullable=False)
-    example_source = db.Column(db.Text, nullable=False)
-    example_target = db.Column(db.Text, nullable=False)
+    dw_id = db.Column(db.Integer, primary_key=True)
+    word_id = db.Column(db.Integer, db.ForeignKey("words.w_id"), nullable=False)
+    date = db.Column(db.Date, default=date.today, unique=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
-    translation = db.relationship('Translation', backref='examples')
+    word = db.relationship("Word")
 
     def __repr__(self):
-        return f"<Example for Translation {self.translation_id}>"
+        return f"<DailyWord {self.word.word} for {self.date}>"
 
 
 class MissingTranslation(db.Model):
@@ -70,3 +69,18 @@ class MissingTranslation(db.Model):
 
     def __repr__(self):
         return f"<Missing '{self.text}' from {self.source_language} to {self.target_language}>"
+
+
+class Example(db.Model):
+    __tablename__ = 'examples'
+
+    e_id = db.Column(db.Integer, primary_key=True)
+    translation_id = db.Column(db.Integer, db.ForeignKey('translations.t_id', ondelete='CASCADE'), nullable=False)
+    example_source = db.Column(db.Text, nullable=False)
+    example_target = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    translation = db.relationship('Translation', backref='examples')
+
+    def __repr__(self):
+        return f"<Example for Translation {self.translation_id}>"

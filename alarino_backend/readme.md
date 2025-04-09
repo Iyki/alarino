@@ -14,11 +14,21 @@ conda create --name alarino --file conda-requirements.txt
 # source .venv/bin/activate
 # pip install -r pip-requirements.txt if using python virtual environments
 ```
+### Run scripts
+```
+python -m data.seed_data
+
+```
 
 #### Database setup
 ```
-# export FLASK_APP=app.py
+# export FLASK_APP=main
+# flask routes 
 # flask db init
+
+# flask db migrate -m "Add daily word tables"
+# flask db upgrade
+
 
 ```
 

@@ -1,6 +1,6 @@
 from main import db, logger
+from response import APIResponse, ResponseData
 from shared_utils import Word, Translation, MissingTranslation, Language
-from translate.response import APIResponse, ResponseData
 
 
 def translate(text: str, source: Language, target: Language, addr: str, user_agent: str) -> tuple[dict, int]:
