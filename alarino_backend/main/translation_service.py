@@ -1,9 +1,9 @@
-from main import db, logger
+from main import logger
 from response import APIResponse, ResponseData
-from shared_utils import Word, Translation, MissingTranslation, Language
+from db_models import Word, Translation, MissingTranslation
+from languages import Language
 
-
-def translate(text: str, source: Language, target: Language, addr: str, user_agent: str) -> tuple[dict, int]:
+def translate(db, text: str, source: Language, target: Language, addr: str, user_agent: str) -> tuple[dict, int]:
     text = text.strip().lower()
     if not text:
         return APIResponse.error("Text must not be empty.", 400).as_response()
@@ -11,7 +11,7 @@ def translate(text: str, source: Language, target: Language, addr: str, user_age
     source_word = Word.query.filter_by(language=source, word=text).first()
     if not source_word:
         # Log to missing_translations
-        log_missing_translation(text, source, target, addr, user_agent)
+        log_missing_translation(db, text, source, target, addr, user_agent)
         return APIResponse.error("Word not found.", 404).as_response()
 
     translations = (
@@ -22,7 +22,7 @@ def translate(text: str, source: Language, target: Language, addr: str, user_age
         .all()
     )
     if not translations:
-        log_missing_translation(text, source, target, addr, user_agent)
+        log_missing_translation(db, text, source, target, addr, user_agent)
         return APIResponse.error("Word found but translation not available.", 404).as_response()
 
     translated_words = [t.target_word.word for t in translations]
@@ -36,7 +36,7 @@ def translate(text: str, source: Language, target: Language, addr: str, user_age
     return APIResponse.success("Translation successful.", response_data).as_response()
 
 
-def log_missing_translation(text, source_lang, target_lang, addr, user_agent):
+def log_missing_translation(db, text, source_lang, target_lang, addr, user_agent):
     existing = MissingTranslation.query.filter_by(
         text=text,
         source_language=source_lang,

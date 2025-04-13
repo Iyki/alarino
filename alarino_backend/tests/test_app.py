@@ -1,6 +1,6 @@
 import pytest
 from main import app
-from shared_utils import Language
+from main.languages import Language
 # import to get the route handler
 from main.app import get_translation
 

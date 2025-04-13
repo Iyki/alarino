@@ -1,7 +1,7 @@
 import json
 
 from shared_utils import Language
-from shared_utils.db_models import db, Word, Translation
+from main.db_models import db, Word, Translation
 from sqlalchemy.exc import IntegrityError
 from main import app, logger
 

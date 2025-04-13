@@ -1,4 +1,4 @@
-from shared_utils import Language
+from languages import Language
 
 class ResponseData:
     def __init__(self, translation: list[str], source_word: str, language: Language):
