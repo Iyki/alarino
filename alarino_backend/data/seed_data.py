@@ -1,6 +1,6 @@
 import json
 
-from shared_utils import Language
+from main.languages import Language
 from main.db_models import db, Word, Translation
 from sqlalchemy.exc import IntegrityError
 from main import app, logger
@@ -14,6 +14,9 @@ def add_word(language: str, word_text: str, part_of_speech: str = None):
     db.session.add(word)
     return word
 
+def is_valid_yoruba_word():
+    #todo: implement
+    return True
 
 def create_translation(source: Word, target: Word):
     existing = Translation.query.filter_by(

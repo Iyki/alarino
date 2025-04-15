@@ -1,10 +1,10 @@
 #app.py
 from typing import Any, Dict, Tuple
 
-from main import app, logger
+from main import app, db, _daily_word_cache, logger
 from flask import request, jsonify
 from languages import Language
-from translation_service import translate, APIResponse
+from translation_service import translate, get_word_of_the_day, APIResponse
 
 @app.route('/api/translate', methods=['POST'])
 def get_translation():
@@ -16,9 +16,7 @@ def get_translation():
       "target_lang": "yo"
     }
     and returns a JSON response with:
-    {
-      "translation": "O nlo..."
-    }
+    of type APIResponse, status
     """
     # Extract JSON payload
     data: Dict[str, Any] | None = request.get_json()
@@ -39,13 +37,21 @@ def get_translation():
     response: Dict[str, Any]
     status: int
     response, status = translate(
-        text,
-        source_language,
-        target_language,
-        request.remote_addr,
-        request.headers.get("User-Agent", "")
+        db, text, source_language, target_language,
+        request.remote_addr, request.headers.get("User-Agent", "unknown")
     )
 
+    return jsonify(response), status
+
+@app.route('/api/daily-word', methods=['GET'])
+def word_of_day():
+    """
+    Returns the word of the day in Yoruba with its English translation.
+    The word changes daily and is cached to prevent redundant database queries.
+    """
+    logger.info("Word of the day request received")
+
+    response, status = get_word_of_the_day(db, _daily_word_cache)
     return jsonify(response), status
 
 if __name__ == '__main__':

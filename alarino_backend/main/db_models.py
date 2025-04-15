@@ -6,7 +6,7 @@ class Word(db.Model):
 
     w_id = db.Column(db.Integer, primary_key=True)
     language = db.Column(db.String(3), nullable=False)
-    word = db.Column(db.String(200), nullable=False)
+    word = db.Column(db.String(200), nullable=False)  ##todo: rename to text
     part_of_speech = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.now())
 
@@ -42,10 +42,12 @@ class DailyWord(db.Model):
 
     dw_id = db.Column(db.Integer, primary_key=True)
     word_id = db.Column(db.Integer, db.ForeignKey("words.w_id"), nullable=False)
+    en_word_id = db.Column(db.Integer, db.ForeignKey("words.w_id"), nullable=False)
     date = db.Column(db.Date, default=date.today, unique=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
-    word = db.relationship("Word")
+    word = db.relationship("Word", foreign_keys=[word_id])
+    en_word = db.relationship("Word", foreign_keys=[en_word_id])
 
     def __repr__(self):
         return f"<DailyWord {self.word.word} for {self.date}>"

@@ -1,7 +1,7 @@
 #__init__.py
 import logging
 import os
-from typing import Dict
+from typing import Dict, Tuple
 # import sys
 # # Add the parent of the current script (the repo root) to the path
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -42,4 +42,4 @@ migrate: Migrate = Migrate()
 migrate.init_app(app, db)
 
 # In-memory cache
-_daily_word_cache: Dict[date, str] = {}
+_daily_word_cache: Dict[date, Tuple[str, str]] = {}

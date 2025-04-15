@@ -6,3 +6,5 @@ class Language(str, Enum):
 
     def __str__(self):
         return self.value
+
+#todo add words(pick name) with word text and language attributes

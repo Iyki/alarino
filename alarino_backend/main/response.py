@@ -1,16 +1,16 @@
 from languages import Language
 
 class ResponseData:
-    def __init__(self, translation: list[str], source_word: str, language: Language):
+    def __init__(self, translation: list[str], source_word: str, to_language: Language):
         self.translation = translation
         self.source_word = source_word
-        self.language = language
+        self.to_language = to_language
 
     def to_json(self):
         return {
             "translation": self.translation,
             "source_word": self.source_word,
-            "language": self.language
+            "to_language": self.to_language
         }
 
 
