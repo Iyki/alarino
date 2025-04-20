@@ -3,104 +3,146 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Alarino - Discover Yoruba</title>
+    <title>Alarino | English to Yoruba Translator & Dictionary Online</title>
+    <meta name="description" content="Alarino - English to Yoruba Translation Dictionary">
+    <meta name="keywords" content="Yoruba, English, translation, dictionary, African languages">
+    <link rel="canonical" href="https://alarino.com" />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       body {
         font-family: serif;
       }
+      
+      @keyframes modalopen {
+        from {opacity: 0; transform: translateY(-30px);}
+        to {opacity: 1; transform: translateY(0);}
+      }
     </style>
   </head>
   <body class="bg-gradient-to-b from-[#5c4525] to-[#e8dfca] min-h-screen text-[#2e200f]">
     <!-- Navbar -->
-    <header class="flex justify-between items-center p-6 text-white">
-      <h1 class="text-2xl font-bold">Alarino</h1>
-      <nav class="space-x-6">
-        <a href="#" class="hover:underline">Learn Yoruba</a>
-        <a href="#" class="hover:underline">Community</a>
-        <a href="#" class="hover:underline">Contribute</a>
+    <header class="flex justify-between items-center p-6 space-y-0 text-white fixed top-0 left-0 right-0 z-2 bg-[#5c4525] bg-opacity-90">
+      <img src="alarino-logo-fit.svg" alt="Alarino Logo" class="h-10" />
+      <nav class="md:flex-row md:space-x-6 space-x-1 text-center">
+        <a href="https://github.com/Iyki/alarino/issues" class="hover:underline">Contribute</a>
       </nav>
     </header>
 
-    <!-- Hero Section -->
-    <section class="text-center mt-12 px-4">
-      <h2 class="text-4xl font-bold text-white leading-tight">
-        Discover the Power <br /> of Words in Yoruba
-      </h2>
-      <button class="mt-6 bg-[#1b2f1d] text-white px-6 py-2 rounded-md font-semibold">
-        Start Translating
-      </button>
-    </section>
-
-    <!-- Translation Section -->
-    <section class="mt-16 bg-[#f4ecdd] mx-6 md:mx-auto md:max-w-3xl p-6 rounded-3xl">
-      <div class="flex gap-2 mb-4">
-        <input
-          id="englishWord"
-          type="text"
-          placeholder="Enter an English word..."
-          class="flex-grow px-4 py-2 rounded-md border border-gray-300"
-        />
-        <button
-          onclick="translateWord()"
-          class="bg-[#1b2f1d] text-white px-4 py-2 rounded-md"
-        >
-          Translate
+    <!-- Main content with padding to account for fixed header -->
+    <main class="pt-28">
+      <!-- Hero Section -->
+      <section class="text-center mt-12 px-4">
+        <h2 class="text-4xl font-bold text-white leading-tight">
+          Discover <br /> Words in Yoruba
+        </h2>
+        <button onclick="highlightTranslateBox()" class="mt-6 bg-[#1b2f1d] text-white px-6 py-2 rounded-md font-semibold">
+          Start Translating
         </button>
-      </div>
-      <div id="translationResult" class="bg-white p-4 rounded-xl text-left">
-        <p class="text-xl font-bold">water</p>
-        <p class="italic text-gray-700">omi <span class="not-italic text-sm text-gray-500">n. noo</span></p>
-        <p class="mt-2 text-gray-600">A clear liquid that falls as rain.</p>
-      </div>
-    </section>
+      </section>
 
-    <!-- Learn, Proverbs, Practice -->
-    <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-12 px-6 md:max-w-5xl md:mx-auto">
-      <!-- Learn Yoruba -->
-      <div class="bg-[#f4ecdd] rounded-xl p-4">
-        <h3 class="font-bold mb-2">Learn Yoruba</h3>
-        <div class="bg-white rounded-lg p-3">
-          <p class="text-sm text-gray-500">Word of the Day</p>
-          <p class="text-2xl font-semibold">ìfé</p>
+      <!-- Translation Section -->
+      <section id="translateBox" class="mt-16 bg-[#f4ecdd] mx-6 md:mx-auto md:max-w-3xl p-6 rounded-3xl transition duration-300">
+        <div class="flex gap-2 mb-4">
+          <input
+            id="englishWord"
+            type="text"
+            placeholder="Enter an English word..."
+            class="flex-grow px-4 py-2 rounded-md border border-gray-300"
+          />
+          <button
+            onclick="translateWord()"
+            class="bg-[#1b2f1d] text-white px-4 py-2 rounded-md"
+          >
+            Translate
+          </button>
         </div>
-        <button class="mt-2 text-sm text-[#1b2f1d] underline">Definition</button>
+        <div id="translationResult" class="bg-white p-4 rounded-xl text-left">
+          <p id="wordLabel" class="text-xl font-bold">water <span class="text-sm text-gray-500">(example)</span></p>
+          <p id="wordYoruba" class="italic text-gray-700">omi <span class="not-italic text-sm text-gray-500">n.</span></p>
+          <p id="wordDefinition" class="mt-2 text-gray-600"></p>
+        </div>
+      </section>
+
+      <!-- Learn, Proverbs, Practice -->
+      <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-12 px-6 md:max-w-5xl md:mx-auto">
+          <!-- Word of the Day -->
+          <div class="bg-[#f4ecdd] rounded-xl p-4 flex flex-col h-full">
+          <h3 class="font-bold mb-2">Word of the Day</h3>
+          <div class="bg-white rounded-lg p-5 flex-grow">
+            <p id="dailyYorubaWord" class="text-2xl font-semibold">ìfé</p>
+            <p id="dailyEnglishWord" class="text-lg text-gray-500 mt-1 pt-1 border-t border-gray-300 hidden">love</p>
+          </div>
+          <div class="flex justify-end mt-1">
+            <button onclick="toggleDailyTranslation()" id="viewTranslationBtn" class="text-sm text-[#1b2f1d] underline">
+              View translation
+            </button>
+          </div>
+        </div>
+
+        <!-- Daily Proverbs -->
+        <div class="bg-[#f4ecdd] rounded-xl p-4 flex flex-col h-full" hidden>
+          <h3 class="font-bold mb-2">Daily Proverbs</h3>
+          <div class="bg-white rounded-lg p-5 flex-grow">
+              <p class="italic">Bí ojú kò bá rí, ẹnu kì í sọ nǹkan.</p>
+              <p class="text-sm text-gray-600 mt-1">If the eye does not see, the mouth says nothing.</p>
+          </div>
+        </div>
+
+        <!-- Data Contributions -->
+        <div class="bg-[#f4ecdd] rounded-xl p-4 flex flex-col h-full">
+          <h3 class="font-bold mb-2">Have Suggestions?</h3>
+          <div class="flex-grow flex flex-col justify-center gap-4">
+            <button onclick="openAddWordModal()" class="w-full bg-white py-4 rounded-md text-sm">+ Add a word</button>
+            <button onclick="openFeedbackModal()" class="w-full bg-white py-4 rounded-md text-sm">Suggest a Better translation</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Add Word Modal -->
+    <div id="addWordModal" class="hidden fixed inset-0 z-10 overflow-auto bg-black bg-opacity-40">
+      <div class="relative bg-[#f4ecdd] mx-auto mt-24 rounded-2xl w-11/12 max-w-2xl shadow-lg" style="animation: modalopen 0.4s;">
+        <div class="px-6 py-4 border-b border-[#e2d9c8]">
+          <span class="float-right text-3xl font-bold text-[#5c4525] hover:text-black cursor-pointer" onclick="closeAddWordModal()">&times;</span>
+          <h2 class="text-2xl font-bold">Add a New Word</h2>
+        </div>
+        <div class="px-6 py-4 max-h-[70vh] overflow-y-auto">
+          <iframe 
+            id="addWordForm" 
+            src="https://docs.google.com/forms/d/e/1FAIpQLSe3MXuVbp-Iq9wegVzC9HRWxhA7-aBKNqgo4OZrSJ5akvEIOQ/viewform?embedded=true"
+            width="640" height="1540" frameborder="0"
+            class="w-full h-[450px] border-0" 
+            marginheight="0" 
+            marginwidth="0">
+            Loading form...
+          </iframe>
+        </div>
       </div>
+    </div>
 
-      <!-- Daily Proverbs -->
-      <div class="bg-[#f4ecdd] rounded-xl p-4">
-        <h3 class="font-bold mb-2">Daily Proverbs</h3>
-        <p class="italic">A kìí fì éékànná kọjá ojú ènìyàn</p>
-        <p class="text-sm text-gray-600 mt-1">One does not point a finger past another's face.</p>
-        <button class="mt-2 text-sm underline text-[#1b2f1d]">Suggest a better Translation</button>
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="hidden fixed inset-0 z-10 overflow-auto bg-black bg-opacity-40">
+      <div class="relative bg-[#f4ecdd] mx-auto mt-24 rounded-2xl w-11/12 max-w-2xl shadow-lg" style="animation: modalopen 0.4s;">
+        <div class="px-6 py-4 border-b border-[#e2d9c8]">
+          <span class="float-right text-3xl font-bold text-[#5c4525] hover:text-black cursor-pointer" onclick="closeFeedbackModal()">&times;</span>
+          <h2 class="text-2xl font-bold">Suggest a Better Translation</h2>
+        </div>
+        <div class="px-6 py-4 max-h-[70vh] overflow-y-auto">
+          <iframe 
+            id="feedbackForm" 
+            src="https://docs.google.com/forms/d/e/1FAIpQLScIVjG45qeyq85rZgJNldl-UDlqcMaZ2hCXt-l_mFX8ryY5VQ/viewform?embedded=true" 
+            class="w-full h-[450px] border-0" 
+            marginheight="0" 
+            marginwidth="0">
+            Loading form...
+          </iframe>
+        </div>
       </div>
+    </div>
 
-      <!-- Practice with Audio -->
-      <div class="bg-[#f4ecdd] rounded-xl p-4">
-        <h3 class="font-bold mb-2">Practice with Audio</h3>
-        <button class="block w-full mb-2 bg-white py-2 rounded-md text-sm">+ Add a word</button>
-        <button class="block w-full mb-2 bg-white py-2 rounded-md text-sm">Submit audio</button>
-        <button class="block w-full bg-white py-2 rounded-md text-sm">Suggest a Better transl.</button>
-      </div>
-    </section>
+    <!-- Load the config script first in head -->
+    <script src="config.js"></script>
+    <script src="translate.js"></script>
 
-    <script>
-      function translateWord() {
-        const input = document.getElementById("englishWord").value.toLowerCase();
-        const resultBox = document.getElementById("translationResult");
-
-        if (input === "water") {
-          resultBox.innerHTML = `
-            <p class="text-xl font-bold">water</p>
-            <p class="italic text-gray-700">omi <span class="not-italic text-sm text-gray-500">n. noo</span></p>
-            <p class="mt-2 text-gray-600">A clear liquid that falls as rain.</p>`;
-        } else {
-          resultBox.innerHTML = `
-            <p class="text-xl font-bold">${input}</p>
-            <p class="italic text-gray-700">(no translation found)</p>
-            <p class="mt-2 text-gray-600">We're still learning — try another word!</p>`;
-        }
-      }
-    </script>
   </body>
 </html>
