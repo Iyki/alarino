@@ -1,9 +1,9 @@
 #translation_service.py
 from datetime import date
 from main import logger
-from response import APIResponse, ResponseData
-from db_models import Word, DailyWord, Translation, MissingTranslation
-from languages import Language
+from main.response import APIResponse, ResponseData
+from main.db_models import Word, DailyWord, Translation, MissingTranslation
+from main.languages import Language
 from typing import Tuple, Dict, Optional, List, Union
 
 def translate(db, text: str, source: Language, target: Language, addr: str, user_agent: str) -> tuple[dict, int]:

@@ -3,8 +3,8 @@ from typing import Any, Dict, Tuple
 
 from main import app, db, _daily_word_cache, logger
 from flask import request, jsonify
-from languages import Language
-from translation_service import translate, get_word_of_the_day, APIResponse
+from main.languages import Language
+from main.translation_service import translate, get_word_of_the_day, APIResponse
 
 @app.route('/api/translate', methods=['POST'])
 def get_translation():

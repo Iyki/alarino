@@ -1,4 +1,4 @@
-from languages import Language
+from main.languages import Language
 
 class ResponseData:
     def __init__(self, translation: list[str], source_word: str, to_language: Language):

@@ -24,11 +24,9 @@ python -m data.seed_data
 ```
 # export FLASK_APP=main
 # flask routes 
-# flask db init
-
-# flask db migrate -m "Add daily word tables"
+# flask db init - only run once to setup the actual database
+# flask db migrate -m "Initial database setup"
 # flask db upgrade
-
 
 ```
 

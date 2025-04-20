@@ -41,5 +41,7 @@ db.init_app(app)
 migrate: Migrate = Migrate()
 migrate.init_app(app, db)
 
+from main.db_models import *
+
 # In-memory cache
 _daily_word_cache: Dict[date, Tuple[str, str]] = {}
