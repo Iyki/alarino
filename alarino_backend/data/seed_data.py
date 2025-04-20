@@ -1,4 +1,5 @@
 import json
+import re
 
 from main.languages import Language
 from main.db_models import db, Word, Translation
@@ -7,6 +8,11 @@ from main import app, logger
 
 def add_word(language: str, word_text: str, part_of_speech: str = None):
     word_text = word_text.strip().lower()
+    # Validate Yoruba words
+    if language == Language.YORUBA and not is_valid_yoruba_word(word_text):
+        logger.debug(f"Invalid Yoruba word rejected: {word_text}")
+        return None
+
     existing_word = Word.query.filter_by(language=language, word=word_text).first()
     if existing_word:
         return existing_word
@@ -14,9 +20,36 @@ def add_word(language: str, word_text: str, part_of_speech: str = None):
     db.session.add(word)
     return word
 
-def is_valid_yoruba_word():
-    #todo: implement
-    return True
+def is_valid_yoruba_word(word: str) -> bool:
+    """
+    Validates if a word contains only valid Yoruba characters
+    Args:
+        word: The word to validate
+    Returns:
+        bool: Whether the word contains only valid Yoruba characters
+    """
+    word = word.strip().lower()
+    if not word:
+        return False
+    # Define valid Yoruba character sets
+    # Standard consonants (excluding c, q, v, x, z)
+    consonants = "bdfghjklmnprstwygbṣ"
+    # Standard vowels with tone marks
+    vowels = "aàáeèéẹẹ̀ẹ́iìíoòóọọ̀ọ́uùú"
+    # Nasal vowels with tone marks
+    nasal_vowels = "mḿm̀nńǹ"
+    # Additional valid characters
+    extras = "'- "
+
+    # All valid characters combined
+    valid_chars = consonants + vowels + nasal_vowels + extras
+
+    escaped_chars = re.escape(valid_chars)
+
+    # Build regex pattern using our valid characters
+    pattern = f"^[{escaped_chars}]+$"
+
+    return bool(re.match(pattern, word, re.UNICODE))
 
 def create_translation(source: Word, target: Word):
     existing = Translation.query.filter_by(
@@ -29,10 +62,11 @@ def create_translation(source: Word, target: Word):
     db.session.add(translation)
 
 
-def write_data_batch(entries: list):
+def write_data_batch(entries: list, batch_id: int) -> list[dict]:
     with app.app_context():
         batch_start = 0
         batch_end = len(entries) - 1
+        invalid_entries = []
 
         for i, entry in enumerate(entries):
             english_word = entry.get("english_word", "").strip().lower()
@@ -46,9 +80,19 @@ def write_data_batch(entries: list):
 
             for pos in parts_of_speech:
                 eng_word_obj = add_word(Language.ENGLISH, english_word, part_of_speech=pos)
+                if eng_word_obj is None:
+                    continue
 
                 for yoruba_word in yoruba_translations:
                     yor_word_obj = add_word(Language.YORUBA, yoruba_word)
+                    if yor_word_obj is None:
+                        invalid_entries.append({
+                            "english": english_word,
+                            "yoruba": yoruba_word,
+                            "reason": "Invalid Yoruba word"
+                        })
+                        continue
+
                     db.session.flush()  # ensures .id is set
                     create_translation(eng_word_obj, yor_word_obj)
 
@@ -56,29 +100,46 @@ def write_data_batch(entries: list):
                 logger.info(f"Starting at: {english_word} | POS: {parts_of_speech} | Yoruba: {yoruba_text}")
             if i >= batch_end:
                 logger.info(f"Ending at: {english_word} | POS: {parts_of_speech} | Yoruba: {yoruba_text}")
-                break
 
         try:
             db.session.commit()
-            logger.info("Word data seeded successfully.")
+            logger.info("Batch data committed successfully.")
+            logger.warning(f"Rejected {len(invalid_entries)} invalid entries.")
         except IntegrityError as e:
             db.session.rollback()
-            logger.error("Integrity Error:", e)
-            # raise e
+            logger.exception("Integrity Error:", e)
+
+        if invalid_entries:
+            batch_file = f"invalid_entries_batch_{batch_id}.json"
+            with open(batch_file, "w", encoding="utf-8") as f:
+                json.dump(invalid_entries, f, indent=2, ensure_ascii=False)
+            logger.warning(f"Wrote {len(invalid_entries)} invalid entries to {batch_file}")
+
+        return invalid_entries
 
 
 def write_data():
     with open("./en-yo-dataset.json", "r", encoding="utf-8") as f:
         entries = json.load(f)
-    logger.info(f"finished loading data file with {len(entries)} items")
+    logger.info(f"Finished loading data file with {len(entries)} items")
+
+    all_invalid_entries = []
 
     batch_start = 0
     batch_size = 500
     while batch_start < len(entries):
-        end = min(batch_start+batch_size, len(entries))
+        end = min(batch_start + batch_size, len(entries))
+        batch_id = (batch_start // batch_size) + 1
+
         logger.info(f"Processing batch {batch_start} to {end}")
-        write_data_batch(entries[batch_start:end])
+        batch_invalids = write_data_batch(entries[batch_start:end], batch_id)
+        all_invalid_entries.extend(batch_invalids)
         batch_start += batch_size
+
+    if all_invalid_entries:
+        with open("invalid_yoruba_entries_all.json", "w", encoding="utf-8") as f:
+            json.dump(all_invalid_entries, f, indent=2, ensure_ascii=False)
+        logger.info(f"Wrote {len(all_invalid_entries)} total invalid entries.")
 
     logger.info("Finished processing all data.")
 
