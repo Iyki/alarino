@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // If we found a word through either method, trigger translation
   if (englishWordInput && wordToTranslate) {
     // Trigger translation after a short delay
-    setTimeout(() => translateWord(), 200);
+    setTimeout(() => translateWord(), 2);
     highlightTranslateBox();
   }
 });
@@ -155,7 +155,7 @@ function updatePageMetadata(word) {
   const canonicalLink = document.getElementById("canonical-link");
   if (canonicalLink) {
     canonicalLink.setAttribute("href", 
-      `https://alarino.com/word/${encodeURIComponent(word.toLowerCase())}`);
+      `${window.ALARINO_CONFIG.baseUrl}/word/${encodeURIComponent(word.toLowerCase())}`);
   }
 }
 

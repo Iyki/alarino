@@ -1,7 +1,21 @@
 
 window.ALARINO_CONFIG = {
-    apiBaseUrl: (window.location.hostname === 'localhost' || 
-                    window.location.hostname.includes('127.0.0.1'))
-        ? 'http://localhost:5001/api'
-        : 'https://api.alarino.com/api'
+    domain: "alarino.com",
+
+    // Computed properties
+    get fullDomain() {
+        this.domain;
+    },
+    
+    get baseUrl() {
+        return `https://${this.fullDomain}`;
+    },
+
+    get apiBaseUrl() {
+        if (window.location.hostname === 'localhost' || 
+            window.location.hostname.includes('127.0.0.1')) {
+            return 'http://localhost:5001/api';
+        }
+        return `https://api.${this.domain}/api`;
+    }
 };
