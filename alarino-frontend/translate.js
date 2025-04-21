@@ -1,5 +1,41 @@
 // Fetch the word of the day on page load
-document.addEventListener('DOMContentLoaded', fetchWordOfTheDay);
+document.addEventListener('DOMContentLoaded', function() {
+  fetchWordOfTheDay();
+  
+  let englishWordInput = null;
+  let wordToTranslate = null;
+  
+  // First, check if the URL path contains a word (priority)
+  const pathParts = window.location.pathname.split('/');
+  if (pathParts.length > 2 && pathParts[1] === 'word') {
+    wordToTranslate = decodeURIComponent(pathParts[2]);
+    englishWordInput = document.getElementById('englishWord');
+    if (englishWordInput) {
+      englishWordInput.value = wordToTranslate;
+      updatePageMetadata(wordToTranslate);
+  }
+  } 
+  // If no word in path, check for query parameter as fallback
+  else {
+    const urlParams = new URLSearchParams(window.location.search);
+    const wordParam = urlParams.get('word');
+    
+    if (wordParam) {
+      wordToTranslate = decodeURIComponent(wordParam);
+      englishWordInput = document.getElementById('englishWord');
+      if (englishWordInput) {
+        englishWordInput.value = wordToTranslate;
+      }
+    }
+  }
+  
+  // If we found a word through either method, trigger translation
+  if (englishWordInput && wordToTranslate) {
+    // Trigger translation after a short delay
+    setTimeout(() => translateWord(), 200);
+    highlightTranslateBox();
+  }
+});
 
 function toggleDailyTranslation() {
   const englishWord = document.getElementById("dailyEnglishWord");
@@ -70,6 +106,9 @@ async function translateWord() {
       wordLabel.textContent = result.data.source_word;
       wordYoruba.innerHTML = translation;
       wordDefinition.textContent = "";
+      
+      // Update URL to reflect the current word (without reloading the page)
+      updatePageUrl(result.data.source_word);
     } else {
       wordLabel.textContent = input;
       wordYoruba.textContent = "(no translation found)";
@@ -79,6 +118,44 @@ async function translateWord() {
     wordLabel.textContent = input;
     wordYoruba.textContent = "(error fetching translation)";
     wordDefinition.textContent = "Please check your connection or try again later.";
+  }
+}
+
+function updatePageUrl(word) {
+    // Update the URL without refreshing the page
+  const newUrl = `/word/${encodeURIComponent(word.toLowerCase())}`;
+  if (window.location.pathname !== newUrl) {
+    window.history.pushState({ word: word }, '', newUrl);
+    document.title = `${word} in Yoruba | Alarino Dictionary`;
+    // window.location.href = newUrl; // This causes a page reload instead of history manipulation
+    updatePageMetadata(word);
+  }
+}
+
+function updatePageMetadata(word) {
+  // Capitalize first letter for title
+  const capitalizedWord = word.charAt(0).toUpperCase() + word.slice(1);
+  
+  // Update page title
+  const pageTitle = document.getElementById("page-title");
+  if (pageTitle) {
+    pageTitle.textContent = `${capitalizedWord} in Yoruba | Alarino Dictionary`;
+  } else {
+    document.title = `${capitalizedWord} in Yoruba | Alarino Dictionary`;
+  }
+  
+  // Update meta description
+  const metaDescription = document.getElementById("meta-description");
+  if (metaDescription) {
+    metaDescription.setAttribute("content", 
+      `What is "${word}" in Yoruba? Find the Yoruba translation for "${word}" on Alarino - the English to Yoruba Dictionary.`);
+  }
+  
+  // Update canonical link
+  const canonicalLink = document.getElementById("canonical-link");
+  if (canonicalLink) {
+    canonicalLink.setAttribute("href", 
+      `https://alarino.com/word/${encodeURIComponent(word.toLowerCase())}`);
   }
 }
 
@@ -127,3 +204,14 @@ window.onclick = function(event) {
     closeFeedbackModal();
   }
 }
+
+// Handle browser back button
+window.onpopstate = function(event) {
+  if (event.state && event.state.word) {
+    const englishWordInput = document.getElementById('englishWord');
+    if (englishWordInput) {
+      englishWordInput.value = event.state.word;
+      translateWord();
+    }
+  }
+};
