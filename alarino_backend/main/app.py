@@ -151,4 +151,5 @@ def find_file(filename:str, paths=None):
     return None
 
 if __name__ == '__main__':
-    app.run(port=5001, debug=True)
+    port = int(os.getenv("MAIN_PORT", "5001"))
+    app.run(port=port, debug=True)
