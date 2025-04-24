@@ -134,7 +134,7 @@ def serve_robots():
 def get_static_file_paths():
     """Returns ordered list of paths to check for static files"""
     return [
-        os.path.join(app.root_path, 'static'),  # /main/static/
+        os.path.join(app.root_path, '../static'),  # /main/static/ or /app/static
         app.root_path,  # alarino_backend/main/
         os.path.join(app.root_path, '../../alarino_frontend')  # project root
     ]
@@ -152,4 +152,4 @@ def find_file(filename:str, paths=None):
 
 if __name__ == '__main__':
     port = int(os.getenv("MAIN_PORT", "5001"))
-    app.run(port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, threaded=True)

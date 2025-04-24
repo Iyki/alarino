@@ -1,0 +1,11 @@
+name: alarino-1.0
+
+services:
+  backend:
+    build: .
+    ports:
+      - "80:5001"
+    env_file:
+      - ./alarino_backend/.env
+    restart: always
+
