@@ -37,17 +37,25 @@ npm run dev
 ```
 
 /*
-//npm create vite@latest alarino-frontend -- --template react-ts
 
-npm install axios
-npm i @chakra-ui/react@2 @emotion/react @emotion/styled framer-motion  // use v2 for chakra, v3 is too new
-npm install typescript@latest --save-dev
+docker compose
 
-npm i @chakra-ui/react @emotion/react
-npx @chakra-ui/cli snippet add
+DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+mkdir -p $DOCKER_CONFIG/cli-plugins
+curl -SL https://github.com/docker/compose/releases/download/v2.35.1/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
 
-npm install --save-dev rollup-plugin-visualizer
 
+
+git clone https://github.com/Iyki/alarino.git
+cd alarino
+
+sudo apt update
+sudo apt install docker.io docker-compose 
+sudo docker-compose up --build -d
+
+
+// env file to deploy
+ scp .env root@alarino.com:/root/alarino/alarino_backend/.env
 */
 
 ```

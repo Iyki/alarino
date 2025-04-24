@@ -16,6 +16,6 @@ window.ALARINO_CONFIG = {
             window.location.hostname.includes('127.0.0.1')) {
             return 'http://127.0.0.1/api';
         }
-        return `https://api.${this.domain}/api`;
+        return `http://api.${this.domain}/api`;
     }
 };
