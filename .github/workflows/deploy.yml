@@ -21,7 +21,7 @@ jobs:
         ssh-private-key: ${{ secrets.SSH_KEY_DEPLOY }}
 
     - name: Test Docker build
-      run: docker build --tag alarinoV1:$(date +%s) .
+      run: docker build --tag alarino-v1:$(date +%s) .
 
     - name: Deploy to DigitalOcean
       run: |
