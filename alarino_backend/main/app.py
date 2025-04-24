@@ -85,7 +85,7 @@ def serve_root_static_file(filename):
     """Serve static files from the root directory with extension checking"""
     # List of allowed file extensions for security
     allowed_extensions = [
-        '.js', '.css', '.svg', '.png', '.jpg',
+        '.js', '.css', '.svg', '.png', '.jpg', 'html',
         '.jpeg', '.ico', '.gif', '.woff', '.woff2'
     ]
 

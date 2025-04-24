@@ -58,6 +58,13 @@ sudo docker-compose up --build -d
  scp .env root@alarino.com:/root/alarino/alarino_backend/.env
 */
 
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d alarino.com -d www.alarino.com
+0 0 * * * certbot renew --quiet && docker exec nginx nginx -s reload
+
+sudo systemctl stop nginx
+sudo systemctl disable nginx
+
 ```
 
 
