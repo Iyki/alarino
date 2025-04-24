@@ -3,9 +3,19 @@ name: alarino-1.0
 services:
   backend:
     build: .
-    ports:
-      - "80:5001"
     env_file:
       - ./alarino_backend/.env
     restart: always
+    expose:
+      - "5001"
 
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./alarino_nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
