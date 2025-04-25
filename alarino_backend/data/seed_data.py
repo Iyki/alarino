@@ -1,16 +1,21 @@
 import json
 import re
+import unicodedata
 
 from main.languages import Language
 from main.db_models import db, Word, Translation
 from sqlalchemy.exc import IntegrityError
 from main import app, logger
 
-def add_word(language: str, word_text: str, part_of_speech: str = None):
-    word_text = word_text.strip().lower()
-    # Validate Yoruba words
+def add_word(language: Language, word_text: str, part_of_speech: str = None):
+    word_text = word_text.strip().strip(" ,.?!()").lower()
+    word_text = unicodedata.normalize('NFC', word_text)
+
     if language == Language.YORUBA and not is_valid_yoruba_word(word_text):
         logger.debug(f"Invalid Yoruba word rejected: {word_text}")
+        return None
+    if language == Language.ENGLISH and not is_valid_english_word(word_text):
+        logger.debug(f"Invalid English word rejected: {word_text}")
         return None
 
     existing_word = Word.query.filter_by(language=language, word=word_text).first()
@@ -28,27 +33,38 @@ def is_valid_yoruba_word(word: str) -> bool:
     Returns:
         bool: Whether the word contains only valid Yoruba characters
     """
+    if not word:
+        return False
+    word = word.strip().lower()
+
+    # Define valid Yoruba character sets
+    consonants = "bdfghjklmnprstwygbṣ" # Standard consonants (excluding c, q, v, x, z)
+    vowels = "aàáeèéẹẹ̀ẹ́iìíoòóọọ̀ọ́uùú" # Standard vowels with tone marks
+    nasal_vowels = "mḿm̀nńǹ" # Nasal vowels with tone marks
+    extras = "'- " # Additional valid characters
+
+    valid_chars = consonants + vowels + nasal_vowels + extras
+    valid_chars = unicodedata.normalize('NFC', valid_chars)
+
+    escaped_chars = re.escape(valid_chars)
+    pattern = f"^[{escaped_chars}]+$"
+
+    return bool(re.match(pattern, word, re.UNICODE))
+
+def is_valid_english_word(word: str) -> bool:
+    """
+    Validates if a word contains only valid English characters
+    Args:
+        word: The word to validate
+    Returns:
+        bool: Whether the word contains only valid English characters
+    """
     word = word.strip().lower()
     if not word:
         return False
-    # Define valid Yoruba character sets
-    # Standard consonants (excluding c, q, v, x, z)
-    consonants = "bdfghjklmnprstwygbṣ"
-    # Standard vowels with tone marks
-    vowels = "aàáeèéẹẹ̀ẹ́iìíoòóọọ̀ọ́uùú"
-    # Nasal vowels with tone marks
-    nasal_vowels = "mḿm̀nńǹ"
-    # Additional valid characters
-    extras = "'- "
 
-    # All valid characters combined
-    valid_chars = consonants + vowels + nasal_vowels + extras
-
-    escaped_chars = re.escape(valid_chars)
-
-    # Build regex pattern using our valid characters
-    pattern = f"^[{escaped_chars}]+$"
-
+    # Simple regex pattern for English text (letters, apostrophes, hyphens, spaces)
+    pattern = r'^[a-z\'\- ]+$'
     return bool(re.match(pattern, word, re.UNICODE))
 
 def create_translation(source: Word, target: Word):
@@ -81,6 +97,11 @@ def write_data_batch(entries: list, batch_id: int) -> list[dict]:
             for pos in parts_of_speech:
                 eng_word_obj = add_word(Language.ENGLISH, english_word, part_of_speech=pos)
                 if eng_word_obj is None:
+                    invalid_entries.append({
+                        "english": english_word,
+                        "yoruba": yoruba_word,
+                        "reason": "Invalid English word"
+                    })
                     continue
 
                 for yoruba_word in yoruba_translations:

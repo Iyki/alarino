@@ -85,7 +85,7 @@ def serve_root_static_file(filename):
     """Serve static files from the root directory with extension checking"""
     # List of allowed file extensions for security
     allowed_extensions = [
-        '.js', '.css', '.svg', '.png', '.jpg', 'html',
+        '.js', '.css', '.svg', '.png', '.jpg', '.html', '.xml',
         '.jpeg', '.ico', '.gif', '.woff', '.woff2'
     ]
 
@@ -135,6 +135,7 @@ def get_static_file_paths():
     """Returns ordered list of paths to check for static files"""
     return [
         os.path.join(app.root_path, '../static'),  # /main/static/ or /app/static
+        os.path.join(app.root_path, '../data'),  # /main/static/ or /app/static
         app.root_path,  # alarino_backend/main/
         os.path.join(app.root_path, '../../alarino_frontend')  # project root
     ]
