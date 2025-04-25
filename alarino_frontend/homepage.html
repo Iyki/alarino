@@ -42,21 +42,18 @@
       </section>
 
       <!-- Translation Section -->
-      <section id="translateBox" class="mt-16 bg-[#f4ecdd] mx-6 md:mx-auto md:max-w-3xl p-6 rounded-3xl transition duration-300">
-  <form onsubmit="translateWord(); return false;" class="flex gap-2 mb-4">
+      <section id="translateBox" class="mt-16 bg-[#f4ecdd] mx-4 sm:mx-6 md:mx-auto md:max-w-3xl p-4 sm:p-6 rounded-3xl transition duration-300">
+        <form onsubmit="translateWord(); return false;" class="flex flex-col sm:flex-row gap-2 mb-4">
           <input
             id="englishWord"
             type="text"
             placeholder="Enter an English word..."
             class="flex-grow px-4 py-2 rounded-md border border-gray-300"
           />
-          <button
-      type="submit"
-            class="bg-[#1b2f1d] text-white px-4 py-2 rounded-md"
-          >
+          <button type="submit" class="bg-[#1b2f1d] text-white px-4 py-2 rounded-md">
             Translate
           </button>
-  </form>
+        </form>
         <div id="translationResult" class="bg-white p-4 rounded-xl text-left">
           <p id="wordLabel" class="text-xl font-bold">water <span class="text-sm text-gray-500">(example)</span></p>
           <p id="wordYoruba" class="italic text-gray-700">omi <span class="not-italic text-sm text-gray-500">n.</span></p>
