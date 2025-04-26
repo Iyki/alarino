@@ -20,16 +20,6 @@ python -m data.seed_data
 
 ```
 
-#### Database setup
-```
-# export FLASK_APP=main
-# flask --app=main.app routes 
-# flask --app=main.app db init - only run once to setup the actual database
-# flask --app=main.app db migrate -m "commit message"
-# flask --app=main.app db upgrade
-
-```
-
 ### Run backend app
 ```
 python app.py

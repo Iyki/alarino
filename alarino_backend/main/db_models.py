@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from main import db
+from sqlalchemy import Index
 
 class Word(db.Model):
     __tablename__ = 'words'
@@ -12,6 +13,10 @@ class Word(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint('language', 'word', name='unique_language_word'),
+        # Add index on language and word for faster lookups
+        Index('idx_words_language_word', 'language', 'word'),
+        # Add index on just language for filtering words by language
+        Index('idx_words_language', 'language'),
     )
 
     def __repr__(self):
@@ -31,6 +36,9 @@ class Translation(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint('source_word_id', 'target_word_id', name='unique_translation_pair'),
+        # Add indexes for faster joins and lookups
+        Index('idx_translations_source_word_id', 'source_word_id'),
+        Index('idx_translations_target_word_id', 'target_word_id'),
     )
 
     def __repr__(self):
@@ -48,6 +56,11 @@ class DailyWord(db.Model):
 
     word = db.relationship("Word", foreign_keys=[word_id])
     en_word = db.relationship("Word", foreign_keys=[en_word_id])
+
+    __table_args__ = (
+        # Add index on date for faster lookups of daily words
+        Index('idx_daily_words_date', 'date'),
+    )
 
     def __repr__(self):
         return f"<DailyWord {self.word.word} for {self.date}>"
@@ -67,6 +80,10 @@ class MissingTranslation(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint('text', 'source_language', 'target_language', name='unique_missing_translation'),
+        # Add composite index for faster lookups
+        Index('idx_missing_text_source_target', 'text', 'source_language', 'target_language'),
+        # Add index on hit_count to quickly find most requested missing translations
+        Index('idx_missing_hit_count', 'hit_count', postgresql_ops={'hit_count': 'DESC'}),
     )
 
     def __repr__(self):

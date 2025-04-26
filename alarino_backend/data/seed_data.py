@@ -95,6 +95,7 @@ def write_data_batch(entries: list, batch_id: int) -> list[dict]:
             yoruba_translations = [y.strip() for y in yoruba_text.split(",") if y.strip()]
 
             for pos in parts_of_speech:
+                english_word = re.sub(r'\([^)]*\)', '', english_word).strip()
                 eng_word_obj = add_word(Language.ENGLISH, english_word, part_of_speech=pos)
                 if eng_word_obj is None:
                     invalid_entries.append({
@@ -105,6 +106,7 @@ def write_data_batch(entries: list, batch_id: int) -> list[dict]:
                     continue
 
                 for yoruba_word in yoruba_translations:
+                    yoruba_word = re.sub(r'\([^)]*\)', '', yoruba_word).strip()
                     yor_word_obj = add_word(Language.YORUBA, yoruba_word)
                     if yor_word_obj is None:
                         invalid_entries.append({
