@@ -142,7 +142,7 @@ def write_data_batch(entries: list, batch_id: int) -> list[dict]:
 
 
 def write_data():
-    with open("./en-yo-dataset.json", "r", encoding="utf-8") as f:
+    with open("datasets/en-yo-dataset.json", "r", encoding="utf-8") as f:
         entries = json.load(f)
     logger.info(f"Finished loading data file with {len(entries)} items")
 
