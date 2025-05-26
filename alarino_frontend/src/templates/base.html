@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{% block title %}Alarino{% endblock %}</title>
+    <link href="/main.css" rel="stylesheet">
+    <!-- <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet"> -->
+    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
+  </head>
+  <body class="bg-gradient-to-b from-[#5c4525] to-[#e8dfca] min-h-screen text-[#2e200f]">
+    {% block content %}{% endblock %}
+  </body>
+</html>
