@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r pip-requirements.txt
 # ENV FLASK_RUN_PORT=5001
 
 # let logs output immediately without python buffering
-ENV PYTHONUNBUFFERED=1
+# ENV PYTHONUNBUFFERED=1
 
 # Expose flask port
 EXPOSE 5001
