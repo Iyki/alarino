@@ -1,3 +1,6 @@
+# Generated static folders
+static/
+
 # Logs
 logs
 *.log
