@@ -1,3 +1,6 @@
+# Generated static folders
+src/out/
+
 # Logs
 logs
 *.log

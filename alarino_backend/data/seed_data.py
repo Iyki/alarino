@@ -133,7 +133,7 @@ def write_data_batch(entries: list, batch_id: int) -> list[dict]:
             logger.exception("Integrity Error:", e)
 
         if invalid_entries:
-            batch_file = f"invalid_entries_batch_{batch_id}.json"
+            batch_file = f"invalid_datasets/invalid_entries_batch_{batch_id}.json"
             with open(batch_file, "w", encoding="utf-8") as f:
                 json.dump(invalid_entries, f, indent=2, ensure_ascii=False)
             logger.warning(f"Wrote {len(invalid_entries)} invalid entries to {batch_file}")
@@ -160,7 +160,7 @@ def write_data():
         batch_start += batch_size
 
     if all_invalid_entries:
-        with open("invalid_yoruba_entries_all.json", "w", encoding="utf-8") as f:
+        with open("invalid_datasets/invalid_yoruba_entries_all.json", "w", encoding="utf-8") as f:
             json.dump(all_invalid_entries, f, indent=2, ensure_ascii=False)
         logger.info(f"Wrote {len(all_invalid_entries)} total invalid entries.")
 

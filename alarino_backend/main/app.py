@@ -1,11 +1,17 @@
 #app.py
 import os
+import markdown
+
 from typing import Any, Dict
 
 from main import app, db, _daily_word_cache, logger
-from flask import request, jsonify, send_file, abort
+from flask import request, jsonify, send_file, abort, render_template
 from main.languages import Language
 from main.translation_service import translate, get_word_of_the_day, APIResponse
+
+from main.utils import find_file
+
+app.template_folder = find_file("templates/about.html", get_dir=True)
 
 @app.route('/api/translate', methods=['POST'])
 def get_translation():
@@ -79,13 +85,25 @@ def word_page(word):
     """
     return serve_index()
 
+@app.route("/about")
+@app.route("/about.html")
+def about():
+    filepath = find_file("about.md")
+    with open(filepath, 'r', encoding='utf-8') as f:
+        md_content = f.read()
+    html_content = markdown.markdown(md_content)
+    template_path = "about.html"
+    val = render_template(template_path, content=html_content)
+    return val
+
+
 # Route for static files with known extensions for rendering
 @app.route('/<filename>')
 def serve_root_static_file(filename):
     """Serve static files from the root directory with extension checking"""
     # List of allowed file extensions for security
     allowed_extensions = [
-        '.js', '.css', '.svg', '.png', '.jpg', '.html', '.xml',
+        '.js', '.css', '.svg', '.png', '.jpg', '.html', '.xml', '.md',
         '.jpeg', '.ico', '.gif', '.woff', '.woff2'
     ]
 
@@ -128,28 +146,6 @@ def serve_robots():
     else:
         return "Robots.txt not found", 404
 
-
-
-# Define paths to look for static files
-def get_static_file_paths():
-    """Returns ordered list of paths to check for static files"""
-    return [
-        os.path.join(app.root_path, '../static'),  # /main/static/ or /app/static
-        os.path.join(app.root_path, '../data'),  # /main/static/ or /app/static
-        app.root_path,  # alarino_backend/main/
-        os.path.join(app.root_path, '../../alarino_frontend')  # project root
-    ]
-
-def find_file(filename:str, paths=None):
-    """Search for a file in multiple directories"""
-    if paths is None:
-        paths = get_static_file_paths()
-
-    for path in paths:
-        file_path = os.path.join(path, filename)
-        if os.path.isfile(file_path):
-            return file_path
-    return None
 
 if __name__ == '__main__':
     port = int(os.getenv("MAIN_PORT", "5001"))

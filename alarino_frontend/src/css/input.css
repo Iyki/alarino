@@ -1,0 +1,18 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+body {
+    font-family: serif;
+}
+
+@keyframes modalopen {
+    from {opacity: 0; transform: translateY(-30px);}
+    to {opacity: 1; transform: translateY(0);}
+}
+
+/* Ensure custom color classes are available */
+.bg-alarino-brown { background-color: #5c4525; }
+.bg-alarino-cream { background-color: #e8dfca; }
+.bg-alarino-beige { background-color: #f4ecdd; }
+.text-alarino-dark { color: #2e200f; }
+.bg-alarino-green { background-color: #1b2f1d; }
