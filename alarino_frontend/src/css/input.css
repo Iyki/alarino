@@ -1,12 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-@tailwind typography;
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
-
-/* Custom styles specific to Alarino */
 body {
-font-family: serif;
+    font-family: serif;
 }
 
 @keyframes modalopen {

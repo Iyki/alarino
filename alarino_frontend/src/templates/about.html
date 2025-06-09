@@ -3,8 +3,10 @@
 
 {% block content %}
   <main class="pt-28 px-2 sm:px-8 md:px-16 lg:px-24 xl:px-32 2xl:px-48">
-    <article class="bg-[#f4ecdd] rounded-3xl p-6 sm:p-8 md:p-10 mx-auto max-w-4xl text-left text-lg leading-relaxed space-y-4">
-      {{ content|safe }}
+    <article class="bg-[#f4ecdd] rounded-3xl p-6 sm:p-8 md:p-10 mx-auto max-w-4xl text-left">
+      <div class="prose prose-lg prose-stone max-w-none text-left prose-headings:text-[#2e200f] prose-p:text-[#2e200f] prose-li:text-[#2e200f] prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl">
+        {{ content|safe }}
+      </div>
     </article>
   </main>
 {% endblock %}

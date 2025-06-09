@@ -1,4 +1,14 @@
-# alarino_backend/Dockerfile
+# Stage 1: Build CSS with Node
+FROM node:20-alpine AS build-css
+WORKDIR /app
+COPY alarino_frontend/package*.json ./
+RUN npm install
+COPY alarino_frontend /app/static
+WORKDIR /app/static
+RUN npm run build:css
+
+
+# Stage 2: Python app
 FROM python:3.11-slim
 
 # Install dependencies needed after slim python
@@ -9,7 +19,7 @@ WORKDIR /app
 
 # Copy project files
 COPY alarino_backend /app
-COPY alarino_frontend /app/static
+COPY --from=build-css /app/static ./static
 
 RUN pip install --no-cache-dir -r pip-requirements.txt
 

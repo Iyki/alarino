@@ -1,5 +1,5 @@
 # Generated static folders
-static/
+src/out/
 
 # Logs
 logs
