@@ -32,23 +32,3 @@ def find_file(filename: str, get_dir: bool = False,
             return matches[0].parent if get_dir else matches[0]
     return None
 
-# def get_static_file_paths():
-#     """Returns ordered list of paths to check for static files"""
-#     return [
-#         os.path.join(app.root_path, '../static'),  # /main/static/ or /app/static
-#         os.path.join(app.root_path, '../data'),  # /main/static/ or /app/static
-#         app.root_path,  # alarino_backend/main/
-#         os.path.join(app.root_path, '../../alarino_frontend')  # project root
-#     ]
-
-# def find_file(filename:str, get_dir = False, paths=None):
-#     """Search for a file in multiple directories"""
-#     if paths is None:
-#         paths = get_static_file_paths()
-#
-#     for path in paths:
-#         file_path = os.path.join(path, filename)
-#         if os.path.isfile(file_path):
-#             return os.path.dirname(file_path) if get_dir else file_path
-#     return None
-
