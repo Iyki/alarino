@@ -103,3 +103,20 @@ class Example(db.Model):
 
     def __repr__(self):
         return f"<Example for Translation {self.translation_id}>"
+
+
+class Proverb(db.Model):
+    __tablename__ = 'proverbs'
+
+    p_id = db.Column(db.Integer, primary_key=True)
+    yoruba_text = db.Column(db.Text, nullable=False)
+    english_text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    __table_args__ = (
+        db.UniqueConstraint('yoruba_text', 'english_text', name='unique_proverb_pair'),
+        Index('idx_proverbs_yoruba_text', 'yoruba_text'),
+    )
+
+    def __repr__(self):
+        return f"<Proverb Yoruba: '{self.yoruba_text}' English: '{self.english_text}'>"
