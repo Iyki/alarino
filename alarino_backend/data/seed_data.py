@@ -8,6 +8,11 @@ from main import app, logger
 from main.db_models import db, Word, Translation, Proverb
 from main.languages import Language
 
+# Define valid Yoruba character sets
+_YORUBA_CONSONANTS = "bdfghjklmnprstwygbṣ"  # Standard consonants (excluding c, q, v, x, z)
+_YORUBA_VOWELS = "aàáeèéẹẹ̀ẹ́iìíoòóọọ̀ọ́uùú"  # Standard vowels with tone marks
+_YORUBA_NASAL_VOWELS = "mḿm̀nńǹ"  # Nasal vowels with tone marks
+_YORUBA_CHARACTER_SET = _YORUBA_CONSONANTS + _YORUBA_VOWELS + _YORUBA_NASAL_VOWELS
 
 def add_word(language: Language, word_text: str, part_of_speech: str = None):
     word_text = word_text.strip().strip(" ,.?!()").lower()
@@ -27,32 +32,32 @@ def add_word(language: Language, word_text: str, part_of_speech: str = None):
     db.session.add(word)
     return word
 
-
-# Define valid Yoruba character sets
-_YORUBA_CONSONANTS = "bdfghjklmnprstwygbṣ"  # Standard consonants (excluding c, q, v, x, z)
-_YORUBA_VOWELS = "aàáeèéẹẹ̀ẹ́iìíoòóọọ̀ọ́uùú"  # Standard vowels with tone marks
-_YORUBA_NASAL_VOWELS = "mḿm̀nńǹ"  # Nasal vowels with tone marks
-_YORUBA_CHARACTER_SET = _YORUBA_CONSONANTS + _YORUBA_VOWELS + _YORUBA_NASAL_VOWELS
+def _is_valid_yoruba(text: str, extra_chars: str) -> bool:
+    """
+    Generic validation helper for Yoruba text.
+    Args:
+        text: The text to validate.
+        extra_chars: Additional characters to allow.
+    Returns:
+        bool: Whether the text is valid.
+    """
+    if not text:
+        return False
+    text = text.strip().lower()
+    valid_chars = unicodedata.normalize('NFC', _YORUBA_CHARACTER_SET + extra_chars)
+    escaped_chars = re.escape(valid_chars)
+    pattern = f"^[{escaped_chars}]+$"
+    return bool(re.match(pattern, text, re.UNICODE))
 
 def is_valid_yoruba_word(word: str) -> bool:
     """
-    Validates if a word contains only valid Yoruba characters
+    Validates if a word contains only valid Yoruba characters.
     Args:
-        word: The word to validate
+        word: The word to validate.
     Returns:
-        bool: Whether the word contains only valid Yoruba characters
+        bool: Whether the word is valid.
     """
-    if not word:
-        return False
-    word = word.strip().lower()
-
-    extras = "'- "  # Additional valid characters for a single word
-    valid_chars = unicodedata.normalize('NFC', _YORUBA_CHARACTER_SET + extras)
-    escaped_chars = re.escape(valid_chars)
-    pattern = f"^[{escaped_chars}]+$"
-
-    return bool(re.match(pattern, word, re.UNICODE))
-
+    return _is_valid_yoruba(word, extra_chars="'- ")
 
 def is_valid_yoruba_text(text: str) -> bool:
     """
@@ -62,18 +67,7 @@ def is_valid_yoruba_text(text: str) -> bool:
     Returns:
         bool: Whether the text is valid.
     """
-    if not text:
-        return False
-    text = text.strip().lower()
-
-    # Punctuation and other characters allowed in a sentence
-    extras = "' -.,?!;:"
-    valid_chars = unicodedata.normalize('NFC', _YORUBA_CHARACTER_SET + extras)
-    escaped_chars = re.escape(valid_chars)
-    pattern = f"^[{escaped_chars}]+$"
-
-    return bool(re.match(pattern, text, re.UNICODE))
-
+    return _is_valid_yoruba(text, extra_chars="' -.,?!;:")
 
 def is_valid_english_word(word: str) -> bool:
     """
