@@ -10,6 +10,16 @@
     "reason": "Invalid Yoruba text"
   },
   {
+    "yoruba": "A fijó gba Awà; a fìjà gba Awà; bí a ò bá jó, bí a ò bá jà, bí a bá ti gba Awà, kò tán bí?",
+    "english": "By dancing we take possession of Awà; through fighting we take possession of Awà; if we neither dance nor fight, but take possession of Awà anyway, is the result not the same?",
+    "reason": "Invalid English text"
+  },
+  {
+    "yoruba": "A gbé gàárì ọmọ ewurẹ ńrojú; kì í ṣe ẹrù àgùntàn.",
+    "english": "We lift a saddle and the goat (kin) scowls; it is no burden for a sheep.",
+    "reason": "Invalid English text"
+  },
+  {
     "yoruba": "A kì í bá ọba pàlà kí ọkọ́ ọba má ṣàn-ánni lẹ́sẹ̀.",
     "english": "One does not share a farm boundary with a king without getting one's feet gashed by the king's hoe.",
     "reason": "Invalid Yoruba text"
@@ -68,6 +78,11 @@
     "yoruba": "A kì í fi pàtàkì bẹ́ èlùbọ́; ẹní bá níṣu ló ḿbẹ́ ẹ.",
     "english": "One does not come by yam-flour because of one's importance; only people who have yams can make yam flour.",
     "reason": "Invalid Yoruba text"
+  },
+  {
+    "yoruba": "A kì í fini joyè àwòdì ká má lè gbádìẹ.",
+    "english": "One cannot be given the title “eagle” and yet be incapable of snatching chickens.",
+    "reason": "Invalid English text"
   },
   {
     "yoruba": "A kì í gbé sàráà kọjá-a mọ́ṣáláṣí.",
@@ -135,6 +150,11 @@
     "reason": "Invalid Yoruba text"
   },
   {
+    "yoruba": "A kì í mọ ìyá Òjó ju Òjó lọ.",
+    "english": "One does not presume to know Òjó's mother better than Òjó himself does.",
+    "reason": "Invalid English text"
+  },
+  {
     "yoruba": "A kì í mọ ọ̀nà ọgbà ju ọlọ́gbà lọ; ẹní múni wá là ńtẹ̀lé.",
     "english": "One does not presume to know the way to or around a garden better than the owner of the garden; one always follows the person who brought one.",
     "reason": "Invalid Yoruba text"
@@ -153,6 +173,11 @@
     "yoruba": "A kì í ní ọ̀kánjúwà ká mọ̀; ará ilé ẹni ní ńsọ fúnni.",
     "english": "One does not know that one has covetousness; it is one's kin who so inform one.",
     "reason": "Invalid Yoruba text"
+  },
+  {
+    "yoruba": "A kì í peni lákọ ẹran ká ṣorí bòró.",
+    "english": "One does not enjoy the designation “He Goat” and yet sport a smooth (horn-less) head.",
+    "reason": "Invalid English text"
   },
   {
     "yoruba": "A kì í pẹ̀lú ọ̀bọ jáko.",
@@ -220,6 +245,11 @@
     "reason": "Invalid Yoruba text"
   },
   {
+    "yoruba": "À ńwá ẹni tí a ó fọmọ fún, olòṣì ńyọjú.",
+    "english": "We seek a person to give a child to (in marriage) and a worthless person presents himself.",
+    "reason": "Invalid English text"
+  },
+  {
     "yoruba": "À ńwọ́nà àti fi aṣiwèrè sílẹ̀, ó ní bí a bá dé òkè odò ká dúró de òun.",
     "english": "People are scheming to shake an imbecile from their company, and he asks that they wait for him on reaching the bank of the river.",
     "reason": "Invalid Yoruba text"
@@ -228,6 +258,16 @@
     "yoruba": "A ò lóbìnrin à ńdá oóyọ́ sí; bí a bá dá oóyọ́ sí ewúrẹ́ ni yó jẹ ẹ́.",
     "english": "Without having a wife a person spares oóyọ́",
     "reason": "Invalid Yoruba text"
+  },
+  {
+    "yoruba": "A ò mọ ohun tí eléwé-e gbégbé ńtà kó tó sọ pé ọjà ò tà.",
+    "english": "One does not know what the seller of gbégbé leaves was selling before she started complaining about the slow market.",
+    "reason": "Invalid English text"
+  },
+  {
+    "yoruba": "A ò mọ ohun tí Dárò-ó ní kó tó wí pé olè-é kó òun.",
+    "english": "One does not know what Dárò owned before he claimed to have been robbed.",
+    "reason": "Invalid English text"
   },
   {
     "yoruba": "A pè ọ́ lọ́mọ erín-màgbọn ò ńyọ̀; ìwọ pàápàá ló mì í?",
@@ -295,6 +335,11 @@
     "reason": "Invalid Yoruba text"
   },
   {
+    "yoruba": "Àbúrò rẹ ńdáṣọ fún ọ, o ní o ò lo elékuru; ta ní ńlo alákàrà?",
+    "english": "Your junior brother (or sister) buys clothing for you, and you say you will not wear anything with bean-grits patterns; who has the right to opt for clothing with a bean-fritter patterns?",
+    "reason": "Invalid English text"
+  },
+  {
     "yoruba": "A-dá-má-lè-ṣe àdàbà tí ńdún bẹ̀m̀bẹ̀.",
     "english": "Start-something-it-cannot-finish dove that makes bombastic noises.",
     "reason": "Invalid Yoruba text"
@@ -348,6 +393,11 @@
     "yoruba": "Àfi ohun tí a kì í tà lọ́jà lẹrú kì í jẹ.",
     "english": "The only thing a slave cannot eat is something not available in the market.",
     "reason": "Invalid Yoruba text"
+  },
+  {
+    "yoruba": "Afínjúu Ààré; ó fi àkísà dí orùbà; ó ńwá ẹniire-é bá sú epo.",
+    "english": "Fashionable woman of Ààre, she cocks her oil jar with a rag, and she expects good people to buy oil from her.",
+    "reason": "Invalid English text"
   },
   {
     "yoruba": "Afínjú ní ńjẹ iwọ; ọ̀mọ̀ràn ní ńjẹ obì; màrí-màjẹ ní ńjẹ awùsá.",
@@ -408,6 +458,11 @@
     "yoruba": "Àgbà kì í fàárọ̀ họ ìdí kó má kan funfun.",
     "english": "A grown person does not scratch his buttocks in the early morning without showing some whiteness.",
     "reason": "Invalid Yoruba text"
+  },
+  {
+    "yoruba": "Àgbà kì í ṣerée kí-ló-bá-yìí-wá?",
+    "english": "An elderly person does not engage in the type of play that provokes the comment, “What brought all this about?”",
+    "reason": "Invalid English text"
   },
   {
     "yoruba": "Àgbà kì í wà lọ́jà kórí ọmọ titun wọ́.",
@@ -655,6 +710,11 @@
     "reason": "Invalid Yoruba text"
   },
   {
+    "yoruba": "Aláṣejù tí ńpọkọ ní baba.",
+    "english": "Overzealous wife that calls her husband “father.”",
+    "reason": "Invalid English text"
+  },
+  {
     "yoruba": "Aláṣọ àlà kì í jókòó sísọ̀ elépo.",
     "english": "A person dressed in white does not sit at the stall of a palm-oil seller.",
     "reason": "Invalid Yoruba text"
@@ -663,6 +723,16 @@
     "yoruba": "Alátiṣe ní ḿmọ àtiṣe ara-a rẹ̀.",
     "english": "The person who must settle his/her affair knows best how he/she plans to go about doing so.",
     "reason": "Invalid Yoruba text"
+  },
+  {
+    "yoruba": "Àlejò kì í lọ kó mú onílé dání.",
+    "english": "The visitor does not take his/her leave and take the host along.",
+    "reason": "Invalid English text"
+  },
+  {
+    "yoruba": "A-lu-dùndún kì í dárin.",
+    "english": "The dùndún player does not lead a song.",
+    "reason": "Invalid English text"
   },
   {
     "yoruba": "Àmọ̀tẹ́kùn-ún fara jọ ẹkùn, kò lè ṣe bí ẹkùn.",
@@ -678,6 +748,11 @@
     "yoruba": "Ànán-mánàán ẹtú jìnfìn; oní-mónìí ẹtú jìnfìn; ẹran mìíràn ò sí nígbó lẹ́hìn ẹtu?",
     "english": "Yesterday the antelope was caught in a pit-trap; today the antelope is caught in a pit-trap; is there no other animal in the forest besides the antelope?",
     "reason": "Invalid Yoruba text"
+  },
+  {
+    "yoruba": "Apá èkúté-ilé ò ká awùsá; kìkìi yíyíkiri ló mọ.",
+    "english": "The mouse cannot get a grip on the awùsá nut; all it can do is roll it around.",
+    "reason": "Invalid English text"
   },
   {
     "yoruba": "Àpọ́nlé ni “İyá-a Káà”; ìyá kan ò sí ní káà tí kò lórúkọ.",
@@ -858,6 +933,11 @@
     "yoruba": "Ó tọ́ kí eégún léni lóko àgbàdo, èwo ni ti Pákọ̀kọ̀ láàrin ìlú?",
     "english": "It might be seemly for a masquerader to chase one off a corn farm, but it is not seemly for Pákọ̀kọ̀ to chase one in the middle of town.",
     "reason": "Invalid Yoruba text"
+  },
+  {
+    "yoruba": "Ó yẹ ẹni gbogbo kó sọ pé iṣu ò jiná, kò yẹ alubàtá.",
+    "english": "Everybody has a right to say the yams are not well cooked, but not the bàtá drummer.",
+    "reason": "Invalid English text"
   },
   {
     "yoruba": "Ó yẹ ẹni gbogbo kó dínwó aró, kò yẹ atọ̀ọ́lé.",
@@ -1083,6 +1163,11 @@
     "yoruba": "Bí a bá ti mọ là ńdé; a-láì-lẹ́ṣin kì í dé wọ̀nwọ̀n.",
     "english": "One arrives according to one's worth; a horseless person does not arrive with the noise of hoofs and stirrups.",
     "reason": "Invalid Yoruba text"
+  },
+  {
+    "yoruba": "Bí a bá ti mọ là ńkú; olongo kì í kú tìyàntìyàn.",
+    "english": "One dies according to one's weight; the robin does not die and make a resounding noise “on hitting the ground.”",
+    "reason": "Invalid English text"
   },
   {
     "yoruba": "Bí a bá tọ̀ sílé, onípò a mọ ipò.",
@@ -1358,6 +1443,11 @@
     "yoruba": "Èwo ló tó ẹ̀kọ-ọ́ gbà nínú ewé ìrúgbàá?",
     "english": "Which among the leaves of the locust-bean tree is adequate to receive corn-loaf?",
     "reason": "Invalid Yoruba text"
+  },
+  {
+    "yoruba": "Èwo ni ti Síkírá nílùú Ìwó.",
+    "english": "What business does Sikirat have in the town of Ìwó?",
+    "reason": "Invalid English text"
   },
   {
     "yoruba": "Ewújù tí yóò tú ọ̀pẹ: gbogbo ehín ẹ̀ ni yóò kán tán.",
@@ -2035,6 +2125,11 @@
     "reason": "Invalid Yoruba text"
   },
   {
+    "yoruba": "Ìlù kan ò tó Ègùn jó; bí a bá lù fún un a máa lu àyà.",
+    "english": "One drum is not enough for an Ègùn person to dance to; if one drums for him he too will play a rhythm on his chest.",
+    "reason": "Invalid English text"
+  },
+  {
     "yoruba": "Ipa ọgbẹ́ ní ńsàn; ipa ohùn kì í sàn.",
     "english": "The wound left by a cutlass may heal, but the wound left by speech does not heal.",
     "reason": "Invalid Yoruba text"
@@ -2078,6 +2173,11 @@
     "yoruba": "Ìtàkùn tó tó ọ̀pẹ kò tó pé kérin má lọ; ìtàkùn tó pé kérin má lọ Àlọ́, tòun terin ní ńlọ.",
     "english": "A vine as thick as a palm-tree trunk will not stop an elephant; whatever vine attempts to stop an elephant from going to Alọ will go with the elephant instead.",
     "reason": "Invalid Yoruba text"
+  },
+  {
+    "yoruba": "Ìwà ní ńjọ oníwà lójú.",
+    "english": "Character is always remarkable (or good) in the opinion of its owner.",
+    "reason": "Invalid English text"
   },
   {
     "yoruba": "Ìwọ̀fà ní ḿmú ìwọ̀fà jó.",
@@ -2178,6 +2278,16 @@
     "yoruba": "Kí ni apárí ńwá ní ìsọ̀ onígbàjámọ̀?",
     "english": "What does a bald man want in the stall of the barber?",
     "reason": "Invalid Yoruba text"
+  },
+  {
+    "yoruba": "Kí ni Dáàró ní kó tó sọ pé olè-é kó òun?",
+    "english": "What did Dáàró own before he claimed he was robbed?",
+    "reason": "Invalid English text"
+  },
+  {
+    "yoruba": "Kí ni eléwé-e-gbégbé ńtà tí ó ńsọ pé ọjà ò tà?",
+    "english": "What is it that the seller of gbégbé leaves has to sell that she complains that the market is slow?",
+    "reason": "Invalid English text"
   },
   {
     "yoruba": "Kí ni ìbá mú igún dé ọ̀dọ̀-ọ onídìrí?",
