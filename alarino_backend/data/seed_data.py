@@ -28,6 +28,12 @@ def add_word(language: Language, word_text: str, part_of_speech: str = None):
     return word
 
 
+# Define valid Yoruba character sets
+_YORUBA_CONSONANTS = "bdfghjklmnprstwygbṣ"  # Standard consonants (excluding c, q, v, x, z)
+_YORUBA_VOWELS = "aàáeèéẹẹ̀ẹ́iìíoòóọọ̀ọ́uùú"  # Standard vowels with tone marks
+_YORUBA_NASAL_VOWELS = "mḿm̀nńǹ"  # Nasal vowels with tone marks
+_YORUBA_CHARACTER_SET = _YORUBA_CONSONANTS + _YORUBA_VOWELS + _YORUBA_NASAL_VOWELS
+
 def is_valid_yoruba_word(word: str) -> bool:
     """
     Validates if a word contains only valid Yoruba characters
@@ -40,19 +46,33 @@ def is_valid_yoruba_word(word: str) -> bool:
         return False
     word = word.strip().lower()
 
-    # Define valid Yoruba character sets
-    consonants = "bdfghjklmnprstwygbṣ"  # Standard consonants (excluding c, q, v, x, z)
-    vowels = "aàáeèéẹẹ̀ẹ́iìíoòóọọ̀ọ́uùú"  # Standard vowels with tone marks
-    nasal_vowels = "mḿm̀nńǹ"  # Nasal vowels with tone marks
-    extras = "'- "  # Additional valid characters
-
-    valid_chars = consonants + vowels + nasal_vowels + extras
-    valid_chars = unicodedata.normalize('NFC', valid_chars)
-
+    extras = "'- "  # Additional valid characters for a single word
+    valid_chars = unicodedata.normalize('NFC', _YORUBA_CHARACTER_SET + extras)
     escaped_chars = re.escape(valid_chars)
     pattern = f"^[{escaped_chars}]+$"
 
     return bool(re.match(pattern, word, re.UNICODE))
+
+
+def is_valid_yoruba_text(text: str) -> bool:
+    """
+    Validates if a text contains only valid Yoruba characters and punctuation.
+    Args:
+        text: The text to validate.
+    Returns:
+        bool: Whether the text is valid.
+    """
+    if not text:
+        return False
+    text = text.strip().lower()
+
+    # Punctuation and other characters allowed in a sentence
+    extras = "' -.,?!;:"
+    valid_chars = unicodedata.normalize('NFC', _YORUBA_CHARACTER_SET + extras)
+    escaped_chars = re.escape(valid_chars)
+    pattern = f"^[{escaped_chars}]+$"
+
+    return bool(re.match(pattern, text, re.UNICODE))
 
 
 def is_valid_english_word(word: str) -> bool:
