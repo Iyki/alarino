@@ -2,9 +2,9 @@ import json
 
 from sqlalchemy.exc import IntegrityError
 
-from data.seed_data_utils import is_valid_yoruba_text, upload_data_in_batches
+from data.seed_data_utils import add_proverb, is_valid_yoruba_text, upload_data_in_batches
 from main import app, logger
-from main.db_models import db, Proverb
+from main.db_models import db
 
 
 def load_proverbs_from_file(file_path: str):
@@ -48,24 +48,14 @@ def seed_proverbs_batch(entries: list, batch_id: int) -> list:
                 invalid_entries.append({**entry, "reason": "Invalid Yoruba text"})
                 continue
 
-            proverb = Proverb(yoruba_text=yoruba_text, english_text=english_text)
-            db.session.add(proverb)
+            add_proverb(yoruba_text, english_text)
 
         try:
             db.session.commit()
             logger.info(f"Batch {batch_id}: Committed {len(entries) - len(invalid_entries)} proverbs.")
         except IntegrityError:
             db.session.rollback()
-            logger.warning(f"Batch {batch_id}: IntegrityError, handling duplicates individually.")
-            # Handle duplicates one by one if batch commit fails
-            for entry in entries:
-                yoruba_text = entry.get("yoruba", "").strip()
-                english_text = entry.get("english", "").strip()
-                if yoruba_text and english_text and is_valid_yoruba_text(yoruba_text):
-                    if not Proverb.query.filter_by(yoruba_text=yoruba_text, english_text=english_text).first():
-                        proverb = Proverb(yoruba_text=yoruba_text, english_text=english_text)
-                        db.session.add(proverb)
-            db.session.commit()
+            logger.warning(f"Batch {batch_id}: IntegrityError, rolling back session.")
 
     return invalid_entries
 
@@ -83,7 +73,7 @@ def write_proverbs_data():
     upload_data_in_batches(
         entries=proverbs,
         upload_func=seed_proverbs_batch,
-        invalid_files_prefix="invalid_datasets/invalid_proverbs_batch",
+        invalid_files_prefix="invalid_datasets/proverbs/invalid_proverbs_batch",
         batch_size=500, batch_start=batch_start
     )
 

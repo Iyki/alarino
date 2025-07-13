@@ -4,7 +4,7 @@ import unicodedata
 from typing import Callable
 
 from main import logger
-from main.db_models import db, Word, Translation
+from main.db_models import Proverb, db, Word, Translation
 from main.languages import Language
 
 # Define valid Yoruba character sets
@@ -31,6 +31,40 @@ def add_word(language: Language, word_text: str, part_of_speech: str = None):
     word = Word(language=language, word=word_text, part_of_speech=part_of_speech)
     db.session.add(word)
     return word
+
+
+def add_proverb(yoruba_proverb: str, english_proverb: str):
+    """
+    Adds a new proverb to the database and extracts its words.
+    Args:
+        db: The database session.
+        yoruba_proverb: The Yoruba version of the proverb.
+        english_proverb: The English version of the proverb.
+    """
+    # Check if the proverb already exists
+    existing_proverb = Proverb.query.filter_by(
+        yoruba_text=yoruba_proverb,
+        english_text=english_proverb
+    ).first()
+
+    if existing_proverb:
+        logger.info(f"Proverb already exists: '{yoruba_proverb}'")
+        return
+
+    # Add the new proverb
+    new_proverb = Proverb(yoruba_text=yoruba_proverb, english_text=english_proverb)
+    db.session.add(new_proverb)
+    logger.info(f"Added proverb: '{yoruba_proverb}'")
+
+    # Extract and add individual words
+    yoruba_words = re.findall(r'\b\w+\b', yoruba_proverb)
+    english_words = re.findall(r'\b\w+\b', english_proverb)
+
+    for word in yoruba_words:
+        add_word(language=Language.YORUBA, word_text=word)
+
+    for word in english_words:
+        add_word(language=Language.ENGLISH, word_text=word)
 
 
 def _is_valid_yoruba(text: str, extra_chars: str) -> bool:
