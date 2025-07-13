@@ -2,7 +2,7 @@ import json
 
 from sqlalchemy.exc import IntegrityError
 
-from data.seed_data_utils import add_proverb, is_valid_yoruba_text, upload_data_in_batches
+from data.seed_data_utils import add_proverb, is_valid_english_text, is_valid_yoruba_text, upload_data_in_batches
 from main import app, logger
 from main.db_models import db
 
@@ -44,8 +44,14 @@ def seed_proverbs_batch(entries: list, batch_id: int) -> list:
                 continue
 
             if not is_valid_yoruba_text(yoruba_text):
-                logger.warning(f"Skipping invalid Yoruba proverb: {yoruba_text}")
-                invalid_entries.append({**entry, "reason": "Invalid Yoruba text"})
+                reason = "Invalid Yoruba text"
+                logger.warning(f"Skipping invalid proverb: {yoruba_text} ({reason})")
+                invalid_entries.append({**entry, "reason": reason})
+                continue
+            if not is_valid_english_text(english_text):
+                reason = "Invalid English text"
+                logger.warning(f"Skipping invalid proverb: {english_text} ({reason})")
+                invalid_entries.append({**entry, "reason": reason})
                 continue
 
             add_proverb(yoruba_text, english_text)

@@ -123,6 +123,21 @@ def is_valid_english_word(word: str) -> bool:
     pattern = r'^[a-z\'\- ]+$'
     return bool(re.match(pattern, word, re.UNICODE))
 
+def is_valid_english_text(text: str) -> bool:
+    """
+    Validates if a text contains only valid English characters and punctuation.
+    Args:
+        text: The text to validate.
+    Returns:
+        bool: Whether the text is valid.
+    """
+    text = text.strip().lower()
+    if not text:
+        return False
+
+    # Simple regex pattern for English text (letters, apostrophes, hyphens, spaces, and punctuation)
+    pattern = r"^[a-z' .,?!;:-]+$"
+    return bool(re.match(pattern, text, re.UNICODE))
 
 def create_translation(source: Word, target: Word):
     existing = Translation.query.filter_by(
@@ -163,4 +178,4 @@ def upload_data_in_batches(entries: list, upload_func: Callable[[list, int], lis
             json.dump(all_invalid_entries, f, indent=2, ensure_ascii=False)
         logger.info(f"Wrote {len(all_invalid_entries)} total invalid entries to {invalid_file_path}")
 
-    logger.info(f"Finished processing all entries. Skipped {len(all_invalid_entries)} invalid entries.")
+    logger.info(f"Finished processing all {len(entries)} entries. Skipped {len(all_invalid_entries)} invalid entries.")
