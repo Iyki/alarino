@@ -3,7 +3,7 @@ import re
 
 from sqlalchemy.exc import IntegrityError
 
-from data.seed_data import add_word, create_translation
+from data.seed_data_utils import add_word, create_translation
 from main import app, logger
 from main.db_models import db
 from main.languages import Language
