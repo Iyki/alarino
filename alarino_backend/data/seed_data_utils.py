@@ -1,11 +1,10 @@
 import json
 import re
 import unicodedata
+from typing import Callable
 
-from sqlalchemy.exc import IntegrityError
-
-from main import app, logger
-from main.db_models import db, Word, Translation, Proverb
+from main import logger
+from main.db_models import db, Word, Translation
 from main.languages import Language
 
 # Define valid Yoruba character sets
@@ -13,6 +12,7 @@ _YORUBA_CONSONANTS = "bdfghjklmnprstwygbṣ"  # Standard consonants (excluding c
 _YORUBA_VOWELS = "aàáeèéẹẹ̀ẹ́iìíoòóọọ̀ọ́uùú"  # Standard vowels with tone marks
 _YORUBA_NASAL_VOWELS = "mḿm̀nńǹ"  # Nasal vowels with tone marks
 _YORUBA_CHARACTER_SET = _YORUBA_CONSONANTS + _YORUBA_VOWELS + _YORUBA_NASAL_VOWELS
+
 
 def add_word(language: Language, word_text: str, part_of_speech: str = None):
     word_text = word_text.strip().strip(" ,.?!()").lower()
@@ -32,6 +32,7 @@ def add_word(language: Language, word_text: str, part_of_speech: str = None):
     db.session.add(word)
     return word
 
+
 def _is_valid_yoruba(text: str, extra_chars: str) -> bool:
     """
     Generic validation helper for Yoruba text.
@@ -49,6 +50,7 @@ def _is_valid_yoruba(text: str, extra_chars: str) -> bool:
     pattern = f"^[{escaped_chars}]+$"
     return bool(re.match(pattern, text, re.UNICODE))
 
+
 def is_valid_yoruba_word(word: str) -> bool:
     """
     Validates if a word contains only valid Yoruba characters.
@@ -59,6 +61,7 @@ def is_valid_yoruba_word(word: str) -> bool:
     """
     return _is_valid_yoruba(word, extra_chars="'- ")
 
+
 def is_valid_yoruba_text(text: str) -> bool:
     """
     Validates if a text contains only valid Yoruba characters and punctuation.
@@ -68,6 +71,7 @@ def is_valid_yoruba_text(text: str) -> bool:
         bool: Whether the text is valid.
     """
     return _is_valid_yoruba(text, extra_chars="' -.,?!;:")
+
 
 def is_valid_english_word(word: str) -> bool:
     """
@@ -85,6 +89,7 @@ def is_valid_english_word(word: str) -> bool:
     pattern = r'^[a-z\'\- ]+$'
     return bool(re.match(pattern, word, re.UNICODE))
 
+
 def create_translation(source: Word, target: Word):
     existing = Translation.query.filter_by(
         source_word_id=source.w_id,
@@ -96,3 +101,32 @@ def create_translation(source: Word, target: Word):
     db.session.add(translation)
 
 
+def upload_data_in_batches(entries: list, upload_func: Callable[[list, int], list],
+                           invalid_files_prefix: str,
+                           batch_size: int = 500, batch_start: int = 0):
+    all_invalid_entries = []
+
+    while batch_start < len(entries):
+        end = min(batch_start + batch_size, len(entries))
+        batch_id = (batch_start // batch_size) + 1
+        logger.info(f"Processing batch {batch_id} from index {batch_start} to {end}")
+        batch = entries[batch_start:end]
+        batch_invalids = upload_func(batch, batch_id)
+
+        if batch_invalids:
+            all_invalid_entries.extend(batch_invalids)
+            # Write invalid entries for the current batch
+            batch_file = f"{invalid_files_prefix}_{batch_id}.json"
+            with open(batch_file, "w", encoding="utf-8") as f:
+                json.dump(batch_invalids, f, indent=2, ensure_ascii=False)
+            logger.warning(f"Wrote {len(batch_invalids)} invalid entries to {batch_file}")
+
+        batch_start += batch_size
+
+    if all_invalid_entries:
+        invalid_file_path = f"{invalid_files_prefix}_all.json"
+        with open(invalid_file_path, "w", encoding="utf-8") as f:
+            json.dump(all_invalid_entries, f, indent=2, ensure_ascii=False)
+        logger.info(f"Wrote {len(all_invalid_entries)} total invalid entries to {invalid_file_path}")
+
+    logger.info(f"Finished processing all entries. Skipped {len(all_invalid_entries)} invalid entries.")
