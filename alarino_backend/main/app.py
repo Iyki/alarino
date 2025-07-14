@@ -1,17 +1,17 @@
-#app.py
+# app.py
 import os
-import markdown
-
 from typing import Any, Dict
 
-from main import app, db, _daily_word_cache, logger
+import markdown
 from flask import request, jsonify, send_file, abort, render_template
-from main.languages import Language
-from main.translation_service import translate, get_word_of_the_day, APIResponse
 
+from main import app, db, _daily_word_cache, logger
+from main.languages import Language
+from main.translation_service import translate, get_word_of_the_day, APIResponse, get_random_proverb
 from main.utils import find_file
 
 app.template_folder = find_file("templates/about.html", get_dir=True)
+
 
 @app.route('/api/translate', methods=['POST'])
 def get_translation():
@@ -50,6 +50,7 @@ def get_translation():
 
     return jsonify(response), status
 
+
 @app.route('/api/daily-word', methods=['GET'])
 def word_of_day():
     """
@@ -61,6 +62,17 @@ def word_of_day():
     response, status = get_word_of_the_day(db, _daily_word_cache)
     return jsonify(response), status
 
+
+@app.route('/api/proverb', methods=['GET'])
+def get_proverb():
+    """
+    Returns a random proverb from the database.
+    """
+    logger.info("Proverb request received")
+    response, status = get_random_proverb(db)
+    return jsonify(response), status
+
+
 @app.route('/')
 def serve_index():
     """Serve the main index.html file"""
@@ -71,6 +83,7 @@ def serve_index():
     else:
         logger.error("Error serving homepage: Could not find homepage.html file")
         return "Homepage file not found", 404
+
 
 @app.route('/word/<word>')
 def word_page(word):
@@ -84,6 +97,7 @@ def word_page(word):
         The main index.html file
     """
     return serve_index()
+
 
 @app.route("/about")
 @app.route("/about.html")
@@ -117,6 +131,7 @@ def serve_root_static_file(filename):
     else:
         return "File not found", 404
 
+
 @app.route('/sitemap.xml')
 def serve_sitemap():
     """Serve the sitemap.xml file"""
@@ -125,6 +140,7 @@ def serve_sitemap():
         return send_file(file_path)
     else:
         return "Sitemap not found", 404
+
 
 # Catch-all route for any other URLs
 @app.route('/<path:path>')
@@ -136,6 +152,7 @@ def catch_all(path):
 
     # For any other routes, serve the homepage
     return serve_index()
+
 
 @app.route('/robots.txt')
 def serve_robots():
