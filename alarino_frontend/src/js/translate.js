@@ -62,21 +62,15 @@ async function fetchWordOfTheDay() {
     const result = await response.json();
     
     if (result.success) {
-      const yorubaWord = result.data.translation[0];
-      const englishWord = result.data.source_word;
+      const yorubaWord = result.data.yoruba_word;
+      const englishWord = result.data.english_word;
       
       document.getElementById("dailyYorubaWord").textContent = yorubaWord;
       document.getElementById("dailyEnglishWord").textContent = englishWord;
     } else {
-      // Show default word on error
-      document.getElementById("dailyYorubaWord").textContent = "ìfé";
-      document.getElementById("dailyEnglishWord").textContent = "love";
       console.error("Failed to load word of the day:", result.message);
     }
   } catch (error) {
-    // Show default word on error
-    document.getElementById("dailyYorubaWord").textContent = "ìfé";
-    document.getElementById("dailyEnglishWord").textContent = "love";
     console.error("Failed to fetch word of the day:", error);
   }
 }
