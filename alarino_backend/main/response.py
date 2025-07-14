@@ -1,43 +1,57 @@
+from dataclasses import dataclass, asdict
+from typing import List, Optional, Any
+
 from main.languages import Language
 
-class ResponseData:
-    def __init__(self, translation: list[str], source_word: str, to_language: Language):
-        self.translation = translation
-        self.source_word = source_word
-        self.to_language = to_language
 
+@dataclass
+class BaseResponseData:
     def to_json(self):
-        return {
-            "translation": self.translation,
-            "source_word": self.source_word,
-            "to_language": self.to_language
-        }
+        return asdict(self)
+
+
+@dataclass
+class TranslationResponseData(BaseResponseData):
+    translation: List[str]
+    source_word: str
+    to_language: Language
+
+
+@dataclass
+class WordOfTheDayResponseData(BaseResponseData):
+    yoruba_word: str
+    english_word: str
+
+
+@dataclass
+class ProverbResponseData(BaseResponseData):
+    yoruba_text: str
+    english_text: str
 
 
 class APIResponse:
-    def __init__(self, success: bool, status: int, message: str, data: ResponseData = None):
+    def __init__(self, success: bool, status: int, message: str, data: Optional[BaseResponseData] = None):
         self.success = success
         self.status = status
         self.message = message
         self.data = data
 
     def to_json(self) -> dict:
-        return {
+        response = {
             "success": self.success,
             "status": self.status,
             "message": self.message,
             "data": self.data.to_json() if self.data else None
         }
+        return response
 
     def as_response(self) -> tuple[dict, int]:
         return self.to_json(), self.status
 
     @classmethod
-    def success(cls, message: str, data=None, status=200):
+    def success(cls, message: str, data: Optional[BaseResponseData] = None, status: int = 200) -> 'APIResponse':
         return cls(True, status, message, data)
 
     @classmethod
-    def error(cls, message: str, status=400, data=None):
+    def error(cls, message: str, status: int = 400, data: Optional[BaseResponseData] = None) -> 'APIResponse':
         return cls(False, status, message, data)
-
-

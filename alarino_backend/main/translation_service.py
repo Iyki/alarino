@@ -1,10 +1,12 @@
-#translation_service.py
+# translation_service.py
 from datetime import date
+from typing import Tuple, Dict, Optional
+
 from main import logger
-from main.response import APIResponse, ResponseData
-from main.db_models import Word, DailyWord, Translation, MissingTranslation
+from main.db_models import Word, DailyWord, Translation, MissingTranslation, Proverb
 from main.languages import Language
-from typing import Tuple, Dict, Optional, List, Union
+from main.response import APIResponse, TranslationResponseData, WordOfTheDayResponseData, ProverbResponseData
+
 
 def translate(db, text: str, source: Language, target: Language, addr: str, user_agent: str) -> tuple[dict, int]:
     text = text.strip().lower()
@@ -31,7 +33,7 @@ def translate(db, text: str, source: Language, target: Language, addr: str, user
     translated_words = [t.target_word.word for t in translations]
     logger.info(f"[Translated '{text}' from {source} to {target}]")
 
-    response_data = ResponseData(
+    response_data = TranslationResponseData(
         translation=translated_words,
         source_word=source_word.word,
         to_language=target
@@ -59,6 +61,7 @@ def log_missing_translation(db, text, source_lang, target_lang, addr, user_agent
         db.session.add(missing)
 
     db.session.commit()
+
 
 def find_single_word_with_translation(db) -> Optional[Tuple[Word, Word]]:
     """
@@ -112,7 +115,7 @@ def get_word_of_the_day(db, daily_word_cache: Dict[date, Tuple[str, str]]) -> Tu
     # Check the in-memory cache first
     if today in daily_word_cache:
         yoruba_word, english_word = daily_word_cache[today]
-        response_data = ResponseData([yoruba_word], english_word, Language.YORUBA)
+        response_data = WordOfTheDayResponseData(yoruba_word=yoruba_word, english_word=english_word)
         return APIResponse.success("Word of the day fetched from cache.", response_data).as_response()
     try:
         # Check if already selected today in the DB
@@ -124,7 +127,7 @@ def get_word_of_the_day(db, daily_word_cache: Dict[date, Tuple[str, str]]) -> Tu
                 english_word = existing.en_word.word
                 daily_word_cache[today] = (yoruba_word, english_word)
 
-                response_data = ResponseData([yoruba_word], english_word, Language.YORUBA)
+                response_data = WordOfTheDayResponseData(yoruba_word=yoruba_word, english_word=english_word)
                 return APIResponse.success("Word of the day fetched from database.", response_data).as_response()
             else:
                 # If no English word is associated, this is an error condition
@@ -148,12 +151,31 @@ def get_word_of_the_day(db, daily_word_cache: Dict[date, Tuple[str, str]]) -> Tu
             # Cache it
             daily_word_cache[today] = (yoruba_word.word, english_word.word)
 
-            response_data = ResponseData([yoruba_word.word], english_word.word, Language.YORUBA)
+            response_data = WordOfTheDayResponseData(yoruba_word=yoruba_word.word, english_word=english_word.word)
             return APIResponse.success("Word of the day fetched successfully.", response_data).as_response()
 
         # If we've exhausted our attempts and still haven't found a word with translation
-        return APIResponse.error("Could not find a word with an English translation after multiple attempts", 500).as_response()
+        return APIResponse.error("Could not find a word with an English translation after multiple attempts",
+                                 500).as_response()
 
     except Exception as e:
         return APIResponse.error(str(e), 500).as_response()
 
+
+def get_random_proverb(db):
+    """
+    Fetches a random proverb from the database.
+    """
+    try:
+        proverb = Proverb.query.order_by(db.func.random()).first()
+        if not proverb:
+            return APIResponse.error("No proverbs found in the database.", 404).as_response()
+        response_data = ProverbResponseData(
+            yoruba_text=proverb.yoruba_text,
+            english_text=proverb.english_text
+        )
+        return APIResponse.success("Proverb fetched successfully.", response_data).as_response()
+
+    except Exception as e:
+        logger.error(f"Error fetching random proverb: {e}")
+        return APIResponse.error("An error occurred while fetching a proverb.", 500).as_response()

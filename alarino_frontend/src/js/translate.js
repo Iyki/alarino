@@ -1,6 +1,12 @@
 // Fetch the word of the day on page load
 document.addEventListener('DOMContentLoaded', function() {
   fetchWordOfTheDay();
+  fetchRandomProverb();
+  
+  const nextProverbBtn = document.getElementById("next-proverb-btn");
+  if (nextProverbBtn) {
+    nextProverbBtn.addEventListener("click", fetchRandomProverb);
+  }
   
   let englishWordInput = null;
   let wordToTranslate = null;
@@ -215,3 +221,24 @@ window.onpopstate = function(event) {
     }
   }
 };
+
+async function fetchRandomProverb() {
+  const proverbYoruba = document.getElementById("proverb-yoruba");
+  const proverbEnglish = document.getElementById("proverb-english");
+
+  try {
+    const response = await fetch(`${window.ALARINO_CONFIG.apiBaseUrl}/proverb`);
+    const result = await response.json();
+
+    if (result.success) {
+      proverbYoruba.textContent = result.data.yoruba_text;
+      proverbEnglish.textContent = result.data.english_text;
+    } else {
+      console.error("Failed to load proverb:", result.message);
+    }
+  } catch (error) {
+    console.error("Failed to fetch proverb:", error);
+    proverbYoruba.textContent = "Error fetching proverb.";
+    proverbEnglish.textContent = "Please check your connection or try again later.";
+  }
+}
