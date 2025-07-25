@@ -1,11 +1,14 @@
 # translation_service.py
+import csv
+import io
 from datetime import date
 from typing import Tuple, Dict, Optional
 
 from main import logger
 from main.db_models import Word, DailyWord, Translation, MissingTranslation, Proverb
 from main.languages import Language
-from main.response import APIResponse, TranslationResponseData, WordOfTheDayResponseData, ProverbResponseData
+from main.response import APIResponse, TranslationResponseData, WordOfTheDayResponseData, ProverbResponseData, BulkUploadResponseData
+from data.seed_data_utils import add_word, create_translation, is_valid_english_word, is_valid_yoruba_word
 
 
 def translate(db, text: str, source: Language, target: Language, addr: str, user_agent: str) -> tuple[dict, int]:
@@ -179,3 +182,67 @@ def get_random_proverb(db):
     except Exception as e:
         logger.error(f"Error fetching random proverb: {e}")
         return APIResponse.error("An error occurred while fetching a proverb.", 500).as_response()
+
+
+def _process_translation_pair(row: list, dry_run: bool, successful_pairs: list, failed_pairs: list):
+    """
+    Processes a single row from the bulk upload CSV.
+    """
+    original_line = ",".join(row)
+
+    if len(row) != 2:
+        failed_pairs.append({"line": original_line, "reason": "Invalid format: each line must contain exactly two values"})
+        return
+
+    english_word_str, yoruba_word_str = [item.strip().lower() for item in row]
+
+    # Validation
+    if not is_valid_english_word(english_word_str):
+        failed_pairs.append({"line": original_line, "reason": f"Invalid English word: '{english_word_str}'"})
+        return
+    if not is_valid_yoruba_word(yoruba_word_str):
+        failed_pairs.append({"line": original_line, "reason": f"Invalid Yoruba word: '{yoruba_word_str}'"})
+        return
+
+    if dry_run:
+        # In dry_run, we just validate and report
+        successful_pairs.append({"english": english_word_str, "yoruba": yoruba_word_str})
+    else:
+        # In a live run, we add the words and translation
+        english_word_obj = add_word(language=Language.ENGLISH, word_text=english_word_str)
+        yoruba_word_obj = add_word(language=Language.YORUBA, word_text=yoruba_word_str)
+        
+        if english_word_obj and yoruba_word_obj:
+            create_translation(english_word_obj, yoruba_word_obj)
+            successful_pairs.append({"english": english_word_str, "yoruba": yoruba_word_str})
+        else:
+            failed_pairs.append({"line": original_line, "reason": "Failed to process one or both words."})
+
+
+def bulk_upload_words(db, text_input: str, dry_run: bool) -> tuple[dict, int]:
+    """
+    Bulk upload words from a comma-separated text input using seed data utils.
+    """
+    successful_pairs = []
+    failed_pairs = []
+
+    text_io = io.StringIO(text_input)
+    reader = csv.reader(text_io)
+
+    for row in reader:
+        if not row:
+            continue
+        _process_translation_pair(row, dry_run, successful_pairs, failed_pairs)
+
+    message = "Bulk upload validation completed"
+    if not dry_run:
+        db.session.commit()
+        message = "Bulk upload process completed."
+
+    response_data = BulkUploadResponseData(
+        successful_pairs=successful_pairs,
+        failed_pairs=failed_pairs,
+        dry_run=dry_run
+    )
+    
+    return APIResponse.success(message, response_data).as_response()

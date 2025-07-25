@@ -1,8 +1,10 @@
 import pytest
+import os
 from main import app
 from main.languages import Language
 # import to get the route handler
-from main.app import get_translation
+from main.app import get_translation, admin_bulk_upload
+from main.db_models import Word, Translation
 
 @pytest.fixture
 def client():
@@ -79,3 +81,92 @@ def test_translate_custom_text(client):
     response = client.post('/api/translate', json=payload)
     assert response.status_code == 404
 
+
+
+def test_admin_bulk_upload_unauthorized(client):
+    """Test bulk upload endpoint without API key."""
+    os.environ['ADMIN_API_KEY'] = 'test-key'
+    response = client.post('/api/admin/bulk-upload', json={})
+    assert response.status_code == 401
+    data = response.get_json()
+    assert "Authorization header is missing or invalid" in data.get("message")
+
+
+def test_admin_bulk_upload_invalid_key(client):
+    """Test bulk upload endpoint with an invalid API key."""
+    os.environ['ADMIN_API_KEY'] = 'test-key'
+    headers = {'Authorization': 'Bearer invalid-key'}
+    response = client.post('/api/admin/bulk-upload', headers=headers, json={})
+    assert response.status_code == 401
+    data = response.get_json()
+    assert "Invalid API key" in data.get("message")
+
+
+def test_admin_bulk_upload_no_payload(client):
+    """Test bulk upload endpoint with no JSON payload."""
+    os.environ['ADMIN_API_KEY'] = 'test-key'
+    headers = {'Authorization': 'Bearer test-key'}
+    response = client.post('/api/admin/bulk-upload', headers=headers)
+    print(response)
+    assert response.status_code == 415
+
+
+def test_admin_bulk_upload_missing_text_input(client):
+    """Test bulk upload endpoint with missing 'text_input' in payload."""
+    os.environ['ADMIN_API_KEY'] = 'test-key'
+    headers = {'Authorization': 'Bearer test-key'}
+    payload = {"dry_run": True}
+    response = client.post('/api/admin/bulk-upload', headers=headers, json=payload)
+    assert response.status_code == 400
+    data = response.get_json()
+    assert "Invalid request body, 'text_input' is required" in data.get("message")
+
+
+def test_admin_bulk_upload_dry_run_success(client):
+    """Test a successful dry run bulk upload."""
+    os.environ['ADMIN_API_KEY'] = 'test-key'
+    headers = {'Authorization': 'Bearer test-key'}
+    payload = {
+        "text_input": "apple,àpùlò\nbanana,ọ̀gẹ̀dẹ̀",
+        "dry_run": True
+    }
+    response = client.post('/api/admin/bulk-upload', headers=headers, json=payload)
+    assert response.status_code == 200
+    data = response.get_json().get('data')
+    assert data['dry_run'] is True
+    assert len(data['successful_pairs']) == 2
+    assert len(data['failed_pairs']) == 0
+
+
+# def test_admin_bulk_upload_live_run_success(client):
+#     """Test a successful live run bulk upload."""
+#     os.environ['ADMIN_API_KEY'] = 'test-key'
+#     headers = {'Authorization': 'Bearer test-key'}
+#     payload = {
+#         "text_input": "dog,ajá\ncat,ológìnní",
+#         "dry_run": False
+#     }
+#     response = client.post('/api/admin/bulk-upload', headers=headers, json=payload)
+#     assert response.status_code == 200
+#     data = response.get_json().get('data')
+#     assert data['dry_run'] is False
+#     assert len(data['successful_pairs']) == 2
+#     assert len(data['failed_pairs']) == 0
+#     assert Word.query.count() == 4
+#     assert Translation.query.count() == 2
+
+
+def test_admin_bulk_upload_with_invalid_data(client):
+    """Test bulk upload with a mix of valid and invalid data."""
+    os.environ['ADMIN_API_KEY'] = 'test-key'
+    headers = {'Authorization': 'Bearer test-key'}
+    payload = {
+        "text_input": "house,ilé\ninvalid-row\ncar,ọkọ̀ ayọ́kẹ́lẹ́\n,empty_yoruba\nenglish_only,",
+        "dry_run": False
+    }
+    response = client.post('/api/admin/bulk-upload', headers=headers, json=payload)
+    assert response.status_code == 200
+    data = response.get_json().get('data')
+    assert data['dry_run'] is False
+    assert len(data['successful_pairs']) == 2
+    assert len(data['failed_pairs']) == 3
