@@ -18,7 +18,7 @@ cd alarino
 
 sudo apt update
 sudo apt install docker.io docker-compose 
-sudo docker-compose up --build -d
+sudo docker compose up --build -d
 
 
 // env file to deploy
@@ -27,7 +27,7 @@ sudo docker-compose up --build -d
 
 sudo apt install certbot python3-certbot-nginx
 sudo certbot --nginx -d alarino.com -d www.alarino.com
-0 0 * * * certbot renew --quiet && docker exec nginx nginx -s reload
+0 0 * * * certbot renew --webroot -w /var/www/certbot --quiet && docker exec alarino-10-nginx-1 nginx -s reload
 
 sudo systemctl stop nginx
 sudo systemctl disable nginx
@@ -36,7 +36,7 @@ sudo systemctl disable nginx
 
 
 
-## Frontend setup [alarino-frontend](./alarino-frontend/)
+## Frontend setup [alarino_frontend](./alarino_frontend/)
 ```
 cd alarino-frontend
 brew install npm

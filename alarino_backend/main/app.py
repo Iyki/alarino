@@ -117,7 +117,7 @@ def serve_index():
     homepage = 'homepage.html'
     file_path = find_file(homepage)
     if file_path:
-        return send_file(file_path)
+        return render_template(homepage)
     else:
         logger.error("Error serving homepage: Could not find homepage.html file")
         return "Homepage file not found", 404
