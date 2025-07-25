@@ -137,6 +137,12 @@ def word_page(word):
     return serve_index()
 
 
+@app.route('/admin')
+def admin_page():
+    """Serve the admin.html file"""
+    return render_template('admin.html')
+
+
 @app.route("/about")
 @app.route("/about.html")
 def about():

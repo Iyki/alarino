@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Bulk Upload | Alarino{% endblock %}
+
+{% block content %}
+<main class="pt-28">
+  <section class="text-center mt-12 px-4">
+    <h2 class="text-4xl font-bold text-white leading-tight">
+      Admin Bulk Upload
+    </h2>
+  </section>
+
+  <section id="adminUploadBox" class="mt-16 bg-[#f4ecdd] mx-4 sm:mx-6 md:mx-auto md:max-w-3xl p-4 sm:p-6 rounded-3xl">
+    <form id="bulkUploadForm" class="flex flex-col gap-4">
+      <div>
+        <label for="apiKey" class="block text-sm font-medium text-gray-700">API Key</label>
+        <input
+          id="apiKey"
+          type="password"
+          placeholder="Enter your API key..."
+          class="mt-1 block w-full px-4 py-2 rounded-md border border-gray-300"
+        />
+      </div>
+      
+      <div>
+        <label for="wordPairs" class="block text-sm font-medium text-gray-700">Comma-separated word pairs (english,yoruba)</label>
+        <textarea
+          id="wordPairs"
+          rows="10"
+          placeholder="e.g., hello,bawo&#10;world,agbaye"
+          class="mt-1 block w-full px-4 py-2 rounded-md border border-gray-300"
+        ></textarea>
+      </div>
+
+      <div class="flex items-center">
+        <input
+          id="dryRun"
+          type="checkbox"
+          class="h-4 w-4 rounded border-gray-300 text-[#1b2f1d] focus:ring-[#1b2f1d]"
+        />
+        <label for="dryRun" class="ml-2 block text-sm text-gray-900">Dry Run</label>
+      </div>
+
+      <button type="submit" class="bg-[#1b2f1d] text-white px-4 py-2 rounded-md">
+        Submit
+      </button>
+    </form>
+  </section>
+
+  <section id="results" class="mt-12 mx-4 sm:mx-6 md:mx-auto md:max-w-3xl p-4 sm:p-6 rounded-3xl bg-[#f4ecdd] hidden">
+    <div id="summary" class="mb-4">
+      <h3 class="text-2xl font-bold">Summary</h3>
+      <p>Total Pairs: <span id="totalCount">0</span></p>
+      <p>Successful: <span id="successCount">0</span></p>
+      <p>Failed: <span id="failCount">0</span></p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <h3 class="text-2xl font-bold mb-2">Successful Uploads</h3>
+        <ul id="successfulUploads" class="list-disc list-inside bg-white p-4 rounded-xl">
+          <!-- Successful items will be added here -->
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-2xl font-bold mb-2">Failed Uploads</h3>
+        <ul id="failedUploads" class="list-disc list-inside bg-white p-4 rounded-xl">
+          <!-- Failed items will be added here -->
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="/admin.js"></script>
+{% endblock %}
