@@ -29,6 +29,13 @@ class ProverbResponseData(BaseResponseData):
     english_text: str
 
 
+@dataclass
+class BulkUploadResponseData(BaseResponseData):
+    successful_pairs: List[dict]
+    failed_pairs: List[dict]
+    dry_run: bool
+
+
 class APIResponse:
     def __init__(self, success: bool, status: int, message: str, data: Optional[BaseResponseData] = None):
         self.success = success

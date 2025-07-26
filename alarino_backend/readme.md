@@ -22,8 +22,11 @@ python -m data.seed_data
 
 ### Run backend app
 ```
-python app.py
+python app.py 
 ```
+or
+[docker run instructions](../init_server.md/)
+
 ### test the backend
 ```
 pytest

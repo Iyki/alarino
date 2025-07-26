@@ -1,16 +1,35 @@
 # app.py
 import os
 from typing import Any, Dict
-
+from functools import wraps
 import markdown
 from flask import request, jsonify, send_file, abort, render_template
 
 from main import app, db, _daily_word_cache, logger
 from main.languages import Language
-from main.translation_service import translate, get_word_of_the_day, APIResponse, get_random_proverb
+from main.translation_service import translate, get_word_of_the_day, APIResponse, get_random_proverb, bulk_upload_words
 from main.utils import find_file
 
 app.template_folder = find_file("templates/about.html", get_dir=True)
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        admin_api_key = os.getenv('ADMIN_API_KEY')
+        if not admin_api_key:
+            return APIResponse.error("Admin API key not configured.", 500).as_response()
+
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return APIResponse.error("Authorization header is missing or invalid.", 401).as_response()
+
+        provided_key = auth_header.split(' ')[1]
+        if provided_key != admin_api_key:
+            return APIResponse.error("Invalid API key.", 401).as_response()
+        
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 @app.route('/api/translate', methods=['POST'])
@@ -73,13 +92,32 @@ def get_proverb():
     return jsonify(response), status
 
 
+@app.route('/api/admin/bulk-upload', methods=['POST'])
+@admin_required
+def admin_bulk_upload():
+    """
+    Admin endpoint for bulk uploading word pairs.
+    Requires a secret API key for authorization.
+    """
+    # Extract JSON payload
+    data: Dict[str, Any] | None = request.get_json()
+    if not data or 'text_input' not in data:
+        return APIResponse.error("Invalid request body, 'text_input' is required.", 400).as_response()
+
+    text_input = data['text_input']
+    dry_run = data.get('dry_run', True)
+
+    response, status = bulk_upload_words(db, text_input, dry_run)
+    return jsonify(response), status
+
+
 @app.route('/')
 def serve_index():
     """Serve the main index.html file"""
     homepage = 'homepage.html'
     file_path = find_file(homepage)
     if file_path:
-        return send_file(file_path)
+        return render_template(homepage)
     else:
         logger.error("Error serving homepage: Could not find homepage.html file")
         return "Homepage file not found", 404
@@ -97,6 +135,12 @@ def word_page(word):
         The main index.html file
     """
     return serve_index()
+
+
+@app.route('/admin')
+def admin_page():
+    """Serve the admin.html file"""
+    return render_template('admin.html')
 
 
 @app.route("/about")

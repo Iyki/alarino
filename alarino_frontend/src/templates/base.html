@@ -3,10 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>
+    <title id="page-title">
       {% block title %}Alarino | English to Yoruba Translator & Dictionary Online{% endblock %}
     </title>
-    <meta name="meta-description" content="Alarino - English to Yoruba Translation Dictionary">
+    <meta id="meta-description" name="description" content="Alarino - English to Yoruba Translation Dictionary" />
+    {% block head_extra %}{% endblock %}
     <meta name="keywords" content="Yoruba, English, translation, dictionary, African languages">
 
     <link rel="icon" href="/alarino-logo-fit.svg" type="image/svg+xml" />
@@ -26,6 +27,7 @@
     </header>
 
     {% block content %}{% endblock %}
-    
+
+    {% block scripts %}{% endblock %}
   </body>
 </html>
