@@ -1,33 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title id="page-title">
-      {% block title %}Alarino | English to Yoruba Translator & Dictionary Online{% endblock %}
-    </title>
-    <meta id="meta-description" name="description" content="Alarino - English to Yoruba Translation Dictionary" />
-    {% block head_extra %}{% endblock %}
-    <meta name="keywords" content="Yoruba, English, translation, dictionary, African languages">
 
-    <link rel="icon" href="/alarino-logo-fit.svg" type="image/svg+xml" />
-    <link href="/main.css" rel="stylesheet">
-  </head>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title id="page-title">
+            {% block title %}Alarino | English to Yoruba Translator & Dictionary Online{% endblock %}
+        </title>
+        <meta id="meta-description" name="description" content="Alarino - English to Yoruba Translation Dictionary" />
+        {% block head_extra %}{% endblock %}
+        <meta name="keywords" content="Yoruba, English, translation, dictionary, African languages">
 
-  <body class="bg-gradient-to-b from-[#5c4525] to-[#e8dfca] min-h-screen text-[#2e200f]">
-    <!-- Navbar -->
-    <header class="flex justify-between items-center p-6 space-y-0 text-white fixed top-0 left-0 right-0 z-50 bg-[#5c4525] bg-opacity-90">
-      <a href="/">
-        <img src="/alarino-logo-fit.svg" alt="Alarino Logo" class="h-10" />
-      </a>
-      <nav class="md:flex-row md:space-x-6 space-x-1 text-center">
-        <a href="/about" class="hover:underline">About</a>
-        <a href="https://github.com/Iyki/alarino/issues" class="hover:underline">Contribute</a>
-      </nav>
-    </header>
+        <link rel="icon" href="/alarino-logo-fit.svg" type="image/svg+xml" />
+        <link href="/main.css" rel="stylesheet">
+    </head>
 
-    {% block content %}{% endblock %}
+    <body class="bg-gradient-to-b from-[#5c4525] to-[#e8dfca] min-h-screen text-[#2e200f]">
+        <!-- Navbar -->
+        <header
+            class="flex justify-between items-center p-6 space-y-0 text-white fixed top-0 left-0 right-0 z-50 bg-[#5c4525] bg-opacity-90">
+            <a href="/">
+                <img src="/alarino-logo-light.svg" alt="Alarino Logo" class="h-10" />
+            </a>
+            <nav class="md:flex-row md:space-x-6 space-x-1 text-center">
+                <a href="/about" class="hover:underline">About</a>
+                <a href="https://github.com/Iyki/alarino/issues" class="hover:underline">Contribute</a>
+            </nav>
+        </header>
 
-    {% block scripts %}{% endblock %}
-  </body>
+        {% block content %}{% endblock %}
+
+        {% block scripts %}{% endblock %}
+    </body>
+
 </html>

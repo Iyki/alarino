@@ -41,7 +41,7 @@ sudo systemctl disable nginx
 cd alarino-frontend
 brew install npm
 npm install  // setting up from package lock
-npm run dev  
+npm run dev:css  
 
 # npm run build // npm run build (Vite) to generate static files in a /build or /dist folder for production.
 ```
