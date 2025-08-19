@@ -66,14 +66,14 @@ def log_missing_translation(db, text, source_lang, target_lang, addr, user_agent
     db.session.commit()
 
 
-def find_single_word_with_translation(db) -> Optional[Tuple[Word, Word]]:
+def find_single_word_with_translation(db, can_reuse=True) -> Optional[Tuple[Word, Word]]:
     """
     Find a random Yoruba word that has an English translation.
     Returns a tuple of (yoruba_word, english_word) or None if no suitable word is found.
     """
     # Get list of previously used word IDs to avoid repetition
     used_word_ids = db.session.query(DailyWord.word_id).all()
-    used_ids_set = set(word_id for (word_id,) in used_word_ids)
+    used_ids_set = set() if can_reuse else set(word_id for (word_id,) in used_word_ids)
 
     # Filter Yoruba words that are single-word and not used before
     selected_word = (
