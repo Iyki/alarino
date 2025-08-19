@@ -3,53 +3,54 @@
 {% block title %}Alarino | English to Yoruba Translator & Dictionary Online{% endblock %}
 
 {% block head_extra %}
-  <link id="canonical-link" rel="canonical" href="https://alarino.com" />
+<link id="canonical-link" rel="canonical" href="https://alarino.com" />
 {% endblock %}
 
 {% block content %}
 <!-- Main content with padding to account for fixed header -->
-<main class="pt-28">
+<main class="pt-28 pb-10">
   <!-- Hero Section -->
   <section class="text-center mt-12 px-4">
     <h2 class="text-4xl font-bold text-white leading-tight">
       Discover <br /> Words in Yoruba
     </h2>
-    <button onclick="highlightTranslateBox()" class="mt-6 bg-[#1b2f1d] text-white px-6 py-2 rounded-md font-semibold">
+    <button onclick="highlightTranslateBox()"
+      class="mt-6 bg-[#1b2f1d] hover:bg-blend-lighten text-white px-6 py-2 rounded-md font-semibold cursor-pointer focus:outline-1 focus:outline-offset-2 focus:outline-[#1b2f1d] hover:bg-[#0F1A10]">
       Start Translating
     </button>
   </section>
 
   <!-- Translation Section -->
-  <section id="translateBox" class="mt-16 bg-[#f4ecdd] mx-4 sm:mx-6 md:mx-auto md:max-w-3xl p-4 sm:p-6 rounded-3xl transition duration-300">
+  <section id="translateBox"
+    class="mt-16 bg-[#f4ecdd] mx-4 sm:mx-6 md:mx-auto md:max-w-3xl p-4 sm:p-6 rounded-3xl transition duration-300">
     <form onsubmit="translateWord(); return false;" class="flex flex-col sm:flex-row gap-2 mb-4">
-      <input
-        id="englishWord"
-        type="text"
-        placeholder="Enter an English word..."
-        class="flex-grow px-4 py-2 rounded-md border border-gray-300"
-      />
-      <button type="submit" class="bg-[#1b2f1d] text-white px-4 py-2 rounded-md">
+      <input id="englishWord" type="text" placeholder="Enter an English word..."
+        class="flex-grow px-4 py-2 rounded-md border border-gray-300" />
+      <button type="submit"
+        class="bg-[#1b2f1d] text-white px-4 py-2 rounded-md cursor-pointer focus:outline-1 focus:outline-offset-2 focus:outline-[#1b2f1d] hover:bg-[#0F1A10]">
         Translate
       </button>
     </form>
     <div id="translationResult" class="bg-white p-4 rounded-xl text-left">
       <p id="wordLabel" class="text-xl font-bold">liaison <span class="text-sm text-gray-500">(example)</span></p>
-      <p id="wordYoruba" class="italic text-gray-700">alárìnọ̀ <span class="not-italic text-sm text-gray-500">n.</span></p>
+      <p id="wordYoruba" class="italic text-gray-700">alárìnọ̀ <span class="not-italic text-sm text-gray-500">n.</span>
+      </p>
       <p id="wordDefinition" class="mt-2 text-gray-600"></p>
     </div>
   </section>
 
   <!-- Learn, Proverbs, Practice -->
   <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-12 px-6 md:max-w-5xl md:mx-auto">
-      <!-- Word of the Day -->
-      <div class="bg-[#f4ecdd] rounded-xl p-4 flex flex-col h-full">
+    <!-- Word of the Day -->
+    <div class="bg-[#f4ecdd] rounded-xl p-4 flex flex-col h-full">
       <h3 class="font-bold mb-2">Word of the Day</h3>
       <div class="bg-white rounded-lg p-5 flex-grow">
         <p id="dailyYorubaWord" class="text-2xl font-semibold">ìfẹ́</p>
         <p id="dailyEnglishWord" class="text-lg text-gray-500 mt-1 pt-1 border-t border-gray-300 hidden">love</p>
       </div>
       <div class="flex justify-end mt-1">
-        <button onclick="toggleDailyTranslation()" id="viewTranslationBtn" class="text-sm text-[#1b2f1d] underline">
+        <button onclick="toggleDailyTranslation()" id="viewTranslationBtn"
+          class="text-sm text-[#1b2f1d] underline cursor-pointer hover:no-underline focus:outline-1 focus:outline-offset-2 focus:outline-[#1b2f1d] hover:bg-[#0F1A10]">
           View translation
         </button>
       </div>
@@ -59,11 +60,12 @@
     <div class="bg-[#f4ecdd] rounded-xl p-4 flex flex-col h-full">
       <h3 class="font-bold mb-2">Proverbs</h3>
       <div class="bg-white rounded-lg p-5 flex-grow">
-          <p id="proverb-yoruba" class="italic">Bí ojú kò bá rí, ẹnu kì í sọ nǹkan.</p>
-          <p id="proverb-english" class="text-sm text-gray-600 mt-1">If the eye does not see, the mouth says nothing.</p>
+        <p id="proverb-yoruba" class="italic">Bí ojú kò bá rí, ẹnu kì í sọ nǹkan.</p>
+        <p id="proverb-english" class="text-sm text-gray-600 mt-1">If the eye does not see, the mouth says nothing.</p>
       </div>
       <div class="flex justify-end mt-1">
-        <button id="next-proverb-btn" class="text-sm text-[#1b2f1d] underline">
+        <button id="next-proverb-btn"
+          class="text-sm text-[#1b2f1d] underline cursor-pointer hover:no-underline focus:outline-1 focus:outline-offset-2 focus:outline-[#1b2f1d]">
           Next Proverb
         </button>
       </div>
@@ -73,8 +75,15 @@
     <div class="bg-[#f4ecdd] rounded-xl p-4 flex flex-col h-full">
       <h3 class="font-bold mb-2">Have Suggestions?</h3>
       <div class="flex-grow flex flex-col justify-center gap-4">
-        <button onclick="openAddWordModal()" class="w-full bg-white py-4 rounded-md text-sm">+ Add a word</button>
-        <button onclick="openFeedbackModal()" class="w-full bg-white py-4 rounded-md text-sm">Suggest a Better translation</button>
+        <button onclick="openAddWordModal()"
+          class="w-full bg-white py-4 rounded-md text-sm cursor-pointer focus:outline-1 focus:outline-offset-2 focus:outline-white hover:bg-white/90">+
+          Add a
+          word</button>
+        <button onclick="openFeedbackModal()"
+          class="w-full bg-white py-4 rounded-md text-sm cursor-pointer focus:outline-1 focus:outline-offset-2 focus:outline-white hover:bg-white/90">Suggest
+          a
+          Better
+          translation</button>
       </div>
     </div>
   </section>
@@ -82,19 +91,17 @@
 
 <!-- Add Word Modal -->
 <div id="addWordModal" class="hidden fixed inset-0 z-10 overflow-auto bg-transparent backdrop-blur-sm">
-  <div class="relative bg-[#f4ecdd] mx-auto mt-24 rounded-2xl w-11/12 max-w-2xl shadow-lg" style="animation: modalopen 0.4s;">
+  <div class="relative bg-[#f4ecdd] mx-auto mt-24 rounded-2xl w-11/12 max-w-2xl shadow-lg"
+    style="animation: modalopen 0.4s;">
     <div class="px-6 py-4 border-b border-[#e2d9c8]">
-      <span class="float-right text-3xl font-bold text-[#5c4525] hover:text-black cursor-pointer" onclick="closeAddWordModal()">&times;</span>
+      <span class="float-right text-3xl font-bold text-[#5c4525] hover:text-black cursor-pointer"
+        onclick="closeAddWordModal()">&times;</span>
       <h2 class="text-2xl font-bold">Add a New Word</h2>
     </div>
     <div class="px-6 py-4 max-h-[70vh] overflow-y-auto">
-      <iframe 
-        id="addWordForm" 
+      <iframe id="addWordForm"
         src="https://docs.google.com/forms/d/e/1FAIpQLSe3MXuVbp-Iq9wegVzC9HRWxhA7-aBKNqgo4OZrSJ5akvEIOQ/viewform?embedded=true"
-        width="640" height="1540" frameborder="0"
-        class="w-full h-[450px] border-0" 
-        marginheight="0" 
-        marginwidth="0">
+        width="640" height="1540" frameborder="0" class="w-full h-[450px] border-0" marginheight="0" marginwidth="0">
         Loading form...
       </iframe>
     </div>
@@ -103,18 +110,17 @@
 
 <!-- Feedback Modal -->
 <div id="feedbackModal" class="hidden fixed inset-0 z-10 overflow-auto bg-transparent backdrop-blur-sm">
-  <div class="relative bg-[#f4ecdd] mx-auto mt-24 rounded-2xl w-11/12 max-w-2xl shadow-lg" style="animation: modalopen 0.4s;">
+  <div class="relative bg-[#f4ecdd] mx-auto mt-24 rounded-2xl w-11/12 max-w-2xl shadow-lg"
+    style="animation: modalopen 0.4s;">
     <div class="px-6 py-4 border-b border-[#e2d9c8]">
-      <span class="float-right text-3xl font-bold text-[#5c4525] hover:text-black cursor-pointer" onclick="closeFeedbackModal()">&times;</span>
+      <span class="float-right text-3xl font-bold text-[#5c4525] hover:text-black cursor-pointer"
+        onclick="closeFeedbackModal()">&times;</span>
       <h2 class="text-2xl font-bold">Suggest a Better Translation</h2>
     </div>
     <div class="px-6 py-4 max-h-[70vh] overflow-y-auto">
-      <iframe 
-        id="feedbackForm" 
-        src="https://docs.google.com/forms/d/e/1FAIpQLScIVjG45qeyq85rZgJNldl-UDlqcMaZ2hCXt-l_mFX8ryY5VQ/viewform?embedded=true" 
-        class="w-full h-[450px] border-0" 
-        marginheight="0" 
-        marginwidth="0">
+      <iframe id="feedbackForm"
+        src="https://docs.google.com/forms/d/e/1FAIpQLScIVjG45qeyq85rZgJNldl-UDlqcMaZ2hCXt-l_mFX8ryY5VQ/viewform?embedded=true"
+        class="w-full h-[450px] border-0" marginheight="0" marginwidth="0">
         Loading form...
       </iframe>
     </div>
@@ -123,7 +129,7 @@
 {% endblock %}
 
 {% block scripts %}
-  <!-- Load the config script first in head -->
-  <script src="/config.js"></script>
-  <script src="/translate.js"></script>
+<!-- Load the config script first in head -->
+<script src="/config.js"></script>
+<script src="/translate.js"></script>
 {% endblock %}
