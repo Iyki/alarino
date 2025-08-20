@@ -5,11 +5,23 @@ document.getElementById('bulkUploadForm').addEventListener('submit', async funct
   const wordPairsText = document.getElementById('wordPairs').value;
   const isDryRun = document.getElementById('dryRun').checked;
   const resultsSection = document.getElementById('results');
+  const loadingIndicator = document.getElementById('loadingIndicator');
+  const resultsContent = document.getElementById('resultsContent');
   const successfulUploadsList = document.getElementById('successfulUploads');
   const failedUploadsList = document.getElementById('failedUploads');
   const totalCountSpan = document.getElementById('totalCount');
   const successCountSpan = document.getElementById('successCount');
   const failCountSpan = document.getElementById('failCount');
+
+  // Clear previous results and show loading indicator
+  resultsSection.classList.remove('hidden');
+  loadingIndicator.classList.remove('hidden');
+  resultsContent.classList.add('hidden');
+  successfulUploadsList.innerHTML = '';
+  failedUploadsList.innerHTML = '';
+  totalCountSpan.textContent = '0';
+  successCountSpan.textContent = '0';
+  failCountSpan.textContent = '0';
 
   const payload = {
     text_input: wordPairsText,
@@ -27,9 +39,6 @@ document.getElementById('bulkUploadForm').addEventListener('submit', async funct
     });
 
     const result = await response.json();
-
-    successfulUploadsList.innerHTML = '';
-    failedUploadsList.innerHTML = '';
 
     if (response.ok) {
       result.data.successful_pairs.forEach(item => {
@@ -58,14 +67,16 @@ document.getElementById('bulkUploadForm').addEventListener('submit', async funct
       failCountSpan.textContent = pairCount;
     }
 
-    resultsSection.classList.remove('hidden');
-
   } catch (error) {
     console.error('Error submitting bulk upload:', error);
     failedUploadsList.innerHTML = `<li>An unexpected error occurred: ${error.message}</li>`;
-    totalCountSpan.textContent = pairs.length;
+    const pairCount = wordPairsText.split('\n').filter(line => line.trim() !== '').length;
+    totalCountSpan.textContent = pairCount;
     successCountSpan.textContent = 0;
-    failCountSpan.textContent = pairs.length;
-    resultsSection.classList.remove('hidden');
+    failCountSpan.textContent = pairCount;
+  } finally {
+    // Hide loading indicator and show results
+    loadingIndicator.classList.add('hidden');
+    resultsContent.classList.remove('hidden');
   }
 });

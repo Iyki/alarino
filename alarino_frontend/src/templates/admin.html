@@ -49,25 +49,31 @@
   </section>
 
   <section id="results" class="mt-12 mx-4 sm:mx-6 md:mx-auto md:max-w-3xl p-4 sm:p-6 rounded-3xl bg-[#f4ecdd] hidden">
-    <div id="summary" class="mb-4">
-      <h3 class="text-2xl font-bold">Summary</h3>
-      <p>Total Pairs: <span id="totalCount">0</span></p>
-      <p>Successful: <span id="successCount">0</span></p>
-      <p>Failed: <span id="failCount">0</span></p>
+    <div id="loadingIndicator" class="text-center py-4 hidden">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+      <p class="mt-2 text-gray-700">Uploading...</p>
     </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div>
-        <h3 class="text-2xl font-bold mb-2">Successful Uploads</h3>
-        <ul id="successfulUploads" class="list-disc list-inside bg-white p-4 rounded-xl">
-          <!-- Successful items will be added here -->
-        </ul>
+    <div id="resultsContent">
+      <div id="summary" class="mb-4">
+        <h3 class="text-2xl font-bold">Summary</h3>
+        <p>Total Pairs: <span id="totalCount">0</span></p>
+        <p>Successful: <span id="successCount">0</span></p>
+        <p>Failed: <span id="failCount">0</span></p>
       </div>
-      <div>
-        <h3 class="text-2xl font-bold mb-2">Failed Uploads</h3>
-        <ul id="failedUploads" class="list-disc list-inside bg-white p-4 rounded-xl">
-          <!-- Failed items will be added here -->
-        </ul>
+  
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h3 class="text-2xl font-bold mb-2">Successful Uploads</h3>
+          <ul id="successfulUploads" class="list-disc list-inside bg-white p-4 rounded-xl">
+            <!-- Successful items will be added here -->
+          </ul>
+        </div>
+        <div>
+          <h3 class="text-2xl font-bold mb-2">Failed Uploads</h3>
+          <ul id="failedUploads" class="list-disc list-inside bg-white p-4 rounded-xl">
+            <!-- Failed items will be added here -->
+          </ul>
+        </div>
       </div>
     </div>
   </section>

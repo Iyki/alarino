@@ -170,3 +170,4 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 /data/invalid_datasets/
+/data/ocr_data/
