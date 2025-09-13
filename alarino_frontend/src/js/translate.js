@@ -83,6 +83,12 @@ async function translateWord() {
   const wordDefinition = document.getElementById("wordDefinition");
 
   if (!input) return;
+
+  // Clear previous experimental translation
+  const experimentalSection = document.getElementById("experimentalTranslation");
+  const llmTranslation = document.getElementById("llmTranslation");
+  experimentalSection.style.display = "none";
+  llmTranslation.innerHTML = "";
   
   try {
     const response = await fetch(`${window.ALARINO_CONFIG.apiBaseUrl}/translate`, {
@@ -101,11 +107,21 @@ async function translateWord() {
 
     if (result.success) {
       const translation = result.data.translation
-        .map((line) => `<p>${line}</p>`) // One per line
+        .map((line) => `<p>${line}</p>`)
         .join("");
       wordLabel.textContent = result.data.source_word;
-      wordYoruba.innerHTML = translation;
-      wordDefinition.textContent = "";
+      wordYoruba.innerHTML = translation || "(no translation found)";
+      wordDefinition.textContent = translation ? "" : "We're still learning — try another word!";
+
+      // Handle experimental translation
+      if (result.data.experimental_translation && result.data.experimental_translation.length > 0 
+        && result.data.translation.length < 3) {
+        const experimental = result.data.experimental_translation
+          .map((line) => `<p>${line}</p>`)
+          .join("");
+        llmTranslation.innerHTML = experimental;
+        experimentalSection.style.display = "block";
+      }
       
       // Update URL to reflect the current word (without reloading the page)
       updatePageUrl(result.data.source_word);

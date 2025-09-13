@@ -31,11 +31,22 @@
         Translate
       </button>
     </form>
-    <div id="translationResult" class="bg-white p-4 rounded-xl text-left">
-      <p id="wordLabel" class="text-xl font-bold">liaison <span class="text-sm text-gray-500">(example)</span></p>
-      <p id="wordYoruba" class="italic text-gray-700">alárìnọ̀ <span class="not-italic text-sm text-gray-500">n.</span>
-      </p>
-      <p id="wordDefinition" class="mt-2 text-gray-600"></p>
+    <div class="grid grid-rows-2 gap-4">
+      <section id="translationResult" class="bg-white p-4 rounded-xl text-left">
+        <p id="wordLabel" class="text-xl font-bold">liaison <span class="text-sm text-gray-500">(example)</span></p>
+        <p id="wordYoruba" class="italic text-gray-700">alárìnọ̀ <span class="not-italic text-sm text-gray-500">n.</span>
+        </p>
+        <p id="wordDefinition" class="mt-2 text-gray-600"></p>
+      </section>
+
+      <!-- Experimental LLM Translation -->
+      <section id="experimentalTranslation" class="bg-white p-4 rounded-xl text-left" style="display: none;">
+        <h4 class="text-sm font-bold text-gray-600">
+          <span style="background-color: #FEF3C7; color: #92400E; font-size: 0.75rem; font-weight: 600; margin-right: 0.5rem; padding: 0.125rem 0.625rem; border-radius: 9999px;">Experimental</span>
+          <span>AI Translation</span>
+        </h4>
+        <p id="llmTranslation" class="italic text-gray-700 mt-2"></p>
+      </section>
     </div>
   </section>
 
