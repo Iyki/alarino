@@ -2,13 +2,27 @@
 import csv
 import io
 from datetime import date
+import threading
 from typing import Tuple, Dict, Optional
 
 from main import logger
 from main.db_models import Word, DailyWord, Translation, MissingTranslation, Proverb
 from main.languages import Language
+from main.llm_service import get_llm_service
 from main.response import APIResponse, TranslationResponseData, WordOfTheDayResponseData, ProverbResponseData, BulkUploadResponseData
 from data.seed_data_utils import add_word, create_translation, is_valid_english_word, is_valid_yoruba_word
+
+
+def _get_llm_translation(text: str, source: Language, target: Language, result_container: dict):
+    """Fetches experimental translation from the LLM service and stores it in the result_container."""
+    llm_service = get_llm_service()
+    translation = None
+    if llm_service:
+        try:
+            translation = llm_service.get_translation(text, source.value, target.value)
+        except Exception as e:
+            logger.error(f"Error getting experimental translation: {e}")
+    result_container['experimental'] = translation
 
 
 def translate(db, text: str, source: Language, target: Language, addr: str, user_agent: str) -> tuple[dict, int]:
@@ -16,30 +30,46 @@ def translate(db, text: str, source: Language, target: Language, addr: str, user
     if not text:
         return APIResponse.error("Text must not be empty.", 400).as_response()
 
+    # --- Start Parallel Execution ---
+    results = {}
+    
+    # Thread for LLM translation
+    llm_thread = threading.Thread(target=_get_llm_translation, args=(text, source, target, results))
+    llm_thread.start()
+
+    # Main thread for database translation
     source_word = Word.query.filter_by(language=source, word=text).first()
-    if not source_word:
-        # Log to missing_translations
+    translated_words = []
+    if source_word:
+        translations = (
+            Translation.query
+            .filter_by(source_word_id=source_word.w_id)
+            .join(Word, Translation.target_word_id == Word.w_id)
+            .filter(Word.language == target)
+            .all()
+        )
+        if translations:
+            translated_words = [t.target_word.word for t in translations]
+            logger.info(f"[Translated '{text}' from {source} to {target}]")
+        else:
+            log_missing_translation(db, text, source, target, addr, user_agent)
+    else:
         log_missing_translation(db, text, source, target, addr, user_agent)
+    
+    # Wait for the LLM thread to complete
+    llm_thread.join(timeout=0.5)
+    # --- End Parallel Execution ---
+
+    experimental_translation = results.get('experimental')
+
+    if not translated_words and not experimental_translation:
         return APIResponse.error("Word not found.", 404).as_response()
-
-    translations = (
-        Translation.query
-        .filter_by(source_word_id=source_word.w_id)
-        .join(Word, Translation.target_word_id == Word.w_id)
-        .filter(Word.language == target)
-        .all()
-    )
-    if not translations:
-        log_missing_translation(db, text, source, target, addr, user_agent)
-        return APIResponse.error("Word found but translation not available.", 404).as_response()
-
-    translated_words = [t.target_word.word for t in translations]
-    logger.info(f"[Translated '{text}' from {source} to {target}]")
 
     response_data = TranslationResponseData(
         translation=translated_words,
-        source_word=source_word.word,
-        to_language=target
+        source_word=text,
+        to_language=target,
+        experimental_translation=experimental_translation
     )
     return APIResponse.success("Translation successful.", response_data).as_response()
 

@@ -97,7 +97,7 @@ def add_url(
     if lastmod is None:
         lastmod = datetime.now().strftime("%Y-%m-%d")
 
-    ElementTree.SubElement(url, "lastmod").text = lastmod
+    # ElementTree.SubElement(url, "lastmod").text = lastmod
     ElementTree.SubElement(url, "changefreq").text = changefreq
     ElementTree.SubElement(url, "priority").text = priority
 
