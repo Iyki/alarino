@@ -81,57 +81,57 @@ async function translateWord() {
   const wordLabel = document.getElementById("wordLabel");
   const wordYoruba = document.getElementById("wordYoruba");
   const wordDefinition = document.getElementById("wordDefinition");
+  const experimentalSection = document.getElementById("experimentalTranslation");
+  const llmTranslation = document.getElementById("llmTranslation");
 
   if (!input) return;
 
-  // Clear previous experimental translation
-  const experimentalSection = document.getElementById("experimentalTranslation");
-  const llmTranslation = document.getElementById("llmTranslation");
+  // Clear previous results
   experimentalSection.style.display = "none";
   llmTranslation.innerHTML = "";
-  
+  wordYoruba.innerHTML = "";
+  wordDefinition.textContent = "";
+  wordLabel.textContent = input;
+
+  const dbFetch = fetch(`${window.ALARINO_CONFIG.apiBaseUrl}/translate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: input, source_lang: "en", target_lang: "yo" }),
+  });
+
+  const llmFetch = fetch(`${window.ALARINO_CONFIG.apiBaseUrl}/translate/llm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: input, source_lang: "en", target_lang: "yo" }),
+  });
+
   try {
-    const response = await fetch(`${window.ALARINO_CONFIG.apiBaseUrl}/translate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text: input,
-        source_lang: "en",
-        target_lang: "yo",
-      }),
-    });
+    const [dbResponse, llmResponse] = await Promise.all([dbFetch, llmFetch]);
 
-    const result = await response.json();
+    const dbResult = await dbResponse.json();
+    const llmResult = await llmResponse.json();
 
-    if (result.success) {
-      const translation = result.data.translation
-        .map((line) => `<p>${line}</p>`)
-        .join("");
-      wordLabel.textContent = result.data.source_word;
-      wordYoruba.innerHTML = translation || "(no translation found)";
-      wordDefinition.textContent = translation ? "" : "We're still learning — try another word!";
+    let dbTranslations = [];
+    if (dbResult.success) {
+      dbTranslations = dbResult.data.translation;
+      const translationHTML = dbTranslations.map((line) => `<p>${line}</p>`).join("");
+      wordYoruba.innerHTML = translationHTML;
+      updatePageUrl(dbResult.data.source_word);
+    }
 
-      // Handle experimental translation
-      if (result.data.experimental_translation && result.data.experimental_translation.length > 0 
-        && result.data.translation.length < 3) {
-        const experimental = result.data.experimental_translation
-          .map((line) => `<p>${line}</p>`)
-          .join("");
-        llmTranslation.innerHTML = experimental;
-        experimentalSection.style.display = "block";
-      }
-      
-      // Update URL to reflect the current word (without reloading the page)
-      updatePageUrl(result.data.source_word);
-    } else {
-      wordLabel.textContent = input;
+    if (llmResult.success && dbTranslations.length < 3) {
+      const experimentalHTML = llmResult.data.translation.map((line) => `<p>${line}</p>`).join("");
+      llmTranslation.innerHTML = experimentalHTML;
+      experimentalSection.style.display = "block";
+    }
+
+    if (!dbResult.success && !llmResult.success) {
       wordYoruba.textContent = "(no translation found)";
       wordDefinition.textContent = "We're still learning — try another word!";
     }
+
   } catch (error) {
-    wordLabel.textContent = input;
+    console.error("Translation error:", error);
     wordYoruba.textContent = "(error fetching translation)";
     wordDefinition.textContent = "Please check your connection or try again later.";
   }

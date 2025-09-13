@@ -30,7 +30,7 @@ class GradientLLMService(LLMService):
     def get_translation(self, text: str, source_lang: str, target_lang: str) -> Optional[List[str]]:
         prompt = (
             f"Translate the following English word to Yoruba with the proper diacritics: {text} "
-            "Provide 1 to 3 of the most accurate translations you are highly confident in. If you are not sure (99% confidence), provide an empty list"
+            "Provide 1 to 4 of the most accurate translations you are highly confident in. If you are not sure (99% confidence), provide an empty list"
             "The response must be a valid JSON array of strings, with no additional text or formatting. "
             "For example: [\"translation1\", \"translation2\"]"
         )

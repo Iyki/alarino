@@ -7,7 +7,7 @@ from flask import request, jsonify, send_file, abort, render_template
 
 from main import app, db, _daily_word_cache, logger
 from main.languages import Language
-from main.translation_service import translate, get_word_of_the_day, APIResponse, get_random_proverb, bulk_upload_words
+from main.translation_service import translate, translate_llm, get_word_of_the_day, APIResponse, get_random_proverb, bulk_upload_words
 from main.utils import find_file
 
 app.template_folder = find_file("templates/about.html", get_dir=True)
@@ -32,41 +32,36 @@ def admin_required(f):
     return decorated_function
 
 
+def require_translation_params(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        data = request.get_json()
+        if not data or not all(k in data for k in ['text', 'source_lang', 'target_lang']):
+            return APIResponse.error("Invalid request body.", 400).as_response()
+        try:
+            kwargs['text'] = data['text']
+            kwargs['source_language'] = Language(data['source_lang'])
+            kwargs['target_language'] = Language(data['target_lang'])
+        except ValueError:
+            return APIResponse.error("Unsupported language.", 400).as_response()
+        return f(*args, **kwargs)
+    return decorated_function
+
 @app.route('/api/translate', methods=['POST'])
-def get_translation():
-    """
-    Receives JSON data with:
-    {
-      "text": "Hello",
-      "source_lang": "en",
-      "target_lang": "yo"
-    }
-    and returns a JSON response with:
-    of type APIResponse, status
-    """
-    # Extract JSON payload
-    data: Dict[str, Any] | None = request.get_json()
-    logger.info("got translation request: \t%s", data)
-
-    # Validate the required fields
-    if not data or not all(k in data for k in ['text', 'source_lang', 'target_lang']):
-        return APIResponse.error("Invalid request body.", 400).as_response()
-
-    try:
-        text: str = data['text']
-        source_language: Language = Language(data['source_lang'])
-        target_language: Language = Language(data['target_lang'])
-    except ValueError:
-        return APIResponse.error("Unsupported language.", 400).as_response()
-
-    # Call translation
-    response: Dict[str, Any]
-    status: int
+@require_translation_params
+def get_translation(text: str, source_language: Language, target_language: Language):
+    logger.info(f"got translation request: \t{text}")
     response, status = translate(
         db, text, source_language, target_language,
         request.remote_addr, request.headers.get("User-Agent", "unknown")
     )
+    return jsonify(response), status
 
+@app.route('/api/translate/llm', methods=['POST'])
+@require_translation_params
+def get_llm_translation(text: str, source_language: Language, target_language: Language):
+    logger.info(f"got llm translation request: \t{text}")
+    response, status = translate_llm(text, source_language, target_language)
     return jsonify(response), status
 
 
