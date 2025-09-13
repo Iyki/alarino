@@ -15,7 +15,6 @@ class TranslationResponseData(BaseResponseData):
     translation: List[str]
     source_word: str
     to_language: Language
-    experimental_translation: Optional[List[str]] = None
 
 
 @dataclass
