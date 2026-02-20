@@ -1,7 +1,7 @@
 # Backend (Flask API)
 
 ## Location
-`/Users/ike/code/alarino/alarino_backend`
+`alarino_backend`
 
 ## Purpose
 Provides API-only endpoints consumed by the Next.js frontend and direct API clients.
@@ -15,7 +15,7 @@ Provides API-only endpoints consumed by the Next.js frontend and direct API clie
 
 ## Local Run (without Docker)
 ```bash
-cd /Users/ike/code/alarino/alarino_backend
+cd alarino_backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r pip-requirements.txt
@@ -23,7 +23,7 @@ python -m main.app
 ```
 
 ## Environment Variables
-Required in `/Users/ike/code/alarino/alarino_backend/.env`:
+Required in `alarino_backend/.env`:
 
 ```env
 DATABASE_URL=postgresql://<user>:<pass>@<host>:<port>/<db>
@@ -40,11 +40,11 @@ SITE_DOMAIN=https://alarino.com
 
 ## Tests
 ```bash
-cd /Users/ike/code/alarino/alarino_backend
+cd alarino_backend
 python3 -m pytest
 ```
 
 ## Docker
-- Dockerfile: `/Users/ike/code/alarino/alarino_backend/Dockerfile`
+- Dockerfile: `alarino_backend/Dockerfile`
 - Compose service name: `backend`
 - Exposed internally on port `5001`

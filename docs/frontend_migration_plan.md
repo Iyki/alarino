@@ -1,8 +1,8 @@
 ## Next.js TypeScript Frontend Migration + Docker 2-Service Cutover
 
 ### Summary
-Migrate the current Flask-rendered frontend to a new Next.js (TypeScript) app in `/Users/ike/code/alarino/frontend`, with a **2-service topology in both dev and prod**: `frontend + backend`.  
-Cut over immediately so Next.js serves web routes, make Flask backend API-only, keep `/Users/ike/code/alarino/alarino_frontend` temporarily in-repo for reference, and update CI/deploy for the new stack.
+Migrate the current Flask-rendered frontend to a new Next.js (TypeScript) app in `frontend`, with a **2-service topology in both dev and prod**: `frontend + backend`.  
+Cut over immediately so Next.js serves web routes, make Flask backend API-only, keep `alarino_frontend` temporarily in-repo for reference, and update CI/deploy for the new stack.
 
 Browser API calls stay on same-origin `/api` via a thin Next.js proxy layer (BFF-lite).  
 `api.alarino.com` routing is required and mapped by DNS/provider routing directly to the backend service.
@@ -20,16 +20,16 @@ Browser API calls stay on same-origin `/api` via a thin Next.js proxy layer (BFF
 ### Implementation Plan
 
 ### 1) Scaffold and structure new frontend
-1. Create/initialize Next.js App Router + TypeScript in `/Users/ike/code/alarino/frontend`.
+1. Create/initialize Next.js App Router + TypeScript in `frontend`.
 2. Add core structure:
-   - `/Users/ike/code/alarino/frontend/app/layout.tsx`
-   - `/Users/ike/code/alarino/frontend/app/page.tsx`
-   - `/Users/ike/code/alarino/frontend/app/word/[word]/page.tsx`
-   - `/Users/ike/code/alarino/frontend/app/about/page.tsx`
-   - `/Users/ike/code/alarino/frontend/app/admin/page.tsx`
-   - `/Users/ike/code/alarino/frontend/lib/api.ts`
-   - `/Users/ike/code/alarino/frontend/lib/types.ts`
-   - `/Users/ike/code/alarino/frontend/components/*`
+   - `frontend/app/layout.tsx`
+   - `frontend/app/page.tsx`
+   - `frontend/app/word/[word]/page.tsx`
+   - `frontend/app/about/page.tsx`
+   - `frontend/app/admin/page.tsx`
+   - `frontend/lib/api.ts`
+   - `frontend/lib/types.ts`
+   - `frontend/components/*`
 3. Add global styling + tokens (Tailwind + CSS vars) to keep current brand palette with light polish (spacing, typography, responsive refinements, focus states).
 
 ### 2) Migrate feature behavior from legacy templates/scripts
@@ -49,27 +49,27 @@ Browser API calls stay on same-origin `/api` via a thin Next.js proxy layer (BFF
 5. Replace legacy `window.ALARINO_CONFIG` usage with typed API client using relative `/api`.
 
 ### 3) Frontend Dockerization
-1. Add `/Users/ike/code/alarino/frontend/Dockerfile` (multi-stage):
+1. Add `frontend/Dockerfile` (multi-stage):
    - Build stage: install deps, `next build`.
    - Runtime stage: run standalone server on port `3000`.
-2. Add `/Users/ike/code/alarino/frontend/.dockerignore`.
+2. Add `frontend/.dockerignore`.
 3. Configure Next for container runtime:
    - Standalone output.
-4. Add `/Users/ike/code/alarino/frontend/.env.example` with frontend runtime vars.
+4. Add `frontend/.env.example` with frontend runtime vars.
 
 ### 4) Convert backend to API-only
-1. In `/Users/ike/code/alarino/alarino_backend/main/app.py`, keep only `/api/*` endpoints (plus optional `/api/health`).
+1. In `alarino_backend/main/app.py`, keep only `/api/*` endpoints (plus optional `/api/health`).
 2. Remove Flask template/static/catch-all frontend-serving routes.
 3. Keep CORS config aligned with frontend origin and direct API access patterns.
 
 ### 5) Compose and API proxy routing changes
-1. Update `/Users/ike/code/alarino/docker-compose.yml`:
+1. Update `docker-compose.yml`:
    - `backend` service exposing internal `5001`.
    - `frontend` service exposing app `3000`.
-2. Keep `/Users/ike/code/alarino/docker-compose.prod.yml` and `/Users/ike/code/alarino/docker-compose.override.yml` aligned with 2-service topology.
+2. Keep `docker-compose.prod.yml` and `docker-compose.override.yml` aligned with 2-service topology.
 3. Add `BACKEND_INTERNAL_URL=http://backend:5001` for frontend runtime.
 4. Implement Next.js `/api` proxy route (BFF-lite):
-   - Add `/Users/ike/code/alarino/frontend/app/api/[...path]/route.ts`.
+   - Add `frontend/app/api/[...path]/route.ts`.
    - Forward required methods, headers, query params, and request body to backend `/api/*`.
    - Preserve backend status codes and error payloads.
 
@@ -79,13 +79,13 @@ Browser API calls stay on same-origin `/api` via a thin Next.js proxy layer (BFF
 3. Ensure managed-provider SSL/TLS is active for frontend domains and `api.alarino.com`.
 
 ### 7) CI/CD updates
-1. Update `/Users/ike/code/alarino/.github/workflows/deploy.yml` to validate new stack:
+1. Update `.github/workflows/deploy.yml` to validate new stack:
    - build backend and frontend images (or compose build),
    - run frontend checks + unit/component/proxy tests before deploy.
 2. Deploy step brings up only `frontend + backend`.
 
 ### 8) Legacy frontend handling
-1. Keep `/Users/ike/code/alarino/alarino_frontend` temporarily (reference only, not runtime).
+1. Keep `alarino_frontend` temporarily (reference only, not runtime).
 2. Mark as deprecated in docs.
 3. Remove in a later cleanup once post-cutover verification is complete.
 

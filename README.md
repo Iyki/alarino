@@ -3,13 +3,13 @@
 Alarino is a digital Yoruba-English dictionary project focused on data quality, cultural preservation, and community contributions.
 
 ## Project Layout
-- Frontend: `/Users/ike/code/alarino/frontend` (Next.js + TypeScript)
-- Backend: `/Users/ike/code/alarino/alarino_backend` (Flask API)
-- Docs: `/Users/ike/code/alarino/docs`
-- Legacy frontend (deprecated, reference only): `/Users/ike/code/alarino/alarino_frontend`
+- Frontend: `frontend` (Next.js + TypeScript)
+- Backend: `alarino_backend` (Flask API)
+- Docs: `docs`
+- Legacy frontend (deprecated, reference only): `alarino_frontend`
 
 ## Developer Quickstart
-1. Create backend env file at `/Users/ike/code/alarino/alarino_backend/.env` with:
+1. Create backend env file at `alarino_backend/.env` with:
 
 ```env
 DATABASE_URL=postgresql://<user>:<pass>@<host>:<port>/<db>
@@ -19,7 +19,6 @@ ADMIN_API_KEY=<secret>
 2. Start the full stack:
 
 ```bash
-cd /Users/ike/code/alarino
 docker compose up --build
 ```
 
@@ -31,16 +30,15 @@ docker compose up --build
 4. Stop services:
 
 ```bash
-cd /Users/ike/code/alarino
 docker compose down
 ```
 
 ## Documentation
-- Docs hub: `/Users/ike/code/alarino/docs/README.md`
-- Full setup guide: `/Users/ike/code/alarino/docs/developer_setup.md`
-- Frontend guide: `/Users/ike/code/alarino/frontend/README.md`
-- Backend guide: `/Users/ike/code/alarino/alarino_backend/readme.md`
-- Migration plan: `/Users/ike/code/alarino/docs/frontend_migration_plan.md`
+- Docs hub: `docs/README.md`
+- Full setup guide: `docs/developer_setup.md`
+- Frontend guide: `frontend/README.md`
+- Backend guide: `alarino_backend/readme.md`
+- Migration plan: `docs/frontend_migration_plan.md`
 
 ## Stack and Routing Notes
 - The web app is served by Next.js.

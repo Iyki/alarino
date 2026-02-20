@@ -5,5 +5,5 @@
 - [Frontend Migration Plan](./frontend_migration_plan.md): migration record and implementation scope.
 
 ## Service Docs
-- Frontend: `/Users/ike/code/alarino/frontend/README.md`
-- Backend: `/Users/ike/code/alarino/alarino_backend/readme.md`
+- Frontend: `frontend/README.md`
+- Backend: `alarino_backend/readme.md`

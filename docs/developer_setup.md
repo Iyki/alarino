@@ -18,9 +18,9 @@ The browser talks to same-origin `/api/*` on frontend. Frontend proxies those re
 1. Clone repo and enter project root:
 ```bash
 git clone https://github.com/Iyki/alarino.git
-cd /Users/ike/code/alarino
+cd alarino
 ```
-2. Create backend env file at `/Users/ike/code/alarino/alarino_backend/.env` with required keys:
+2. Create backend env file at `alarino_backend/.env` with required keys:
 ```env
 DATABASE_URL=postgresql://<user>:<pass>@<host>:<port>/<db>
 ADMIN_API_KEY=<secret>
@@ -37,28 +37,26 @@ curl -I http://localhost:3000
 ```
 5. Run frontend checks:
 ```bash
-cd /Users/ike/code/alarino/frontend
+cd frontend
 npm run lint && npm run typecheck && npm run test
 ```
 6. Stop services when done:
 ```bash
-cd /Users/ike/code/alarino
 docker compose down
 ```
 
 ## Repository Layout
-- `/Users/ike/code/alarino/frontend`: Next.js TypeScript app
-- `/Users/ike/code/alarino/alarino_backend`: Flask API
-- `/Users/ike/code/alarino/docs`: project documentation
-- `/Users/ike/code/alarino/alarino_frontend`: legacy frontend (reference only, deprecated)
+- `frontend`: Next.js TypeScript app
+- `alarino_backend`: Flask API
+- `docs`: project documentation
+- `alarino_frontend`: legacy frontend (reference only, deprecated)
 
 ## Quickstart (Docker)
 1. Clone and enter the repo.
-2. Create backend env file at `/Users/ike/code/alarino/alarino_backend/.env`.
+2. Create backend env file at `alarino_backend/.env`.
 3. Start services:
 
 ```bash
-cd /Users/ike/code/alarino
 docker compose up --build
 ```
 
@@ -69,19 +67,17 @@ docker compose up --build
 
 ## Stop Services
 ```bash
-cd /Users/ike/code/alarino
 docker compose down
 ```
 
 If you see orphan warnings (for example old `nginx` container), use:
 
 ```bash
-cd /Users/ike/code/alarino
 docker compose down --remove-orphans
 ```
 
 ## Required Backend Environment Variables
-Create `/Users/ike/code/alarino/alarino_backend/.env` with at least:
+Create `alarino_backend/.env` with at least:
 
 ```env
 DATABASE_URL=postgresql://<user>:<pass>@<host>:<port>/<db>
@@ -98,7 +94,7 @@ SITE_DOMAIN=https://alarino.com
 
 ## Frontend Environment Variables
 Frontend runtime variables are documented in:
-- `/Users/ike/code/alarino/frontend/.env.example`
+- `frontend/.env.example`
 
 Current variables:
 - `FRONTEND_SITE_URL` (metadata/canonical base URL)
@@ -110,7 +106,7 @@ With Docker Compose, these are already set for you.
 
 ### Backend
 ```bash
-cd /Users/ike/code/alarino/alarino_backend
+cd alarino_backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r pip-requirements.txt
@@ -119,7 +115,7 @@ python -m main.app
 
 ### Frontend
 ```bash
-cd /Users/ike/code/alarino/frontend
+cd frontend
 npm install
 BACKEND_INTERNAL_URL=http://127.0.0.1:5001 FRONTEND_SITE_URL=http://localhost:3000 npm run dev
 ```
@@ -128,7 +124,7 @@ BACKEND_INTERNAL_URL=http://127.0.0.1:5001 FRONTEND_SITE_URL=http://localhost:30
 
 ### Frontend
 ```bash
-cd /Users/ike/code/alarino/frontend
+cd frontend
 npm run lint
 npm run typecheck
 npm run test
@@ -137,7 +133,7 @@ npm run build
 
 ### Backend
 ```bash
-cd /Users/ike/code/alarino/alarino_backend
+cd alarino_backend
 python3 -m pytest
 ```
 
@@ -154,7 +150,6 @@ python3 -m pytest
 Use the current Dockerfiles in repo (they include build tooling). If this reappears, rebuild without cache:
 
 ```bash
-cd /Users/ike/code/alarino
 docker compose build --no-cache backend
 docker compose up
 ```
@@ -167,8 +162,8 @@ This project uses Next.js 15 route typing conventions:
 ### Port already in use
 If `3000` or `5001` is occupied:
 - stop the conflicting service, or
-- edit compose port mapping in `/Users/ike/code/alarino/docker-compose.override.yml`.
+- edit compose port mapping in `docker-compose.override.yml`.
 
 ## Deployment Notes
-- CI workflow: `/Users/ike/code/alarino/.github/workflows/deploy.yml`
+- CI workflow: `.github/workflows/deploy.yml`
 - Deploy target runs only `frontend` + `backend` services.
