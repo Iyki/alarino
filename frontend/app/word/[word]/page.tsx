@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 
 import { HomePage } from "@/components/home-page";
+import { getFrontendSiteUrl } from "@/lib/env";
 import { makeWordPageTitle } from "@/lib/seo";
 
-const SITE_URL = process.env.FRONTEND_SITE_URL || "https://alarino.com";
+const SITE_URL = getFrontendSiteUrl();
 
 interface WordPageProps {
   params: Promise<{ word: string }>;

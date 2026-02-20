@@ -11,6 +11,75 @@ const EMPTY_RESULT: BulkUploadResult = {
   dry_run: true
 };
 
+interface UploadSummaryProps {
+  errorMessage: string | null;
+  hasSubmitted: boolean;
+  result: BulkUploadResult;
+}
+
+function UploadSummary({ errorMessage, hasSubmitted, result }: UploadSummaryProps) {
+  if (!hasSubmitted) {
+    return null;
+  }
+
+  const totalCount = result.successful_pairs.length + result.failed_pairs.length;
+
+  return (
+    <section className="mt-10 rounded-3xl bg-brand-beige p-5 shadow-card sm:p-7">
+      <h2 className="font-heading text-2xl text-brand-ink">Summary</h2>
+      <div className="mt-2 grid gap-1 text-sm text-brand-ink/80">
+        <p>Total pairs: {totalCount}</p>
+        <p>Successful: {result.successful_pairs.length}</p>
+        <p>Failed: {result.failed_pairs.length}</p>
+        <p>Run mode: {result.dry_run ? "Dry run" : "Live"}</p>
+      </div>
+
+      {errorMessage ? <p className="mt-3 text-sm text-red-700">{errorMessage}</p> : null}
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div>
+          <h3 className="text-lg font-semibold text-brand-ink">Successful uploads</h3>
+          <ul className="mt-2 min-h-24 list-disc rounded-xl bg-white p-4 pl-9 text-sm text-brand-ink">
+            {result.successful_pairs.length ? (
+              result.successful_pairs.map((item) => (
+                <li key={`${item.english}-${item.yoruba}`}>{item.english}, {item.yoruba}</li>
+              ))
+            ) : (
+              <li className="list-none pl-0 text-brand-ink/60">No successful uploads.</li>
+            )}
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="text-lg font-semibold text-brand-ink">Failed uploads</h3>
+          <ul className="mt-2 min-h-24 list-disc rounded-xl bg-white p-4 pl-9 text-sm text-brand-ink">
+            {result.failed_pairs.length ? (
+              result.failed_pairs.map((item) => (
+                <li key={`${item.line}-${item.reason}`}>{item.line} - Reason: {item.reason}</li>
+              ))
+            ) : (
+              <li className="list-none pl-0 text-brand-ink/60">No failed uploads.</li>
+            )}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function buildFailureResult(reason: string, dryRun: boolean): BulkUploadResult {
+  return {
+    successful_pairs: [],
+    failed_pairs: [
+      {
+        line: "bulk-upload",
+        reason
+      }
+    ],
+    dry_run: dryRun
+  };
+}
+
 export function AdminPage() {
   const [apiKey, setApiKey] = useState("");
   const [textInput, setTextInput] = useState("");
@@ -35,33 +104,12 @@ export function AdminPage() {
       return;
     }
 
-    const pairCount = textInput.split("\n").filter((line) => line.trim()).length;
-    setResult({
-      successful_pairs: [],
-      failed_pairs: [
-        {
-          line: "bulk-upload",
-          reason: response.message || "Bulk upload failed"
-        }
-      ],
-      dry_run: dryRun
-    });
-
-    setErrorMessage(response.message || "Bulk upload failed.");
-
-    if (pairCount > 0) {
-      setResult((current) => ({
-        ...current,
-        failed_pairs: current.failed_pairs.length
-          ? current.failed_pairs
-          : [{ line: "bulk-upload", reason: response.message || "Bulk upload failed" }]
-      }));
-    }
+    const failureReason = response.message || "Bulk upload failed";
+    setResult(buildFailureResult(failureReason, dryRun));
+    setErrorMessage(failureReason);
 
     setLoading(false);
   };
-
-  const totalCount = result.successful_pairs.length + result.failed_pairs.length;
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pb-16 pt-10 sm:px-6 lg:px-8">
@@ -122,47 +170,7 @@ export function AdminPage() {
         </form>
       </section>
 
-      {hasSubmitted ? (
-        <section className="mt-10 rounded-3xl bg-brand-beige p-5 shadow-card sm:p-7">
-          <h2 className="font-heading text-2xl text-brand-ink">Summary</h2>
-          <div className="mt-2 grid gap-1 text-sm text-brand-ink/80">
-            <p>Total pairs: {totalCount}</p>
-            <p>Successful: {result.successful_pairs.length}</p>
-            <p>Failed: {result.failed_pairs.length}</p>
-            <p>Run mode: {result.dry_run ? "Dry run" : "Live"}</p>
-          </div>
-
-          {errorMessage ? <p className="mt-3 text-sm text-red-700">{errorMessage}</p> : null}
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <div>
-              <h3 className="text-lg font-semibold text-brand-ink">Successful uploads</h3>
-              <ul className="mt-2 min-h-24 list-disc rounded-xl bg-white p-4 pl-9 text-sm text-brand-ink">
-                {result.successful_pairs.length ? (
-                  result.successful_pairs.map((item) => (
-                    <li key={`${item.english}-${item.yoruba}`}>{item.english}, {item.yoruba}</li>
-                  ))
-                ) : (
-                  <li className="list-none pl-0 text-brand-ink/60">No successful uploads.</li>
-                )}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold text-brand-ink">Failed uploads</h3>
-              <ul className="mt-2 min-h-24 list-disc rounded-xl bg-white p-4 pl-9 text-sm text-brand-ink">
-                {result.failed_pairs.length ? (
-                  result.failed_pairs.map((item) => (
-                    <li key={`${item.line}-${item.reason}`}>{item.line} - Reason: {item.reason}</li>
-                  ))
-                ) : (
-                  <li className="list-none pl-0 text-brand-ink/60">No failed uploads.</li>
-                )}
-              </ul>
-            </div>
-          </div>
-        </section>
-      ) : null}
+      <UploadSummary errorMessage={errorMessage} hasSubmitted={hasSubmitted} result={result} />
     </main>
   );
 }

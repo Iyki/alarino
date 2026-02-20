@@ -13,6 +13,7 @@ cd frontend
 npm install
 npm run dev
 npm run lint
+npm run lint:fix
 npm run typecheck
 npm run test
 npm run build
@@ -31,4 +32,5 @@ See `frontend/.env.example`.
 
 ## Notes
 - Uses Next.js App Router + TypeScript.
+- Linting runs through ESLint CLI (`npm run lint`) using the Next.js ESLint config.
 - In Docker Compose, frontend is exposed on `http://localhost:3000` in local development.

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 
 import "@/app/globals.css";
 import { SiteHeader } from "@/components/site-header";
-
-const SITE_URL = process.env.FRONTEND_SITE_URL || "https://alarino.com";
+import { getFrontendSiteUrl } from "@/lib/env";
+const SITE_URL = getFrontendSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

@@ -4,6 +4,18 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
+type NavItem = {
+  label: string;
+  href: string;
+  external?: boolean;
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { label: "About", href: "/about" },
+  { label: "Contribute", href: "https://github.com/Iyki/alarino/issues", external: true },
+  { label: "Admin", href: "/admin" }
+];
+
 export function SiteHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -46,7 +58,7 @@ export function SiteHeader() {
           type="button"
           aria-label={isMenuOpen ? "Close menu" : "Open menu"}
           aria-expanded={isMenuOpen}
-          aria-controls="mobile-nav-drawer"
+          aria-controls="site-nav-drawer"
           onClick={() => setIsMenuOpen((value) => !value)}
           className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-brand-gold/30 text-brand-cream transition hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
         >
@@ -57,23 +69,6 @@ export function SiteHeader() {
             <span className={`absolute left-0 top-[14px] h-0.5 w-5 bg-current transition ${isMenuOpen ? "-translate-y-[7px] -rotate-45" : ""}`} />
           </span>
         </button>
-
-        <nav className="hidden items-center gap-5 text-sm font-medium text-brand-cream">
-          <Link href="/about" className="transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
-            About
-          </Link>
-          <a
-            href="https://github.com/Iyki/alarino/issues"
-            target="_blank"
-            rel="noreferrer"
-            className="transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
-          >
-            Contribute
-          </a>
-          <Link href="/admin" className="transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
-            Admin
-          </Link>
-        </nav>
       </div>
 
       {isMenuOpen ? (
@@ -85,7 +80,7 @@ export function SiteHeader() {
             className="fixed inset-0 z-[60] bg-brand-ink/80"
           />
           <aside
-            id="mobile-nav-drawer"
+            id="site-nav-drawer"
             className="fixed right-0 top-0 z-[70] h-full w-[min(24rem,100vw)] border-l border-brand-brown/15 bg-white p-6 text-brand-ink shadow-2xl"
           >
             <div className="mb-6 flex items-center justify-between border-b border-brand-brown/15 pb-4">
@@ -100,29 +95,31 @@ export function SiteHeader() {
             </div>
 
             <nav className="flex flex-col gap-3 text-base font-semibold text-brand-ink">
-              <Link
-                href="/about"
-                onClick={() => setIsMenuOpen(false)}
-                className="rounded-lg border border-brand-brown/15 bg-brand-beige px-3 py-2 transition hover:bg-brand-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
-              >
-                About
-              </Link>
-              <a
-                href="https://github.com/Iyki/alarino/issues"
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => setIsMenuOpen(false)}
-                className="rounded-lg border border-brand-brown/15 bg-brand-beige px-3 py-2 transition hover:bg-brand-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
-              >
-                Contribute
-              </a>
-              <Link
-                href="/admin"
-                onClick={() => setIsMenuOpen(false)}
-                className="rounded-lg border border-brand-brown/15 bg-brand-beige px-3 py-2 transition hover:bg-brand-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
-              >
-                Admin
-              </Link>
+              {NAV_ITEMS.map((item) => {
+                const itemClasses =
+                  "rounded-lg border border-brand-brown/15 bg-brand-beige px-3 py-2 transition hover:bg-brand-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold";
+
+                if (item.external) {
+                  return (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => setIsMenuOpen(false)}
+                      className={itemClasses}
+                    >
+                      {item.label}
+                    </a>
+                  );
+                }
+
+                return (
+                  <Link key={item.href} href={item.href} onClick={() => setIsMenuOpen(false)} className={itemClasses}>
+                    {item.label}
+                  </Link>
+                );
+              })}
             </nav>
           </aside>
         </div>

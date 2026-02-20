@@ -57,4 +57,20 @@ describe("lib/api", () => {
     expect(response.status).toBe(500);
     expect(response.message).toContain("network down");
   });
+
+  it("returns a deterministic error response for non-JSON payloads", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response("gateway timeout", {
+        status: 504,
+        headers: { "content-type": "text/plain" }
+      })
+    );
+
+    const response = await translateEnglishWord("hello");
+
+    expect(response.success).toBe(false);
+    expect(response.status).toBe(504);
+    expect(response.message).toBe("gateway timeout");
+    expect(response.data).toBeNull();
+  });
 });
