@@ -1,4 +1,10 @@
 services:
-  nginx:
-    volumes:
-      - ./nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
+  backend:
+    ports:
+      - "5001:5001"
+
+  frontend:
+    ports:
+      - "3000:3000"
+    environment:
+      FRONTEND_SITE_URL: http://localhost:3000

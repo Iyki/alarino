@@ -1,33 +1,50 @@
-## Backend setup [alarino-backend](alarino_backend/)
-```
-cd alarino-backend
-conda env create alarino
-conda activate alarino
+# Backend (Flask API)
 
-# python -m pip list --format=freeze > pip-requirements.txt  --to save python libraries used in conda
-# conda list -e > conda-requirements.txt -- save conda libraries
+## Location
+`/Users/ike/code/alarino/alarino_backend`
 
-conda create --name alarino --file conda-requirements.txt
+## Purpose
+Provides API-only endpoints consumed by the Next.js frontend and direct API clients.
 
-# or 
-# python -m venv .venv
-# source .venv/bin/activate
-# pip install -r pip-requirements.txt if using python virtual environments
-```
-### Run scripts
-```
-python -m data.seed_data
+## Core Endpoints
+- `POST /api/translate`
+- `GET /api/daily-word`
+- `GET /api/proverb`
+- `POST /api/admin/bulk-upload`
+- `GET /api/health`
 
+## Local Run (without Docker)
+```bash
+cd /Users/ike/code/alarino/alarino_backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r pip-requirements.txt
+python -m main.app
 ```
 
-### Run backend app
-```
-python app.py 
-```
-or
-[docker run instructions](../init_server.md/)
+## Environment Variables
+Required in `/Users/ike/code/alarino/alarino_backend/.env`:
 
-### test the backend
+```env
+DATABASE_URL=postgresql://<user>:<pass>@<host>:<port>/<db>
+ADMIN_API_KEY=<secret>
 ```
-pytest
+
+Optional:
+
+```env
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://alarino.com,https://www.alarino.com
+MAIN_PORT=5001
+SITE_DOMAIN=https://alarino.com
 ```
+
+## Tests
+```bash
+cd /Users/ike/code/alarino/alarino_backend
+python3 -m pytest
+```
+
+## Docker
+- Dockerfile: `/Users/ike/code/alarino/alarino_backend/Dockerfile`
+- Compose service name: `backend`
+- Exposed internally on port `5001`
