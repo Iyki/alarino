@@ -23,7 +23,7 @@ export default async function AboutPage() {
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-10 sm:px-6 lg:px-8">
       <article className="rounded-3xl bg-brand-beige p-6 shadow-card sm:p-10">
-        <div className="prose prose-stone max-w-none prose-headings:font-heading prose-headings:text-brand-ink prose-p:text-brand-ink prose-li:text-brand-ink prose-a:text-brand-forest prose-a:underline-offset-4">
+        <div className="prose prose-lg prose-stone max-w-none prose-headings:font-heading prose-headings:text-brand-ink prose-p:text-brand-ink prose-li:text-brand-ink prose-a:text-brand-forest prose-a:underline-offset-4 prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl">
           <Markdown>{markdown}</Markdown>
         </div>
       </article>

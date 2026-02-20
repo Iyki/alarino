@@ -12,8 +12,8 @@ export function SiteHeader() {
             width={42}
             height={42}
             priority
+            className="brightness-0 invert"
           />
-          <span className="font-heading text-lg tracking-wide">Alarino</span>
         </Link>
 
         <nav className="flex items-center gap-5 text-sm font-medium text-brand-cream">

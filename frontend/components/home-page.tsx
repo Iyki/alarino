@@ -161,9 +161,6 @@ export function HomePage({ initialWord }: HomePageProps) {
       <section className="text-center">
         <p className="font-heading text-sm uppercase tracking-[0.2em] text-brand-cream/85">English to Yoruba Dictionary</p>
         <h1 className="mt-5 font-heading text-4xl text-white sm:text-5xl">Discover words in Yoruba</h1>
-        <p className="mx-auto mt-4 max-w-2xl text-sm text-brand-cream/90 sm:text-base">
-          Translate words, explore a daily Yoruba term, and help expand community-backed language data.
-        </p>
         <button
           type="button"
           onClick={focusTranslator}
