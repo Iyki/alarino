@@ -1,4 +1,8 @@
 
+## Legacy / Obsolete
+This document is kept for historical reference only and describes an old nginx/certbot deployment flow.
+Use `/Users/ike/code/alarino/docs/developer_setup.md` as the current source of truth.
+
 
 ## Notes
 ```
@@ -36,7 +40,7 @@ sudo systemctl disable nginx
 
 
 
-## Frontend setup [alarino_frontend](./alarino_frontend/)
+## Frontend setup (legacy `alarino_frontend`, removed from repo)
 ```
 cd alarino-frontend
 brew install npm

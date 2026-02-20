@@ -6,7 +6,6 @@ Alarino is a digital Yoruba-English dictionary project focused on data quality, 
 - Frontend: `frontend` (Next.js + TypeScript)
 - Backend: `alarino_backend` (Flask API)
 - Docs: `docs`
-- Legacy frontend (deprecated, reference only): `alarino_frontend`
 
 ## Developer Quickstart
 1. Create backend env file at `alarino_backend/.env` with:

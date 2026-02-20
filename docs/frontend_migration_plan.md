@@ -2,7 +2,7 @@
 
 ### Summary
 Migrate the current Flask-rendered frontend to a new Next.js (TypeScript) app in `frontend`, with a **2-service topology in both dev and prod**: `frontend + backend`.  
-Cut over immediately so Next.js serves web routes, make Flask backend API-only, keep `alarino_frontend` temporarily in-repo for reference, and update CI/deploy for the new stack.
+Cut over immediately so Next.js serves web routes, make Flask backend API-only, and update CI/deploy for the new stack.
 
 Browser API calls stay on same-origin `/api` via a thin Next.js proxy layer (BFF-lite).  
 `api.alarino.com` routing is required and mapped by DNS/provider routing directly to the backend service.
@@ -85,9 +85,9 @@ Browser API calls stay on same-origin `/api` via a thin Next.js proxy layer (BFF
 2. Deploy step brings up only `frontend + backend`.
 
 ### 8) Legacy frontend handling
-1. Keep `alarino_frontend` temporarily (reference only, not runtime).
-2. Mark as deprecated in docs.
-3. Remove in a later cleanup once post-cutover verification is complete.
+1. Legacy `alarino_frontend` was kept temporarily after cutover for reference.
+2. Post-cutover cleanup removed `alarino_frontend` and legacy `nginx` repo artifacts.
+3. Active runtime and docs now target only `frontend + backend`.
 
 ### Public APIs / Interfaces / Config Changes
 1. External site routing changes:
@@ -152,5 +152,5 @@ Browser API calls stay on same-origin `/api` via a thin Next.js proxy layer (BFF
 2. Use npm for frontend dependency management.
 3. Use App Router + TypeScript in Next.js.
 4. Use same-origin `/api` as primary frontend API path via Next proxy.
-5. Keep legacy frontend directory temporarily, but remove Flask frontend routes immediately.
+5. Remove Flask frontend routes immediately and complete legacy artifact cleanup after verification.
 6. Existing secrets/env management remains in current deployment workflow; only required new frontend vars are added.

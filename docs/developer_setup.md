@@ -49,7 +49,6 @@ docker compose down
 - `frontend`: Next.js TypeScript app
 - `alarino_backend`: Flask API
 - `docs`: project documentation
-- `alarino_frontend`: legacy frontend (reference only, deprecated)
 
 ## Quickstart (Docker)
 1. Clone and enter the repo.
@@ -70,7 +69,7 @@ docker compose up --build
 docker compose down
 ```
 
-If you see orphan warnings (for example old `nginx` container), use:
+If you see orphan warnings, use:
 
 ```bash
 docker compose down --remove-orphans
