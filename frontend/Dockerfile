@@ -19,4 +19,4 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "echo \"[frontend] Starting Next.js server on port ${PORT:-3000}\" && exec node server.js"]

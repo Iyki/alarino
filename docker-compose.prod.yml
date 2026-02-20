@@ -1,10 +1,12 @@
 services:
   backend:
     ports:
+      # host:container (direct API host for provider-level routing)
       - "5001:5001"
 
   frontend:
     ports:
+      # host:container (public web entrypoint)
       - "80:3000"
     environment:
       FRONTEND_SITE_URL: https://alarino.com
