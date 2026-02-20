@@ -62,7 +62,12 @@ export function useHomePageState({ initialWord, onTranslatedWord }: UseHomePageS
         return;
       }
 
-      setTranslationState((previous) => ({ ...previous, loading: true }));
+      setTranslationState((previous) => ({
+        word: normalizedInput,
+        translation: previous.word === normalizedInput ? previous.translation : [],
+        description: "",
+        loading: true
+      }));
 
       const response = await translateEnglishWord(normalizedInput);
 

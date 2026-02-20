@@ -53,13 +53,33 @@ export function TranslatorCard({
         />
         <button
           type="submit"
+          aria-busy={translationState.loading}
           className="rounded-xl bg-brand-forest px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
         >
-          {translationState.loading ? "Translating..." : "Translate"}
+          {translationState.loading ? (
+            <span className="inline-flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/35 border-t-white"
+              />
+              <span>Translating...</span>
+            </span>
+          ) : (
+            "Translate"
+          )}
         </button>
       </form>
 
       <div className="mt-4 rounded-2xl bg-white p-5">
+        {translationState.loading ? (
+          <p role="status" aria-live="polite" className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-brand-ink/80">
+            <span
+              aria-hidden="true"
+              className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-brand-brown/25 border-t-brand-forest"
+            />
+            Looking up translation...
+          </p>
+        ) : null}
         <p className="text-xl font-semibold text-brand-ink">
           {translationState.word}
           <span className="ml-2 text-sm font-normal text-brand-ink/65">
