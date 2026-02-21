@@ -1,5 +1,9 @@
 ## Next.js TypeScript Frontend Migration + Docker 2-Service Cutover
 
+> Status (February 21, 2026): completed and retained as a historical migration record.
+> Current production topology is `caddy + frontend + backend` and browser API traffic uses same-origin `/api` via frontend.
+> Some sections below reflect original migration-time assumptions and are intentionally preserved for history.
+
 > Post-migration note: production now uses `caddy` as TLS/reverse-proxy in front of the app services.
 > Core application services remain `frontend + backend`; `caddy` is the edge entrypoint.
 

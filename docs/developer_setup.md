@@ -167,3 +167,4 @@ If `3000` or `5001` is occupied:
 - CI workflow: `.github/workflows/deploy.yml`
 - Deploy target runs `backend`, `frontend`, and `caddy` in production compose.
 - Fresh droplet bootstrap: `scripts/bootstrap_droplet.sh` (guide: `docs/droplet_bootstrap.md`).
+- Deploy secrets: `SSH_KEY_DEPLOY`, `DO_USERNAME`, `DO_HOST`, `BACKEND_ENV_FILE`.
