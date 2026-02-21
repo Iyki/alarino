@@ -35,6 +35,7 @@ docker compose down
 ## Documentation
 - Docs hub: `docs/README.md`
 - Full setup guide: `docs/developer_setup.md`
+- Droplet bootstrap guide: `docs/droplet_bootstrap.md`
 - Frontend guide: `frontend/README.md`
 - Backend guide: `alarino_backend/readme.md`
 - Migration plan: `docs/frontend_migration_plan.md`
@@ -43,7 +44,9 @@ docker compose down
 - The web app is served by Next.js.
 - Browser API path is `/api/*` (proxied by frontend to backend).
 - Flask backend is API-only and no longer serves template/static web routes.
-- Runtime topology in dev/prod is two services: `frontend` + `backend`.
+- Runtime topology:
+  - dev: `frontend` + `backend`
+  - prod: `caddy` + `frontend` + `backend` (`caddy` terminates TLS and proxies to frontend)
 
 ## Community Contributions
 You can contribute by:

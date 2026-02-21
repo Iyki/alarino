@@ -1,5 +1,8 @@
 ## Next.js TypeScript Frontend Migration + Docker 2-Service Cutover
 
+> Post-migration note: production now uses `caddy` as TLS/reverse-proxy in front of the app services.
+> Core application services remain `frontend + backend`; `caddy` is the edge entrypoint.
+
 ### Summary
 Migrate the current Flask-rendered frontend to a new Next.js (TypeScript) app in `frontend`, with a **2-service topology in both dev and prod**: `frontend + backend`.  
 Cut over immediately so Next.js serves web routes, make Flask backend API-only, and update CI/deploy for the new stack.

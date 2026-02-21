@@ -165,4 +165,5 @@ If `3000` or `5001` is occupied:
 
 ## Deployment Notes
 - CI workflow: `.github/workflows/deploy.yml`
-- Deploy target runs only `frontend` + `backend` services.
+- Deploy target runs `backend`, `frontend`, and `caddy` in production compose.
+- Fresh droplet bootstrap: `scripts/bootstrap_droplet.sh` (guide: `docs/droplet_bootstrap.md`).

@@ -1,12 +1,25 @@
 services:
-  backend:
-    ports:
-      # host:container (direct API host for provider-level routing)
-      - "5001:5001"
-
   frontend:
-    ports:
-      # host:container (public web entrypoint)
-      - "80:3000"
     environment:
-      FRONTEND_SITE_URL: https://alarino.com
+      FRONTEND_SITE_URL: https://${PRIMARY_DOMAIN:-alarino.com}
+
+  caddy:
+    image: caddy:2
+    depends_on:
+      - frontend
+    restart: always
+    ports:
+      # host:container (public web entrypoint with TLS)
+      - "80:80"
+      - "443:443"
+    environment:
+      PRIMARY_DOMAIN: ${PRIMARY_DOMAIN:-alarino.com}
+      SECONDARY_DOMAIN: ${SECONDARY_DOMAIN:-www.alarino.com}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

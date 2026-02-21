@@ -61,9 +61,9 @@ jobs:
             echo "Pulling latest changes..."
             git pull origin main
 
-            echo "Rebuilding and restarting frontend + backend..."
-            docker compose down
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d backend frontend
+            echo "Rebuilding and restarting caddy + frontend + backend..."
+            docker compose down --remove-orphans
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d backend frontend caddy
 
             echo "Deployment complete."
           EOF
