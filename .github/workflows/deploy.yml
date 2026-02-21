@@ -45,6 +45,12 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_KEY_DEPLOY }}
 
+      - name: Sync backend environment file
+        env:
+          BACKEND_ENV_FILE: ${{ secrets.BACKEND_ENV_FILE }}
+        run: |
+          printf "%s" "$BACKEND_ENV_FILE" | ssh -o StrictHostKeyChecking=no ${{ secrets.DO_USERNAME }}@${{ secrets.DO_HOST }} "cd ~/alarino && umask 077 && cat > alarino_backend/.env"
+
       - name: Deploy to DigitalOcean
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.DO_USERNAME }}@${{ secrets.DO_HOST }} << 'EOF'
