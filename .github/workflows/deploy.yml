@@ -49,18 +49,20 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_KEY_DEPLOY }}
 
-      - name: Sync backend environment file
+      - name: Deploy to DigitalOcean
         env:
           BACKEND_ENV_FILE: ${{ secrets.BACKEND_ENV_FILE }}
         run: |
-          printf "%s" "$BACKEND_ENV_FILE" | ssh -o StrictHostKeyChecking=no ${{ secrets.DO_USERNAME }}@${{ secrets.DO_HOST }} "cd ~/alarino && umask 077 && cat > alarino_backend/.env"
-
-      - name: Deploy to DigitalOcean
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.DO_USERNAME }}@${{ secrets.DO_HOST }} << 'EOF'
+          printf "%s" "$BACKEND_ENV_FILE" | ssh -o StrictHostKeyChecking=no ${{ secrets.DO_USERNAME }}@${{ secrets.DO_HOST }} '
             set -e
 
+            if [ ! -d ~/alarino/.git ]; then
+              git clone https://github.com/Iyki/alarino.git ~/alarino
+            fi
+
             cd ~/alarino
+            umask 077
+            cat > alarino_backend/.env
 
             echo "Pulling latest changes..."
             git pull origin main
@@ -70,4 +72,4 @@ jobs:
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d backend frontend caddy
 
             echo "Deployment complete."
-          EOF
+          '
