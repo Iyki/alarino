@@ -2,13 +2,41 @@
 import csv
 import io
 from datetime import date
+import threading
 from typing import Tuple, Dict, Optional
 
 from main import logger
 from main.db_models import Word, DailyWord, Translation, MissingTranslation, Proverb
 from main.languages import Language
+from main.llm_service import get_llm_service
 from main.response import APIResponse, TranslationResponseData, WordOfTheDayResponseData, ProverbResponseData, BulkUploadResponseData
 from data.seed_data_utils import add_word, create_translation, is_valid_english_word, is_valid_yoruba_word
+
+
+def translate_llm(text: str, source: Language, target: Language) -> tuple[dict, int]:
+    """Translates text using the LLM service."""
+    text = text.strip().lower()
+    if not text:
+        return APIResponse.error("Text must not be empty.", 400).as_response()
+
+    llm_service = get_llm_service()
+    if not llm_service:
+        return APIResponse.error("LLM service not configured.", 500).as_response()
+
+    try:
+        translation = llm_service.get_translation(text, source.value, target.value)
+        if not translation:
+            return APIResponse.error("Translation not found.", 404).as_response()
+
+        response_data = TranslationResponseData(
+            translation=translation,
+            source_word=text,
+            to_language=target
+        )
+        return APIResponse.success("Translation successful.", response_data).as_response()
+    except Exception as e:
+        logger.error(f"Error getting LLM translation: {e}")
+        return APIResponse.error("An error occurred during translation.", 500).as_response()
 
 
 def translate(db, text: str, source: Language, target: Language, addr: str, user_agent: str) -> tuple[dict, int]:
@@ -18,7 +46,6 @@ def translate(db, text: str, source: Language, target: Language, addr: str, user
 
     source_word = Word.query.filter_by(language=source, word=text).first()
     if not source_word:
-        # Log to missing_translations
         log_missing_translation(db, text, source, target, addr, user_agent)
         return APIResponse.error("Word not found.", 404).as_response()
 
@@ -66,14 +93,14 @@ def log_missing_translation(db, text, source_lang, target_lang, addr, user_agent
     db.session.commit()
 
 
-def find_single_word_with_translation(db) -> Optional[Tuple[Word, Word]]:
+def find_single_word_with_translation(db, can_reuse=True) -> Optional[Tuple[Word, Word]]:
     """
     Find a random Yoruba word that has an English translation.
     Returns a tuple of (yoruba_word, english_word) or None if no suitable word is found.
     """
     # Get list of previously used word IDs to avoid repetition
     used_word_ids = db.session.query(DailyWord.word_id).all()
-    used_ids_set = set(word_id for (word_id,) in used_word_ids)
+    used_ids_set = set() if can_reuse else set(word_id for (word_id,) in used_word_ids)
 
     # Filter Yoruba words that are single-word and not used before
     selected_word = (

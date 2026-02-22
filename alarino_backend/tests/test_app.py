@@ -6,14 +6,15 @@ from main.languages import Language
 from main.app import get_translation, admin_bulk_upload
 from main.db_models import Word, Translation
 
+#todo: make tests independent of database access
+
 @pytest.fixture
 def client():
     """
     Creates a test client for our Flask app.
     """
     app.config['TESTING'] = True
-    #todo: make it a check to ensure "/api/translate" is in the url_map
-    print("rules?")
+    print("rules:")
     print([str(rule) for rule in app.url_map.iter_rules()])
     print("rules?")
     with app.test_client() as client:
