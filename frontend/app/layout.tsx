@@ -1,9 +1,23 @@
 import type { Metadata } from "next";
+import { Inter, Playfair_Display } from "next/font/google";
 
 import "@/app/globals.css";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getFrontendSiteUrl } from "@/lib/env";
 const SITE_URL = getFrontendSiteUrl();
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-body",
+  display: "swap"
+});
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  display: "swap"
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -17,11 +31,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className="text-brand-ink antialiased">
-        <div className="min-h-screen bg-app-gradient pb-8">
+    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+      <body className="font-body text-brand-ink antialiased">
+        <div className="flex min-h-screen flex-col bg-app-gradient">
           <SiteHeader />
-          {children}
+          <div className="flex-1">{children}</div>
+          <SiteFooter />
         </div>
       </body>
     </html>

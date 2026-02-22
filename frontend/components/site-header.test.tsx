@@ -18,12 +18,12 @@ describe("SiteHeader", () => {
     render(<SiteHeader />);
 
     await user.click(screen.getByRole("button", { name: "Open menu" }));
-    expect(screen.getByRole("navigation")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Mobile" })).toBeInTheDocument();
     expect(document.body).toHaveClass("overflow-hidden");
 
     fireEvent.keyDown(window, { key: "Escape" });
     await waitFor(() => {
-      expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+      expect(screen.queryByRole("navigation", { name: "Mobile" })).not.toBeInTheDocument();
     });
     expect(document.body).not.toHaveClass("overflow-hidden");
 
