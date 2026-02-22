@@ -49,8 +49,7 @@ async function requestApi<T>(path: string, init: RequestInit): Promise<ApiRespon
     const contentType = response.headers.get("content-type");
 
     if (!contentType?.includes("application/json")) {
-      const text = await response.text();
-      return makeFailedResponse<T>(response.status, text || "Unexpected response type from API.");
+      return makeFailedResponse<T>(response.status, "Something went wrong. Please try again.");
     }
 
     return normalizeApiResponse<T>(await response.json(), response.status);

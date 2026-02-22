@@ -8,7 +8,7 @@ interface WordOfDayCardProps {
 
 export function WordOfDayCard({ dailyWord, isTranslationVisible, onToggleTranslation }: WordOfDayCardProps) {
   return (
-    <article className="rounded-2xl bg-brand-cream p-5 shadow-card transition-all duration-200 hover:shadow-card-hover">
+    <article className="flex h-full flex-col rounded-2xl bg-brand-cream p-5 shadow-card transition-all duration-200 hover:shadow-card-hover">
       <div className="flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold-light text-brand-gold">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -17,7 +17,7 @@ export function WordOfDayCard({ dailyWord, isTranslationVisible, onToggleTransla
         </span>
         <h2 className="font-heading text-lg font-semibold text-brand-ink">Word of the Day</h2>
       </div>
-      <div className="mt-4 rounded-xl bg-white p-5 shadow-sm">
+      <div className="mt-4 flex-1 rounded-xl bg-white p-5 shadow-sm">
         <p className="font-heading text-2xl font-bold text-brand-ink">{dailyWord.yoruba}</p>
         {isTranslationVisible ? <p className="mt-2 text-lg text-brand-ink/60">{dailyWord.english}</p> : null}
       </div>

@@ -8,7 +8,7 @@ interface ProverbCardProps {
 
 export function ProverbCard({ loading, onNextProverb, proverb }: ProverbCardProps) {
   return (
-    <article className="rounded-2xl bg-brand-cream p-5 shadow-card transition-all duration-200 hover:shadow-card-hover">
+    <article className="flex h-full flex-col rounded-2xl bg-brand-cream p-5 shadow-card transition-all duration-200 hover:shadow-card-hover">
       <div className="flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-terracotta/10 text-brand-terracotta">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -17,7 +17,7 @@ export function ProverbCard({ loading, onNextProverb, proverb }: ProverbCardProp
         </span>
         <h2 className="font-heading text-lg font-semibold text-brand-ink">Proverbs</h2>
       </div>
-      <div className="mt-4 rounded-xl bg-white p-5 shadow-sm">
+      <div className="mt-4 flex-1 rounded-xl bg-white p-5 shadow-sm">
         <p className="font-heading italic leading-relaxed text-brand-ink">{proverb.yoruba}</p>
         <p className="mt-3 text-sm text-brand-ink/65">{proverb.english}</p>
       </div>
