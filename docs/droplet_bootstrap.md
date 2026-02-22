@@ -5,6 +5,7 @@ It codifies Docker installation and firewall/network setup so deployment is repr
 
 ## What This Configures
 - Docker Engine + Docker Compose from Debian repositories (`docker.io` + `docker-compose`)
+- Swapfile setup by default (`CONFIGURE_SWAP=true`, `SWAP_SIZE_GB=2`)
 - Optional host UFW inbound rules (only when `CONFIGURE_HOST_FIREWALL=true`):
   - SSH port `22/tcp`
   - `80/tcp`
@@ -15,14 +16,16 @@ It codifies Docker installation and firewall/network setup so deployment is repr
 From repo root on the droplet:
 
 ```bash
-sudo CONFIGURE_HOST_FIREWALL=false ./scripts/bootstrap_droplet.sh
+sudo ./scripts/bootstrap_droplet.sh
 ```
 
 This bootstrap targets Debian 13 (`trixie`) with distro-native Docker packages.
 
-Optional host firewall configuration with UFW:
+Optional overrides:
 
 ```bash
+sudo CONFIGURE_SWAP=false ./scripts/bootstrap_droplet.sh
+sudo SWAP_SIZE_GB=4 ./scripts/bootstrap_droplet.sh
 sudo CONFIGURE_HOST_FIREWALL=true ./scripts/bootstrap_droplet.sh
 ```
 
@@ -51,6 +54,8 @@ sudo CONFIGURE_HOST_FIREWALL=true ./scripts/bootstrap_droplet.sh
 
 ## Validation
 ```bash
+swapon --show
+free -h
 docker compose ps
 curl -I -H "Host: alarino.com" http://127.0.0.1/
 curl -sS https://alarino.com/api/health
