@@ -2,19 +2,24 @@ name: alarino-1.0
 
 services:
   backend:
-    build: .
+    build:
+      context: ./alarino_backend
     env_file:
       - ./alarino_backend/.env
     restart: always
     expose:
+      # backend container port inside compose network
       - "5001"
 
-
-  nginx:
-    image: nginx:latest
-    ports:
-      - "80:80"
-      - "443:443"
+  frontend:
+    build:
+      context: ./frontend
     depends_on:
       - backend
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:5001
+      FRONTEND_SITE_URL: ${FRONTEND_SITE_URL:-https://alarino.com}
     restart: always
+    expose:
+      # frontend container port inside compose network
+      - "3000"

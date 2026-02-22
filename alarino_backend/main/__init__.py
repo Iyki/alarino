@@ -18,7 +18,14 @@ load_dotenv()
 
 app: Flask = Flask(__name__)
 
-allowed_origins: list[str] = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,https://alarino.com,https://www.alarino.com",
+    ).split(",")
+    if origin.strip()
+]
 CORS(app, origins=allowed_origins)
 
 # Configure logging

@@ -1,0 +1,8 @@
+{$PRIMARY_DOMAIN:alarino.com} {
+	encode zstd gzip
+	reverse_proxy frontend:3000
+}
+
+{$SECONDARY_DOMAIN:www.alarino.com} {
+	redir https://{$PRIMARY_DOMAIN:alarino.com}{uri} permanent
+}

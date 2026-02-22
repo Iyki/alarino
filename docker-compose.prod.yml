@@ -1,6 +1,25 @@
 services:
-  nginx:
+  frontend:
+    environment:
+      FRONTEND_SITE_URL: https://${PRIMARY_DOMAIN:-alarino.com}
+
+  caddy:
+    image: caddy:2
+    depends_on:
+      - frontend
+    restart: always
+    ports:
+      # host:container (public web entrypoint with TLS)
+      - "80:80"
+      - "443:443"
+    environment:
+      PRIMARY_DOMAIN: ${PRIMARY_DOMAIN:-alarino.com}
+      SECONDARY_DOMAIN: ${SECONDARY_DOMAIN:-www.alarino.com}
     volumes:
-      - ./nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      - /var/www/certbot:/var/www/certbot
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

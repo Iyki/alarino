@@ -2,38 +2,72 @@ name: Deployment
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 
 jobs:
-
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up SSH
-      uses: webfactory/ssh-agent@v0.9.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_KEY_DEPLOY }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-    - name: Test Docker build
-      run: docker build --tag alarino-v1:$(date +%s) .
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
 
-    - name: Deploy to DigitalOcean
-      run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.DO_USERNAME }}@${{ secrets.DO_HOST }} << 'EOF'
-          set -e
+      - name: Frontend lint
+        working-directory: frontend
+        run: npm run lint
 
-          cd ~/alarino
+      - name: Frontend typecheck
+        working-directory: frontend
+        run: npm run typecheck
 
-          echo "Pulling latest changes..."
-          git pull origin main
+      - name: Frontend unit/component/proxy tests
+        working-directory: frontend
+        run: npm run test
 
-          echo "Rebuilding and restarting..."
-          docker compose down
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+      - name: Frontend production build
+        working-directory: frontend
+        run: npm run build
 
-          echo "Deployment complete."
-        EOF
+      - name: Build backend and frontend images
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml build backend frontend
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY_DEPLOY }}
+
+      - name: Sync backend environment file
+        env:
+          BACKEND_ENV_FILE: ${{ secrets.BACKEND_ENV_FILE }}
+        run: |
+          printf "%s" "$BACKEND_ENV_FILE" | ssh -o StrictHostKeyChecking=no ${{ secrets.DO_USERNAME }}@${{ secrets.DO_HOST }} "cd ~/alarino && umask 077 && cat > alarino_backend/.env"
+
+      - name: Deploy to DigitalOcean
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.DO_USERNAME }}@${{ secrets.DO_HOST }} << 'EOF'
+            set -e
+
+            cd ~/alarino
+
+            echo "Pulling latest changes..."
+            git pull origin main
+
+            echo "Rebuilding and restarting caddy + frontend + backend..."
+            docker compose down --remove-orphans
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d backend frontend caddy
+
+            echo "Deployment complete."
+          EOF

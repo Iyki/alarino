@@ -2,15 +2,11 @@
 import os
 from typing import Any, Dict
 from functools import wraps
-import markdown
-from flask import request, jsonify, send_file, abort, render_template
+from flask import request, jsonify
 
 from main import app, db, _daily_word_cache, logger
 from main.languages import Language
-from main.translation_service import translate, translate_llm, get_word_of_the_day, APIResponse, get_random_proverb, bulk_upload_words
-from main.utils import find_file
-
-app.template_folder = find_file("templates/about.html", get_dir=True)
+from main.translation_service import translate, get_word_of_the_day, APIResponse, get_random_proverb, bulk_upload_words
 
 
 def admin_required(f):
@@ -32,36 +28,41 @@ def admin_required(f):
     return decorated_function
 
 
-def require_translation_params(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        data = request.get_json()
-        if not data or not all(k in data for k in ['text', 'source_lang', 'target_lang']):
-            return APIResponse.error("Invalid request body.", 400).as_response()
-        try:
-            kwargs['text'] = data['text']
-            kwargs['source_language'] = Language(data['source_lang'])
-            kwargs['target_language'] = Language(data['target_lang'])
-        except ValueError:
-            return APIResponse.error("Unsupported language.", 400).as_response()
-        return f(*args, **kwargs)
-    return decorated_function
-
 @app.route('/api/translate', methods=['POST'])
-@require_translation_params
-def get_translation(text: str, source_language: Language, target_language: Language):
-    logger.info(f"got translation request: \t{text}")
+def get_translation():
+    """
+    Receives JSON data with:
+    {
+      "text": "Hello",
+      "source_lang": "en",
+      "target_lang": "yo"
+    }
+    and returns a JSON response with:
+    of type APIResponse, status
+    """
+    # Extract JSON payload
+    data: Dict[str, Any] | None = request.get_json()
+    logger.info("got translation request: \t%s", data)
+
+    # Validate the required fields
+    if not data or not all(k in data for k in ['text', 'source_lang', 'target_lang']):
+        return APIResponse.error("Invalid request body.", 400).as_response()
+
+    try:
+        text: str = data['text']
+        source_language: Language = Language(data['source_lang'])
+        target_language: Language = Language(data['target_lang'])
+    except ValueError:
+        return APIResponse.error("Unsupported language.", 400).as_response()
+
+    # Call translation
+    response: Dict[str, Any]
+    status: int
     response, status = translate(
         db, text, source_language, target_language,
         request.remote_addr, request.headers.get("User-Agent", "unknown")
     )
-    return jsonify(response), status
 
-@app.route('/api/translate/llm', methods=['POST'])
-@require_translation_params
-def get_llm_translation(text: str, source_language: Language, target_language: Language):
-    logger.info(f"got llm translation request: \t{text}")
-    response, status = translate_llm(text, source_language, target_language)
     return jsonify(response), status
 
 
@@ -106,101 +107,14 @@ def admin_bulk_upload():
     return jsonify(response), status
 
 
-@app.route('/')
-def serve_index():
-    """Serve the main index.html file"""
-    homepage = 'homepage.html'
-    file_path = find_file(homepage)
-    if file_path:
-        return render_template(homepage)
-    else:
-        logger.error("Error serving homepage: Could not find homepage.html file")
-        return "Homepage file not found", 404
-
-
-@app.route('/word/<word>')
-def word_page(word):
-    """
-    Route to handle individual English word pages.
-    Simply serve the main index.html file and let JavaScript handle
-    the word lookup based on the URL.
-    Args:
-        word: The English word to display
-    Returns:
-        The main index.html file
-    """
-    return serve_index()
-
-
-@app.route('/admin')
-def admin_page():
-    """Serve the admin.html file"""
-    return render_template('admin.html')
-
-
-@app.route("/about")
-@app.route("/about.html")
-def about():
-    filepath = find_file("about.md")
-    with open(filepath, 'r', encoding='utf-8') as f:
-        md_content = f.read()
-    html_content = markdown.markdown(md_content)
-    template_path = "about.html"
-    val = render_template(template_path, content=html_content)
-    return val
-
-
-# Route for static files with known extensions for rendering
-@app.route('/<filename>')
-def serve_root_static_file(filename):
-    """Serve static files from the root directory with extension checking"""
-    # List of allowed file extensions for security
-    allowed_extensions = [
-        '.js', '.css', '.svg', '.png', '.jpg', '.html', '.xml', '.md',
-        '.jpeg', '.ico', '.gif', '.woff', '.woff2'
-    ]
-
-    # Check if the filename has an allowed extension
-    if not any(filename.endswith(ext) for ext in allowed_extensions):
-        return "Not found", 404
-
-    file_path = find_file(filename)
-    if file_path:
-        return send_file(file_path)
-    else:
-        return "File not found", 404
-
-
-@app.route('/sitemap.xml')
-def serve_sitemap():
-    """Serve the sitemap.xml file"""
-    file_path = find_file('sitemap.xml')
-    if file_path:
-        return send_file(file_path)
-    else:
-        return "Sitemap not found", 404
-
-
-# Catch-all route for any other URLs
-@app.route('/<path:path>')
-def catch_all(path):
-    """Catch-all route that handles any other paths"""
-    # Handle API routes properly
-    if path.startswith('api/'):
-        abort(404)  # Let the API routes handle these
-
-    # For any other routes, serve the homepage
-    return serve_index()
-
-
-@app.route('/robots.txt')
-def serve_robots():
-    """Serve the robots.txt file"""
-    file_path = find_file('robots.txt')
-    if file_path:
-        return send_file(file_path)
-    else:
-        return "Robots.txt not found", 404
+@app.route('/api/health', methods=['GET'])
+def health():
+    return jsonify({
+        "success": True,
+        "status": 200,
+        "message": "ok",
+        "data": None
+    }), 200
 
 
 if __name__ == '__main__':
