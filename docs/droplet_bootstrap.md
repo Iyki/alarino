@@ -4,7 +4,7 @@ This is the source-of-truth host bootstrap flow for a fresh DigitalOcean Droplet
 It codifies Docker installation and firewall/network setup so deployment is reproducible.
 
 ## What This Configures
-- Docker Engine + Docker Compose plugin
+- Docker Engine + Docker Compose from Debian repositories (`docker.io` + `docker-compose`)
 - Optional host UFW inbound rules (only when `CONFIGURE_HOST_FIREWALL=true`):
   - SSH port `22/tcp`
   - `80/tcp`
@@ -17,6 +17,8 @@ From repo root on the droplet:
 ```bash
 sudo CONFIGURE_HOST_FIREWALL=false ./scripts/bootstrap_droplet.sh
 ```
+
+This bootstrap targets Debian 13 (`trixie`) with distro-native Docker packages.
 
 Optional host firewall configuration with UFW:
 
