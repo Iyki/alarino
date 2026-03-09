@@ -67,8 +67,16 @@ jobs:
             echo "Pulling latest changes..."
             git pull origin main
 
+            echo "Saving rollback tags from current latest images..."
+            docker image inspect alarino-10-backend:latest >/dev/null 2>&1 && docker tag alarino-10-backend:latest alarino-10-backend:rollback || true
+            docker image inspect alarino-10-frontend:latest >/dev/null 2>&1 && docker tag alarino-10-frontend:latest alarino-10-frontend:rollback || true
+
+            echo "Cleaning Docker cache/unused artifacts..."
+            docker builder prune -af || true
+            docker image prune -f || true
+            docker container prune -f || true
+
             echo "Rebuilding and restarting caddy + frontend + backend..."
-            docker compose down --remove-orphans
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d backend frontend caddy
 
             echo "Deployment complete."
