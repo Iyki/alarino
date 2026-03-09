@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
+import { HeroBanner } from "@/components/hero-banner";
 import { ContributionModal } from "@/components/home/contribution-modal";
 import { ProverbCard } from "@/components/home/proverb-card";
 import { SuggestionsCard } from "@/components/home/suggestions-card";
@@ -15,19 +16,20 @@ interface HomePageProps {
 }
 
 export function HomePage({ initialWord }: HomePageProps) {
-  const router = useRouter();
   const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
   const translateCardRef = useRef<HTMLElement>(null);
   const [isTranslateCardHighlighted, setIsTranslateCardHighlighted] = useState(false);
 
   const onTranslatedWord = useCallback(
     (translatedWord: string) => {
       const targetPath = `/word/${encodeURIComponent(translatedWord)}`;
-      if (pathname !== targetPath) {
-        router.replace(targetPath, { scroll: false });
+      if (pathnameRef.current !== targetPath) {
+        window.history.replaceState(null, "", targetPath);
       }
     },
-    [pathname, router]
+    []
   );
 
   const {
@@ -77,49 +79,47 @@ export function HomePage({ initialWord }: HomePageProps) {
   }, [activeModal]);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10 sm:px-6 lg:px-8">
-      <section className="text-center">
-        <p className="font-heading text-sm uppercase tracking-[0.2em] text-brand-cream/85">English to Yoruba Dictionary</p>
-        <h1 className="mt-5 font-heading text-4xl text-white sm:text-5xl">Discover words in Yoruba</h1>
-        <button
-          type="button"
-          onClick={focusTranslator}
-          className="mt-8 rounded-xl bg-brand-forest px-6 py-3 text-sm font-semibold text-white shadow-card transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
-        >
-          Start Translating
-        </button>
-      </section>
+    <main className="mx-auto w-full max-w-[80rem] px-6 py-8">
+      <HeroBanner>Discover words<br />in Yoruba</HeroBanner>
 
-      <TranslatorCard
-        input={input}
-        isHighlighted={isTranslateCardHighlighted}
-        onInputChange={setInput}
-        onSubmit={() => {
-          void submitTranslation(input);
-        }}
-        translationState={translationState}
-        translateCardRef={translateCardRef}
-      />
-
-      <section className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <WordOfDayCard
-          dailyWord={dailyWord}
-          isTranslationVisible={isDailyTranslationVisible}
-          onToggleTranslation={toggleDailyTranslation}
-        />
-        <ProverbCard
-          proverb={proverb}
-          loading={proverbLoading}
-          onNextProverb={() => {
-            void loadRandomProverb();
-          }}
-        />
-        <SuggestionsCard
-          onOpenModal={(modal) => {
-            setActiveModal(modal);
-          }}
-        />
-      </section>
+      {/* Bento Grid */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-12">
+        <div className="animate-fade-in-up-delay-1 md:col-span-8">
+          <TranslatorCard
+            input={input}
+            isHighlighted={isTranslateCardHighlighted}
+            onInputChange={setInput}
+            onSubmit={() => {
+              void submitTranslation(input);
+            }}
+            translationState={translationState}
+            translateCardRef={translateCardRef}
+          />
+        </div>
+        <div className="animate-fade-in-up-delay-2 md:col-span-4">
+          <WordOfDayCard
+            dailyWord={dailyWord}
+            isTranslationVisible={isDailyTranslationVisible}
+            onToggleTranslation={toggleDailyTranslation}
+          />
+        </div>
+        <div className="animate-fade-in-up-delay-3 md:col-span-7">
+          <ProverbCard
+            proverb={proverb}
+            loading={proverbLoading}
+            onNextProverb={() => {
+              void loadRandomProverb();
+            }}
+          />
+        </div>
+        <div className="animate-fade-in-up-delay-4 md:col-span-5">
+          <SuggestionsCard
+            onOpenModal={(modal) => {
+              setActiveModal(modal);
+            }}
+          />
+        </div>
+      </div>
 
       <ContributionModal
         activeModal={activeModal}

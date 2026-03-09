@@ -12,6 +12,7 @@ export type TranslationViewState = {
   translation: string[];
   description: string;
   loading: boolean;
+  error: boolean;
 };
 
 export type DailyWordState = {
@@ -28,7 +29,8 @@ const EMPTY_TRANSLATION_STATE: TranslationViewState = {
   word: DEFAULT_TRANSLATION_WORD,
   translation: DEFAULT_TRANSLATION_LINES,
   description: "",
-  loading: false
+  loading: false,
+  error: false
 };
 
 const INITIAL_DAILY_WORD: DailyWordState = {
@@ -66,7 +68,8 @@ export function useHomePageState({ initialWord, onTranslatedWord }: UseHomePageS
         word: normalizedInput,
         translation: previous.word === normalizedInput ? previous.translation : [],
         description: "",
-        loading: true
+        loading: true,
+        error: false
       }));
 
       const response = await translateEnglishWord(normalizedInput);
@@ -78,22 +81,24 @@ export function useHomePageState({ initialWord, onTranslatedWord }: UseHomePageS
           word: translatedWord,
           translation: response.data.translation,
           description: "",
-          loading: false
+          loading: false,
+          error: false
         });
 
         onTranslatedWord?.(translatedWord);
         return;
       }
 
-      const fallbackMessage = response.status === 404
-        ? "We're still learning this word. Try another translation."
-        : "Please check your connection and try again.";
+      const errorMessage = response.status === 404
+        ? "We're still learning! Please try another translation."
+        : "Something went wrong. Please try again.";
 
       setTranslationState({
         word: normalizedInput,
-        translation: ["(no translation found)"],
-        description: response.message || fallbackMessage,
-        loading: false
+        translation: [],
+        description: errorMessage,
+        loading: false,
+        error: true
       });
     },
     [onTranslatedWord]

@@ -21,20 +21,20 @@ export function ContributionModal({ activeModal, onClose }: ContributionModalPro
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-brand-ink/25 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-brand-ink/40 px-4 backdrop-blur-sm"
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
         }
       }}
     >
-      <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-brand-beige shadow-card">
-        <div className="flex items-center justify-between border-b border-brand-brown/20 px-5 py-4">
-          <h3 className="font-heading text-2xl text-brand-ink">{title}</h3>
+      <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-brand-cream shadow-2xl">
+        <div className="flex items-center justify-between border-b border-brand-brown/10 px-6 py-4">
+          <h3 className="font-heading text-xl font-semibold text-brand-ink">{title}</h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-brand-brown/25 px-3 py-1 text-sm text-brand-ink hover:bg-white"
+            className="rounded-lg border border-brand-brown/15 bg-white px-3 py-1.5 text-sm font-medium text-brand-ink transition-colors hover:bg-brand-beige focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
           >
             Close
           </button>

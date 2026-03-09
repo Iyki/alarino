@@ -3,31 +3,50 @@
 @tailwind utilities;
 
 :root {
-  --brand-brown: #5c4525;
-  --brand-cream: #e8dfca;
-  --brand-beige: #f4ecdd;
-  --brand-ink: #2e200f;
-  --brand-forest: #1b2f1d;
-  --brand-gold: #d9bc77;
+  --brand-ink: #1a1207;
+  --brand-brown: #4a3520;
+  --brand-cream: #faf6ef;
+  --brand-beige: #f0e9db;
+  --brand-forest: #1a5c32;
+  --brand-forest-light: #e8f5ec;
+  --brand-gold: #c8952e;
+  --brand-gold-light: #fdf3e0;
+  --brand-terracotta: #c45d35;
+  --brand-indigo: #3b4f7a;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: serif;
+  font-family: var(--font-body), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-.bg-app-gradient {
-  background-image:
-    radial-gradient(circle at 12% 14%, rgba(255, 222, 157, 0.2), transparent 36%),
-    radial-gradient(circle at 90% 18%, rgba(27, 47, 29, 0.2), transparent 28%),
-    linear-gradient(175deg, #5c4525 0%, #7b6038 26%, #dccfb4 100%);
+@layer utilities {
+  .animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out both;
+  }
+  .animate-fade-in-up-delay-1 {
+    animation: fadeInUp 0.4s ease-out 0.1s both;
+  }
+  .animate-fade-in-up-delay-2 {
+    animation: fadeInUp 0.4s ease-out 0.15s both;
+  }
+  .animate-fade-in-up-delay-3 {
+    animation: fadeInUp 0.4s ease-out 0.2s both;
+  }
+  .animate-fade-in-up-delay-4 {
+    animation: fadeInUp 0.4s ease-out 0.25s both;
+  }
 }
 
-.font-heading {
-  font-family: serif;
-}
-
-.font-body {
-  font-family: serif;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

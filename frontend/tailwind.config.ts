@@ -9,6 +9,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        heading: ["var(--font-heading)", "Georgia", "serif"],
+        body: ["var(--font-body)", "system-ui", "sans-serif"]
+      },
       colors: {
         brand: {
           brown: "var(--brand-brown)",
@@ -16,11 +20,16 @@ const config: Config = {
           beige: "var(--brand-beige)",
           ink: "var(--brand-ink)",
           forest: "var(--brand-forest)",
-          gold: "var(--brand-gold)"
+          "forest-light": "var(--brand-forest-light)",
+          gold: "var(--brand-gold)",
+          "gold-light": "var(--brand-gold-light)",
+          terracotta: "var(--brand-terracotta)",
+          indigo: "var(--brand-indigo)"
         }
       },
       boxShadow: {
-        card: "0 12px 30px rgba(46, 32, 15, 0.15)"
+        card: "0 2px 8px rgba(26, 18, 7, 0.04)",
+        "card-hover": "0 8px 24px rgba(26, 18, 7, 0.1)"
       }
     }
   },
