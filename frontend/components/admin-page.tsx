@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 
+import { HeroBanner } from "@/components/hero-banner";
 import { bulkUploadWords } from "@/lib/api";
 import type { BulkUploadResult } from "@/lib/types";
 
@@ -112,13 +113,9 @@ export function AdminPage() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 pb-20 pt-12 sm:px-6 lg:px-8">
-      <section className="animate-fade-in-up text-center">
-        <p className="text-sm font-medium uppercase tracking-[0.25em] text-brand-gold">Operations</p>
-        <h1 className="mt-3 font-heading text-4xl font-bold text-white sm:text-5xl">Admin Bulk Upload</h1>
-      </section>
-
-      <section className="mt-10 animate-fade-in-up-delay-1 rounded-3xl bg-brand-cream p-5 shadow-card sm:p-7">
+    <main className="mx-auto w-full max-w-[80rem] px-6 py-8">
+      <HeroBanner>Admin Bulk Upload</HeroBanner>
+      <section className="animate-fade-in-up-delay-1 rounded-3xl bg-brand-cream p-5 shadow-card sm:p-7">
         <form className="space-y-5" onSubmit={onSubmit}>
           <div>
             <label htmlFor="apiKey" className="block text-sm font-semibold text-brand-ink">
