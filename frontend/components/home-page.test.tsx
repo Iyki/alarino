@@ -4,12 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { HomePage } from "@/components/home-page";
 
-const replaceMock = vi.fn();
-
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    replace: replaceMock
-  }),
+  useRouter: () => ({}),
   usePathname: () => "/"
 }));
 
@@ -67,9 +63,15 @@ beforeEach(() => {
   });
 });
 
+const replaceStateSpy = vi.fn();
+
+beforeEach(() => {
+  replaceStateSpy.mockReset();
+  vi.stubGlobal("history", { ...window.history, replaceState: replaceStateSpy });
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
-  replaceMock.mockReset();
 });
 
 describe("HomePage", () => {
@@ -83,7 +85,7 @@ describe("HomePage", () => {
     await waitFor(() => {
       expect(screen.getByText("hello")).toBeInTheDocument();
       expect(screen.getByText("bawo")).toBeInTheDocument();
-      expect(replaceMock).toHaveBeenCalledWith("/word/hello", { scroll: false });
+      expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/word/hello");
     });
   });
 

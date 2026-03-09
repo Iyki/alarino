@@ -22,22 +22,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.bg-app-gradient {
-  background-image:
-    radial-gradient(ellipse at 10% 0%, rgba(26, 92, 50, 0.12) 0%, transparent 50%),
-    radial-gradient(ellipse at 90% 10%, rgba(200, 149, 46, 0.08) 0%, transparent 40%),
-    linear-gradient(170deg, #3a2816 0%, #5c4525 35%, #f0e9db 100%);
-}
-
 @layer utilities {
   .animate-fade-in-up {
     animation: fadeInUp 0.5s ease-out both;
   }
   .animate-fade-in-up-delay-1 {
-    animation: fadeInUp 0.5s ease-out 0.1s both;
+    animation: fadeInUp 0.4s ease-out 0.1s both;
   }
   .animate-fade-in-up-delay-2 {
-    animation: fadeInUp 0.5s ease-out 0.2s both;
+    animation: fadeInUp 0.4s ease-out 0.15s both;
+  }
+  .animate-fade-in-up-delay-3 {
+    animation: fadeInUp 0.4s ease-out 0.2s both;
+  }
+  .animate-fade-in-up-delay-4 {
+    animation: fadeInUp 0.4s ease-out 0.25s both;
   }
 }
 

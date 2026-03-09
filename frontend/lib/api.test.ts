@@ -58,7 +58,8 @@ describe("lib/api", () => {
     expect(response.message).toContain("network down");
   });
 
-  it("returns a deterministic error response for non-JSON payloads", async () => {
+  it("returns a generic error and logs raw text for non-JSON payloads", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.spyOn(global, "fetch").mockResolvedValue(
       new Response("gateway timeout", {
         status: 504,
@@ -70,7 +71,8 @@ describe("lib/api", () => {
 
     expect(response.success).toBe(false);
     expect(response.status).toBe(504);
-    expect(response.message).toBe("gateway timeout");
+    expect(response.message).toBe("Something went wrong. Please try again.");
     expect(response.data).toBeNull();
+    expect(consoleSpy).toHaveBeenCalledWith("Non-JSON API response (504): gateway timeout");
   });
 });

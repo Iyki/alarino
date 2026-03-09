@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { ContributionModal } from "@/components/home/contribution-modal";
 import { ProverbCard } from "@/components/home/proverb-card";
@@ -15,19 +17,20 @@ interface HomePageProps {
 }
 
 export function HomePage({ initialWord }: HomePageProps) {
-  const router = useRouter();
   const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
   const translateCardRef = useRef<HTMLElement>(null);
   const [isTranslateCardHighlighted, setIsTranslateCardHighlighted] = useState(false);
 
   const onTranslatedWord = useCallback(
     (translatedWord: string) => {
       const targetPath = `/word/${encodeURIComponent(translatedWord)}`;
-      if (pathname !== targetPath) {
-        router.replace(targetPath, { scroll: false });
+      if (pathnameRef.current !== targetPath) {
+        window.history.replaceState(null, "", targetPath);
       }
     },
-    [pathname, router]
+    []
   );
 
   const {
@@ -77,47 +80,55 @@ export function HomePage({ initialWord }: HomePageProps) {
   }, [activeModal]);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-12 sm:px-6 lg:px-8">
-      <section className="animate-fade-in-up text-center">
-        <p className="text-sm font-medium uppercase tracking-[0.25em] text-brand-gold">English to Yoruba Dictionary</p>
-        <h1 className="mt-4 font-heading text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
-          Discover words in <span className="text-brand-gold">Yoruba</span>
+    <main className="mx-auto w-full max-w-[80rem] px-6 py-8">
+      {/* Hero Banner */}
+      <div className="animate-fade-in-up relative mb-5 overflow-hidden rounded-3xl bg-gradient-to-br from-brand-brown to-[#2a1a0e] px-8 py-10 md:px-12">
+        <div
+          className="pointer-events-none absolute -right-8 -top-8 h-64 w-64 rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(200,149,46,0.2) 0%, transparent 70%)" }}
+        />
+        <div
+          className="pointer-events-none absolute -bottom-12 left-[10%] h-48 w-48 rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(26,92,50,0.15) 0%, transparent 70%)" }}
+        />
+        <Link href="/" className="relative z-10 mb-7 inline-flex items-center gap-2.5">
+          <Image
+            src="/alarino_logo_only.svg"
+            alt="Alarino logo"
+            width={32}
+            height={32}
+            priority
+            className="brightness-0 invert"
+          />
+          <span className="font-heading text-xl font-extrabold tracking-tight text-white">Alarino</span>
+        </Link>
+        <h1 className="relative z-10 font-heading text-[clamp(2rem,4vw,3rem)] font-extrabold leading-[1.15] text-white">
+          Discover words<br />in Yoruba
         </h1>
-        <p className="mx-auto mt-4 max-w-lg text-base text-brand-cream/75 sm:text-lg">
-          Explore translations, proverbs, and daily words from the Yoruba language
-        </p>
-        <button
-          type="button"
-          onClick={focusTranslator}
-          className="mt-8 inline-flex items-center gap-2 rounded-xl bg-brand-forest px-7 py-3.5 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-forest/90 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 focus-visible:ring-offset-brand-brown"
-        >
-          Start Translating
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-          </svg>
-        </button>
-      </section>
+      </div>
 
-      <TranslatorCard
-        input={input}
-        isHighlighted={isTranslateCardHighlighted}
-        onInputChange={setInput}
-        onSubmit={() => {
-          void submitTranslation(input);
-        }}
-        translationState={translationState}
-        translateCardRef={translateCardRef}
-      />
-
-      <section className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3">
-        <div className="animate-fade-in-up">
+      {/* Bento Grid */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-12">
+        <div className="animate-fade-in-up-delay-1 md:col-span-8">
+          <TranslatorCard
+            input={input}
+            isHighlighted={isTranslateCardHighlighted}
+            onInputChange={setInput}
+            onSubmit={() => {
+              void submitTranslation(input);
+            }}
+            translationState={translationState}
+            translateCardRef={translateCardRef}
+          />
+        </div>
+        <div className="animate-fade-in-up-delay-2 md:col-span-4">
           <WordOfDayCard
             dailyWord={dailyWord}
             isTranslationVisible={isDailyTranslationVisible}
             onToggleTranslation={toggleDailyTranslation}
           />
         </div>
-        <div className="animate-fade-in-up-delay-1">
+        <div className="animate-fade-in-up-delay-3 md:col-span-7">
           <ProverbCard
             proverb={proverb}
             loading={proverbLoading}
@@ -126,14 +137,14 @@ export function HomePage({ initialWord }: HomePageProps) {
             }}
           />
         </div>
-        <div className="animate-fade-in-up-delay-2">
+        <div className="animate-fade-in-up-delay-4 md:col-span-5">
           <SuggestionsCard
             onOpenModal={(modal) => {
               setActiveModal(modal);
             }}
           />
         </div>
-      </section>
+      </div>
 
       <ContributionModal
         activeModal={activeModal}

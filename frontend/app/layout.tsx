@@ -3,7 +3,6 @@ import { Inter, Playfair_Display } from "next/font/google";
 
 import "@/app/globals.css";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { getFrontendSiteUrl } from "@/lib/env";
 const SITE_URL = getFrontendSiteUrl();
 
@@ -33,8 +32,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <body className="font-body text-brand-ink antialiased">
-        <div className="flex min-h-screen flex-col bg-app-gradient">
-          <SiteHeader />
+        <div className="flex min-h-screen flex-col bg-brand-beige">
           <div className="flex-1">{children}</div>
           <SiteFooter />
         </div>
