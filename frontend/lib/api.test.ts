@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { fetchDailyWord, translateEnglishWord } from "@/lib/api";
+import { fetchDailyWord, translateEnglishWord, translateEnglishWordExperimental } from "@/lib/api";
 
 function jsonResponse(payload: unknown, status = 200) {
   return Promise.resolve(
@@ -35,6 +35,38 @@ describe("lib/api", () => {
     expect(response.success).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/translate",
+      expect.objectContaining({ method: "POST" })
+    );
+
+    const options = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(options.body).toBe(
+      JSON.stringify({
+        text: "hello",
+        source_lang: "en",
+        target_lang: "yo"
+      })
+    );
+  });
+
+  it("posts experimental translation requests with expected payload", async () => {
+    const fetchMock = vi.spyOn(global, "fetch").mockImplementation(() =>
+      jsonResponse({
+        success: true,
+        status: 200,
+        message: "ok",
+        data: {
+          source_word: "hello",
+          translation: ["ẹ káàbọ̀"],
+          to_language: "yo"
+        }
+      })
+    );
+
+    const response = await translateEnglishWordExperimental("hello");
+
+    expect(response.success).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/translate/llm",
       expect.objectContaining({ method: "POST" })
     );
 

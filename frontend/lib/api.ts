@@ -84,6 +84,20 @@ export async function translateEnglishWord(text: string): Promise<ApiResponse<Tr
   });
 }
 
+export async function translateEnglishWordExperimental(text: string): Promise<ApiResponse<TranslationData>> {
+  return requestApi<TranslationData>("/translate/llm", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      text,
+      source_lang: "en",
+      target_lang: "yo"
+    })
+  });
+}
+
 export async function bulkUploadWords(
   textInput: string,
   dryRun: boolean,

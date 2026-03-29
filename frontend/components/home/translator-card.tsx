@@ -24,6 +24,10 @@ export function TranslatorCard({
     () => translationState.translation.map((line) => line.trim()).filter(Boolean),
     [translationState.translation]
   );
+  const experimentalMarkup = useMemo(
+    () => translationState.experimentalTranslation.map((line) => line.trim()).filter(Boolean),
+    [translationState.experimentalTranslation]
+  );
 
   return (
     <section
@@ -110,6 +114,18 @@ export function TranslatorCard({
                     <p key={`${line}-${index}`}>{line}</p>
                   ))}
                 </div>
+                {experimentalMarkup.length > 0 ? (
+                  <section className="mt-5 rounded-xl border border-brand-brown/[0.08] bg-white/75 px-4 py-3">
+                    <p className="text-[0.7rem] font-bold uppercase tracking-[0.15em] text-brand-brown/60">
+                      Experimental
+                    </p>
+                    <div className="mt-2 space-y-1 text-lg font-semibold text-brand-brown">
+                      {experimentalMarkup.map((line, index) => (
+                        <p key={`${line}-experimental-${index}`}>{line}</p>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
                 {translationState.description ? (
                   <p className="mt-3 text-sm text-brand-ink/60">{translationState.description}</p>
                 ) : null}
