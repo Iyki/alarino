@@ -1,23 +1,27 @@
-import pytest
 import os
-from main import app
-from main.languages import Language
-# import to get the route handler
-from main.app import get_translation, admin_bulk_upload
-from main.db_models import Word, Translation
+import importlib
 
-#todo: make tests independent of database access
+import main.translation_service as translation_service
+import pytest
+from main import app as flask_app
+from main.languages import Language
+
+importlib.import_module("main.app")
+
+
+# todo: make tests independent of database access
+
 
 @pytest.fixture
 def client():
     """
     Creates a test client for our Flask app.
     """
-    app.config['TESTING'] = True
+    flask_app.config['TESTING'] = True
     print("rules:")
-    print([str(rule) for rule in app.url_map.iter_rules()])
+    print([str(rule) for rule in flask_app.url_map.iter_rules()])
     print("rules?")
-    with app.test_client() as client:
+    with flask_app.test_client() as client:
         yield client
 
 
@@ -27,10 +31,10 @@ def test_translate_no_data(client):
     We expect a 400 status code and an error message.
     """
     response = client.post('/api/translate')
-    assert response.status_code == 415
-    assert not response.is_json
-    # data = response.get_json()
-    # assert data.get("error") == "Invalid request body."
+    assert response.status_code == 400
+    assert response.is_json
+    data = response.get_json()
+    assert data.get("message") == "Invalid request body."
 
 
 def test_translate_missing_fields(client):
@@ -38,7 +42,6 @@ def test_translate_missing_fields(client):
     Test the /api/translate endpoint with missing fields in JSON data.
     We expect a 400 status code and an error message.
     """
-    # Only provide "text" field, missing "source_language" and "target_language"
     payload = {"text": "Hello"}
     response = client.post('/api/translate', json=payload)
 
@@ -63,9 +66,6 @@ def test_translate_success(client):
     assert response.status_code == 200
     assert response.is_json
     data = response.get_json()
-
-    # We can do a simple assertion since our translator is a stub.
-    # In a real scenario, you'd verify actual translations or structure of the data.
     assert "translation" in data.get("data")
 
 
@@ -82,6 +82,90 @@ def test_translate_custom_text(client):
     response = client.post('/api/translate', json=payload)
     assert response.status_code == 404
 
+
+def test_translate_llm_missing_fields(client):
+    payload = {"text": "Hello"}
+    response = client.post('/api/translate/llm', json=payload)
+
+    assert response.status_code == 400
+    assert response.is_json
+    data = response.get_json()
+    assert data.get("message") == "Invalid request body."
+
+
+def test_translate_llm_unsupported_language(client):
+    payload = {
+        "text": "Hello",
+        "source_lang": "xx",
+        "target_lang": Language.YORUBA.value
+    }
+    response = client.post('/api/translate/llm', json=payload)
+
+    assert response.status_code == 400
+    assert response.is_json
+    data = response.get_json()
+    assert data.get("message") == "Unsupported language."
+
+
+def test_translate_llm_not_configured(client, monkeypatch):
+    monkeypatch.setattr(translation_service, "get_llm_service", lambda: None)
+
+    payload = {
+        "text": "hello",
+        "source_lang": Language.ENGLISH.value,
+        "target_lang": Language.YORUBA.value
+    }
+    response = client.post('/api/translate/llm', json=payload)
+
+    assert response.status_code == 500
+    assert response.is_json
+    data = response.get_json()
+    assert data.get("message") == "LLM service not configured."
+
+
+def test_translate_llm_success(client, monkeypatch):
+    class StubLLMService:
+        def get_translation(self, text, source_lang, target_lang):
+            assert text == "hello"
+            assert source_lang == Language.ENGLISH.value
+            assert target_lang == Language.YORUBA.value
+            return ["bawo"]
+
+    monkeypatch.setattr(translation_service, "get_llm_service", lambda: StubLLMService())
+
+    payload = {
+        "text": "hello",
+        "source_lang": Language.ENGLISH.value,
+        "target_lang": Language.YORUBA.value
+    }
+    response = client.post('/api/translate/llm', json=payload)
+
+    assert response.status_code == 200
+    assert response.is_json
+    data = response.get_json().get("data")
+    assert data["source_word"] == "hello"
+    assert data["translation"] == ["bawo"]
+    assert data["to_language"] == Language.YORUBA.value
+
+
+def test_translate_llm_not_found(client, monkeypatch):
+    class StubLLMService:
+        def get_translation(self, text, source_lang, target_lang):
+            return []
+
+    monkeypatch.setattr(translation_service, "get_llm_service", lambda: StubLLMService())
+
+    payload = {
+        "text": "hello",
+        "source_lang": Language.ENGLISH.value,
+        "target_lang": Language.YORUBA.value
+    }
+    response = client.post('/api/translate/llm', json=payload)
+
+    assert response.status_code == 404
+    assert response.is_json
+    data = response.get_json()
+    assert data.get("message") == "Translation not found."
 
 
 def test_admin_bulk_upload_unauthorized(client):
@@ -153,8 +237,6 @@ def test_admin_bulk_upload_dry_run_success(client):
 #     assert data['dry_run'] is False
 #     assert len(data['successful_pairs']) == 2
 #     assert len(data['failed_pairs']) == 0
-#     assert Word.query.count() == 4
-#     assert Translation.query.count() == 2
 
 
 def test_admin_bulk_upload_with_invalid_data(client):
