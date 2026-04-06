@@ -1,35 +1,34 @@
 ## Backend setup [alarino-backend](../alarino_backend/)
 
 ```
-cd alarino-backend
+cd alarino_backend
 ```
 ### Conda Setup
 ```
-conda env create alarino
+conda create -n alarino python=3.11
 conda activate alarino
-conda create --name alarino --file conda-requirements.txt
+python -m pip install -e .[dev]
 
-# Pip (used only for installation by server - can conflict with conda)
+# Optional virtualenv alternative
 # python -m venv .venv
 # source .venv/bin/activate
-# pip install -r pip-requirements.txt
+# pip install -e .[dev]
 ```
 
 ### Update libraries
 ```shell
-python -m pip list --format=freeze > pip-requirements.txt  --to save python libraries used in conda
-conda list -e > conda-requirements.txt -- save conda libraries
+python -m pip install -e .[dev] --upgrade
 ```
 
 ### Run scripts
 ```
-python -m data.seed_data
+python -m main.app
 
 ```
 
 ### Run backend app
 ```
-python app.py 
+python -m main.app
 ```
 or
 [docker run instructions](../init_server.md/)

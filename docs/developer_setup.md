@@ -108,7 +108,7 @@ With Docker Compose, these are already set for you.
 cd alarino_backend
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r pip-requirements.txt
+pip install -e .[dev]
 python -m main.app
 ```
 

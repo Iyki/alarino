@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 
 WORKDIR /app
 COPY . .
-RUN pip install --no-cache-dir -r pip-requirements.txt
+RUN pip install --no-cache-dir .
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 5001

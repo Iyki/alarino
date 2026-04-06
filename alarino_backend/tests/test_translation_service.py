@@ -5,6 +5,8 @@ from main.languages import Language
 
 
 class QueryStub:
+    """Minimal chainable query stand-in for translation service tests."""
+
     def __init__(self, first_result=None, all_result=None):
         self.first_result = first_result
         self.all_result = [] if all_result is None else all_result
