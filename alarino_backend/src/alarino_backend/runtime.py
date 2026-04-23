@@ -1,22 +1,30 @@
 import logging
 import os
-from pathlib import Path
+import sys
 from datetime import date
+from pathlib import Path
 from typing import Dict, Tuple
 
-LOG_FILE_PATH = Path(__file__).resolve().parents[2] / "seed.log"
+LOG_FORMAT = "%(asctime)s [%(levelname)s] [%(processName)s] %(message)s"
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] [%(processName)s] %(message)s",
-    handlers=[
-        logging.FileHandler(LOG_FILE_PATH),
-        logging.StreamHandler(),
-    ],
-)
 
 logger: logging.Logger = logging.getLogger("alarino_backend")
 _daily_word_cache: Dict[date, Tuple[str, str]] = {}
+
+
+def configure_logging() -> None:
+    handlers: list[logging.Handler] = [logging.StreamHandler()]
+    log_file_path = os.getenv("ALARINO_LOG_FILE")
+
+    if log_file_path:
+        try:
+            path = Path(log_file_path).expanduser()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            handlers.append(logging.FileHandler(path))
+        except OSError as exc:
+            print(f"Unable to configure ALARINO_LOG_FILE={log_file_path}: {exc}", file=sys.stderr)
+
+    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, handlers=handlers)
 
 
 def get_allowed_origins() -> list[str]:
@@ -28,3 +36,6 @@ def get_allowed_origins() -> list[str]:
         ).split(",")
         if origin.strip()
     ]
+
+
+configure_logging()

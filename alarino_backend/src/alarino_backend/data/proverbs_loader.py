@@ -8,7 +8,6 @@ from alarino_backend.data.seed_data_utils import add_proverb, is_valid_english_t
 from alarino_backend.db_models import db
 from alarino_backend.runtime import logger
 
-app = create_app()
 DATA_DIR = Path(__file__).resolve().parent
 
 
@@ -29,7 +28,7 @@ def load_proverbs_from_file(file_path: str):
                 continue
 
 
-def seed_proverbs_batch(entries: list, batch_id: int) -> list:
+def seed_proverbs_batch(entries: list, batch_id: int, app=None) -> list:
     """
     Seeds a batch of proverbs into the database.
     Args:
@@ -39,6 +38,8 @@ def seed_proverbs_batch(entries: list, batch_id: int) -> list:
         A list of invalid entries found in the batch.
     """
     invalid_entries = []
+    app = app or create_app()
+
     with app.app_context():
         for entry in entries:
             yoruba_text = entry.get("yoruba", "").strip()
@@ -71,7 +72,7 @@ def seed_proverbs_batch(entries: list, batch_id: int) -> list:
     return invalid_entries
 
 
-def write_proverbs_data():
+def write_proverbs_data(app=None):
     """
     Main function to seed proverbs from the train.jsonl file.
     """
@@ -79,11 +80,13 @@ def write_proverbs_data():
     proverbs = list(load_proverbs_from_file(file_path))
     logger.info(f"Loaded {len(proverbs)} proverbs from {file_path}")
 
+    app = app or create_app()
+
     # Set the starting batch index. Change to > 0 to resume a failed run.
     batch_start = 0
     upload_data_in_batches(
         entries=proverbs,
-        upload_func=seed_proverbs_batch,
+        upload_func=lambda entries, batch_id: seed_proverbs_batch(entries, batch_id, app),
         invalid_files_prefix=DATA_DIR / "invalid_datasets" / "proverbs" / "invalid_proverbs_batch",
         batch_size=500, batch_start=batch_start
     )

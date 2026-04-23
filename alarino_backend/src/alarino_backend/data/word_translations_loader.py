@@ -2,7 +2,6 @@ import json
 import re
 from pathlib import Path
 
-from sqlalchemy import false
 from sqlalchemy.exc import IntegrityError
 
 from alarino_backend import create_app
@@ -11,7 +10,6 @@ from alarino_backend.db_models import db
 from alarino_backend.languages import Language
 from alarino_backend.runtime import logger
 
-app = create_app()
 DATA_DIR = Path(__file__).resolve().parent
 
 
@@ -48,7 +46,8 @@ def process_translation(english_word:str, yoruba_translations:list, part_of_spee
     return invalid_entries
 
 
-def write_data_batch(entries: list, batch_id: int) -> list[dict]:
+def write_data_batch(entries: list, batch_id: int, app=None) -> list[dict]:
+    app = app or create_app()
     with app.app_context():
         batch_start = 0
         batch_end = len(entries) - 1
@@ -85,16 +84,18 @@ def write_data_batch(entries: list, batch_id: int) -> list[dict]:
         return invalid_entries
 
 
-def write_data():
+def write_data(app=None):
     with open(DATA_DIR / "datasets" / "en-yo-dataset.json", "r", encoding="utf-8") as f:
         entries = json.load(f)
     logger.info(f"Finished loading data file with {len(entries)} translations")
+
+    app = app or create_app()
 
     # Set the starting batch index. Change to > 0 to resume a failed run.
     batch_start = 0
     upload_data_in_batches(
         entries=entries,
-        upload_func=write_data_batch,
+        upload_func=lambda entries, batch_id: write_data_batch(entries, batch_id, app),
         invalid_files_prefix=DATA_DIR / "invalid_datasets" / "translations" / "invalid_entries_batch",
         batch_size=500, batch_start=batch_start
     )

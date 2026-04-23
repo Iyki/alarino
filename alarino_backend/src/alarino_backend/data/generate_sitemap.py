@@ -13,7 +13,6 @@ from alarino_backend.db_models import Word, Translation
 from alarino_backend.languages import Language
 from alarino_backend.runtime import logger
 
-app = create_app()
 DATA_DIR = Path(__file__).resolve().parent
 
 # Add this to your crontab with: crontab -e
@@ -105,6 +104,7 @@ def add_url(
 
 if __name__ == "__main__":
     # Use app context to access database
+    app = create_app()
     with app.app_context():
         output_file = DATA_DIR / "sitemap.xml"
         generate_sitemap(output_file)
