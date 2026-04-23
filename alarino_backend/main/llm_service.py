@@ -8,7 +8,7 @@ from typing import List, Optional
 from gradient import Gradient
 
 from data.seed_data_utils import is_valid_yoruba_word
-from main import logger
+from main.runtime import logger
 
 LANGUAGE_NAMES = {
     "en": "English",

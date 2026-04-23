@@ -11,9 +11,12 @@ from urllib.parse import quote
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Import the app modules
-from main import app, logger
+from main import create_app
 from main.db_models import Word, Translation
 from main.languages import Language
+from main.runtime import logger
+
+app = create_app()
 
 # Add this to your crontab with: crontab -e
 # Run the sitemap generator every day at 1:00 AM

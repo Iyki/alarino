@@ -1,5 +1,7 @@
-from main import app
+from main import create_app
 from main.db_models import db
+
+app = create_app()
 
 
 def create_tables():

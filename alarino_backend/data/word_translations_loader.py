@@ -5,9 +5,12 @@ from sqlalchemy import false
 from sqlalchemy.exc import IntegrityError
 
 from data.seed_data_utils import add_word, create_translation, upload_data_in_batches
-from main import app, logger
+from main import create_app
 from main.db_models import db
 from main.languages import Language
+from main.runtime import logger
+
+app = create_app()
 
 
 def process_translation(english_word:str, yoruba_translations:list, part_of_speech:str =None) -> list:

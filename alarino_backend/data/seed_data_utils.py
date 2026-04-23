@@ -3,9 +3,9 @@ import re
 import unicodedata
 from typing import Callable
 
-from main import logger
 from main.db_models import Proverb, db, Word, Translation
 from main.languages import Language
+from main.runtime import logger
 
 # Define valid Yoruba character sets
 _YORUBA_CONSONANTS = "bdfghjklmnprstwygbṣ"  # Standard consonants (excluding c, q, v, x, z)

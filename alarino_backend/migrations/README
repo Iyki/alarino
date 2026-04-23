@@ -2,10 +2,10 @@ Single-database configuration for Flask.
 
 #### Database setup
 ```
-# export FLASK_APP=main
-# flask --app=main.app routes
-# flask --app=main.app db init - only run once to setup the actual database
-# flask --app=main.app db migrate -m "commit message"
-# flask --app=main.app db upgrade
+# export FLASK_APP=main:create_app
+# flask --app=main:create_app routes
+# flask --app=main:create_app db init - only run once to setup the actual database
+# flask --app=main:create_app db migrate -m "commit message"
+# flask --app=main:create_app db upgrade
 
 ```

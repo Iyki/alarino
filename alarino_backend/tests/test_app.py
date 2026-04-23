@@ -2,15 +2,21 @@ import importlib
 
 import pytest
 
-from main import _daily_word_cache, app as flask_app, db
+from main import _daily_word_cache, db
 import main.app as app_module
 from main.languages import Language
 
 
 @pytest.fixture
-def client():
-    flask_app.config["TESTING"] = True
-    with flask_app.test_client() as client:
+def app():
+    app = app_module.create_app()
+    app.config["TESTING"] = True
+    return app
+
+
+@pytest.fixture
+def client(app):
+    with app.test_client() as client:
         yield client
 
 
@@ -20,8 +26,12 @@ def test_app_module_import_succeeds():
     assert imported is app_module
 
 
-def test_expected_routes_are_registered():
-    rules = {rule.rule for rule in flask_app.url_map.iter_rules()}
+def test_create_app_returns_flask_app(app):
+    assert app.name == "main.app"
+
+
+def test_expected_routes_are_registered(app):
+    rules = {rule.rule for rule in app.url_map.iter_rules()}
 
     assert {
         "/api/translate",
@@ -33,10 +43,10 @@ def test_expected_routes_are_registered():
     }.issubset(rules)
 
 
-def test_sqlalchemy_is_initialized_on_app():
-    assert "sqlalchemy" in flask_app.extensions
+def test_sqlalchemy_is_initialized_on_app(app):
+    assert "sqlalchemy" in app.extensions
 
-    with flask_app.app_context():
+    with app.app_context():
         assert db.session is not None
 
 

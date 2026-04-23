@@ -3,8 +3,11 @@ import json
 from sqlalchemy.exc import IntegrityError
 
 from data.seed_data_utils import add_proverb, is_valid_english_text, is_valid_yoruba_text, upload_data_in_batches
-from main import app, logger
+from main import create_app
 from main.db_models import db
+from main.runtime import logger
+
+app = create_app()
 
 
 def load_proverbs_from_file(file_path: str):

@@ -5,11 +5,11 @@ from datetime import date
 import threading
 from typing import Tuple, Dict, Optional
 
-from main import logger
 from main.db_models import Word, DailyWord, Translation, MissingTranslation, Proverb
 from main.languages import Language
 from main.llm_service import get_llm_service
 from main.response import APIResponse, TranslationResponseData, WordOfTheDayResponseData, ProverbResponseData, BulkUploadResponseData
+from main.runtime import logger
 from data.seed_data_utils import add_word, create_translation, is_valid_english_word, is_valid_yoruba_word
 
 
