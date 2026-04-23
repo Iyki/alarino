@@ -16,14 +16,11 @@ Provides API-only endpoints consumed by the Next.js frontend and direct API clie
 ## Local Run (without Docker)
 ```bash
 cd alarino_backend
-conda create -n alarino python=3.11
-conda activate alarino
-python -m pip install -e .[dev]
-python -m alarino_backend.app
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r pip-requirements.txt
+python -m main.app
 ```
-
-If you prefer a plain virtualenv, create and activate `.venv`, then run the same
-`python -m pip install -e .[dev]` command.
 
 ## Environment Variables
 Required in `alarino_backend/.env`:
@@ -44,8 +41,7 @@ SITE_DOMAIN=https://alarino.com
 ## Tests
 ```bash
 cd alarino_backend
-conda activate alarino
-python -m pytest
+python3 -m pytest
 ```
 
 ## Docker

@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-import alarino_backend.llm_service as llm_service
-from alarino_backend.llm_service import GradientLLMService, get_llm_service
+import main.llm_service as llm_service
+from main.llm_service import GradientLLMService, get_llm_service
 
 
 @pytest.fixture(autouse=True)

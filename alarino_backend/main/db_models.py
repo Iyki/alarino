@@ -1,7 +1,6 @@
 from datetime import date, datetime
+from main import db
 from sqlalchemy import Index
-
-from alarino_backend.flask_extensions import db
 
 class Word(db.Model):
     __tablename__ = 'words'
