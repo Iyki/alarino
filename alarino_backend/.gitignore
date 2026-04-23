@@ -171,4 +171,3 @@ cython_debug/
 .pypirc
 /data/invalid_datasets/
 /data/ocr_data/
-/src/alarino_backend/data/invalid_datasets/

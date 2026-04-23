@@ -106,15 +106,11 @@ With Docker Compose, these are already set for you.
 ### Backend
 ```bash
 cd alarino_backend
-conda create -n alarino python=3.11
-conda activate alarino
-python -m pip install -e .[dev]
-python -m alarino_backend.app
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r pip-requirements.txt
+python -m main.app
 ```
-
-If the `alarino` environment already exists, use `conda activate alarino`
-instead of creating it again. A plain virtualenv also works; activate it, then
-run `python -m pip install -e .[dev]`.
 
 ### Frontend
 ```bash
@@ -137,8 +133,7 @@ npm run build
 ### Backend
 ```bash
 cd alarino_backend
-conda activate alarino
-python -m pytest
+python3 -m pytest
 ```
 
 ## Common API Endpoints

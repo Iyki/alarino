@@ -1,32 +1,40 @@
-## Backend Setup
+## Backend setup [alarino-backend](../alarino_backend/)
 
-The canonical project setup guide is [Developer Setup](../docs/developer_setup.md).
-
+```
+cd alarino-backend
+```
 ### Conda Setup
-
-```bash
-cd alarino_backend
-conda create -n alarino python=3.11
+```
+conda env create alarino
 conda activate alarino
-python -m pip install -e .[dev]
+conda create --name alarino --file conda-requirements.txt
+
+# Pip (used only for installation by server - can conflict with conda)
+# python -m venv .venv
+# source .venv/bin/activate
+# pip install -r pip-requirements.txt
 ```
 
-### Run Backend App
-
-```bash
-python -m alarino_backend.app
+### Update libraries
+```shell
+python -m pip list --format=freeze > pip-requirements.txt  --to save python libraries used in conda
+conda list -e > conda-requirements.txt -- save conda libraries
 ```
 
-### Run Data Scripts
+### Run scripts
+```
+python -m data.seed_data
 
-```bash
-python -m alarino_backend.data.generate_sitemap
-python -m alarino_backend.data.proverbs_loader
-python -m alarino_backend.data.word_translations_loader
 ```
 
-### Test Backend
+### Run backend app
+```
+python app.py 
+```
+or
+[docker run instructions](../init_server.md/)
 
-```bash
-python -m pytest
+### test the backend
+```
+pytest
 ```
