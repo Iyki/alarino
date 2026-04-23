@@ -6,11 +6,11 @@ from dotenv import load_dotenv
 from flask import Blueprint, Flask, jsonify, request
 from flask_cors import CORS
 
-from main.flask_extensions import db, migrate
-from main.languages import Language
-from main.response import APIResponse
-from main.runtime import _daily_word_cache, get_allowed_origins, logger
-from main.translation_service import (
+from alarino_backend.flask_extensions import db, migrate
+from alarino_backend.languages import Language
+from alarino_backend.response import APIResponse
+from alarino_backend.runtime import _daily_word_cache, get_allowed_origins, logger
+from alarino_backend.translation_service import (
     bulk_upload_words,
     get_random_proverb,
     get_word_of_the_day,
@@ -150,7 +150,7 @@ def create_app() -> Flask:
     migrate.init_app(app, db)
 
     with app.app_context():
-        import main.db_models  # noqa: F401
+        import alarino_backend.db_models  # noqa: F401
 
     register_routes(app)
     return app

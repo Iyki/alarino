@@ -19,7 +19,7 @@ cd alarino_backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .[dev]
-python -m main.app
+python -m alarino_backend.app
 ```
 
 ## Environment Variables

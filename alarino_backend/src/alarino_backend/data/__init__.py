@@ -1,1 +1,1 @@
-"""Data package placeholder for the upcoming module migration."""
+"""Data loaders and bundled datasets for the backend package."""

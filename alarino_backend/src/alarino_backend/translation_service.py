@@ -5,12 +5,12 @@ from datetime import date
 import threading
 from typing import Tuple, Dict, Optional
 
-from main.db_models import Word, DailyWord, Translation, MissingTranslation, Proverb
-from main.languages import Language
-from main.llm_service import get_llm_service
-from main.response import APIResponse, TranslationResponseData, WordOfTheDayResponseData, ProverbResponseData, BulkUploadResponseData
-from main.runtime import logger
-from data.seed_data_utils import add_word, create_translation, is_valid_english_word, is_valid_yoruba_word
+from alarino_backend.data.seed_data_utils import add_word, create_translation, is_valid_english_word, is_valid_yoruba_word
+from alarino_backend.db_models import Word, DailyWord, Translation, MissingTranslation, Proverb
+from alarino_backend.languages import Language
+from alarino_backend.llm_service import get_llm_service
+from alarino_backend.response import APIResponse, TranslationResponseData, WordOfTheDayResponseData, ProverbResponseData, BulkUploadResponseData
+from alarino_backend.runtime import logger
 
 
 def translate_llm(text: str, source: Language, target: Language) -> tuple[dict, int]:

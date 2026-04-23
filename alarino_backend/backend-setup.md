@@ -22,13 +22,13 @@ python -m pip install -e .[dev] --upgrade
 
 ### Run scripts
 ```
-python -m main.app
+python -m alarino_backend.app
 
 ```
 
 ### Run backend app
 ```
-python -m main.app
+python -m alarino_backend.app
 ```
 or
 [docker run instructions](../init_server.md/)

@@ -1,13 +1,15 @@
 import json
+from pathlib import Path
 
 from sqlalchemy.exc import IntegrityError
 
-from data.seed_data_utils import add_proverb, is_valid_english_text, is_valid_yoruba_text, upload_data_in_batches
-from main import create_app
-from main.db_models import db
-from main.runtime import logger
+from alarino_backend import create_app
+from alarino_backend.data.seed_data_utils import add_proverb, is_valid_english_text, is_valid_yoruba_text, upload_data_in_batches
+from alarino_backend.db_models import db
+from alarino_backend.runtime import logger
 
 app = create_app()
+DATA_DIR = Path(__file__).resolve().parent
 
 
 def load_proverbs_from_file(file_path: str):
@@ -73,7 +75,7 @@ def write_proverbs_data():
     """
     Main function to seed proverbs from the train.jsonl file.
     """
-    file_path = "datasets/train.jsonl"
+    file_path = DATA_DIR / "datasets" / "train.jsonl"
     proverbs = list(load_proverbs_from_file(file_path))
     logger.info(f"Loaded {len(proverbs)} proverbs from {file_path}")
 
@@ -82,7 +84,7 @@ def write_proverbs_data():
     upload_data_in_batches(
         entries=proverbs,
         upload_func=seed_proverbs_batch,
-        invalid_files_prefix="invalid_datasets/proverbs/invalid_proverbs_batch",
+        invalid_files_prefix=DATA_DIR / "invalid_datasets" / "proverbs" / "invalid_proverbs_batch",
         batch_size=500, batch_start=batch_start
     )
 

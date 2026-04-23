@@ -2,9 +2,9 @@ import importlib
 
 import pytest
 
-from main import _daily_word_cache, db
-import main.app as app_module
-from main.languages import Language
+import alarino_backend.app as app_module
+from alarino_backend import _daily_word_cache, db
+from alarino_backend.languages import Language
 
 
 @pytest.fixture
@@ -21,13 +21,13 @@ def client(app):
 
 
 def test_app_module_import_succeeds():
-    imported = importlib.import_module("main.app")
+    imported = importlib.import_module("alarino_backend.app")
 
     assert imported is app_module
 
 
 def test_create_app_returns_flask_app(app):
-    assert app.name == "main.app"
+    assert app.name == "alarino_backend.app"
 
 
 def test_expected_routes_are_registered(app):

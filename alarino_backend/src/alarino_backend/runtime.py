@@ -1,19 +1,21 @@
 import logging
 import os
+from pathlib import Path
 from datetime import date
 from typing import Dict, Tuple
 
+LOG_FILE_PATH = Path(__file__).resolve().parents[2] / "seed.log"
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] [%(processName)s] %(message)s",
     handlers=[
-        logging.FileHandler("../seed.log"),
+        logging.FileHandler(LOG_FILE_PATH),
         logging.StreamHandler(),
     ],
 )
 
-logger: logging.Logger = logging.getLogger("main")
+logger: logging.Logger = logging.getLogger("alarino_backend")
 _daily_word_cache: Dict[date, Tuple[str, str]] = {}
 
 

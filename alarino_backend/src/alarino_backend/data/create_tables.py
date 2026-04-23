@@ -1,5 +1,5 @@
-from main import create_app
-from main.db_models import db
+from alarino_backend import create_app
+from alarino_backend.db_models import db
 
 app = create_app()
 

@@ -1,11 +1,12 @@
 import json
 import re
 import unicodedata
+from pathlib import Path
 from typing import Callable
 
-from main.db_models import Proverb, db, Word, Translation
-from main.languages import Language
-from main.runtime import logger
+from alarino_backend.db_models import Proverb, db, Word, Translation
+from alarino_backend.languages import Language
+from alarino_backend.runtime import logger
 
 # Define valid Yoruba character sets
 _YORUBA_CONSONANTS = "bdfghjklmnprstwygbṣ"  # Standard consonants (excluding c, q, v, x, z)
@@ -165,7 +166,8 @@ def upload_data_in_batches(entries: list, upload_func: Callable[[list, int], lis
         if batch_invalids:
             all_invalid_entries.extend(batch_invalids)
             # Write invalid entries for the current batch
-            batch_file = f"{invalid_files_prefix}_{batch_id}.json"
+            batch_file = Path(f"{invalid_files_prefix}_{batch_id}.json")
+            batch_file.parent.mkdir(parents=True, exist_ok=True)
             with open(batch_file, "w", encoding="utf-8") as f:
                 json.dump(batch_invalids, f, indent=2, ensure_ascii=False)
             logger.warning(f"Wrote {len(batch_invalids)} invalid entries to {batch_file}")
@@ -173,7 +175,8 @@ def upload_data_in_batches(entries: list, upload_func: Callable[[list, int], lis
         batch_start += batch_size
 
     if all_invalid_entries:
-        invalid_file_path = f"{invalid_files_prefix}_all.json"
+        invalid_file_path = Path(f"{invalid_files_prefix}_all.json")
+        invalid_file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(invalid_file_path, "w", encoding="utf-8") as f:
             json.dump(all_invalid_entries, f, indent=2, ensure_ascii=False)
         logger.info(f"Wrote {len(all_invalid_entries)} total invalid entries to {invalid_file_path}")

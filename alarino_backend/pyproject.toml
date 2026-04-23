@@ -26,10 +26,18 @@ dev = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["alarino_backend*"]
+
+[tool.setuptools.package-data]
+"alarino_backend.data" = [
+  "datasets/*",
+  "readme.md",
+  "sitemap.xml",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

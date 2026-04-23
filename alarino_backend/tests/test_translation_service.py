@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-import main.translation_service as translation_service
-from main.languages import Language
+import alarino_backend.translation_service as translation_service
+from alarino_backend.languages import Language
 
 
 class QueryStub:

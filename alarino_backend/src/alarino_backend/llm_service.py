@@ -7,8 +7,8 @@ from typing import List, Optional
 
 from gradient import Gradient
 
-from data.seed_data_utils import is_valid_yoruba_word
-from main.runtime import logger
+from alarino_backend.data.seed_data_utils import is_valid_yoruba_word
+from alarino_backend.runtime import logger
 
 LANGUAGE_NAMES = {
     "en": "English",
