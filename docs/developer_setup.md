@@ -171,5 +171,6 @@ If `3000` or `5001` is occupied:
 ## Deployment Notes
 - CI workflow: `.github/workflows/deploy.yml`
 - Deploy target runs `backend`, `frontend`, and `caddy` in production compose.
+- The backend container serves Flask through Gunicorn (`alarino_backend.wsgi:app`).
 - Fresh droplet bootstrap: `scripts/bootstrap_droplet.sh` (guide: `docs/droplet_bootstrap.md`).
 - Deploy secrets: `SSH_KEY_DEPLOY`, `DO_USERNAME`, `DO_HOST`, `BACKEND_ENV_FILE`.

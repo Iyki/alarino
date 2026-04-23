@@ -23,6 +23,10 @@ export const metadata: Metadata = {
   title: "Alarino | English to Yoruba Translator & Dictionary Online",
   description: "Alarino is a community-backed English to Yoruba translation dictionary with daily learning tools.",
   keywords: ["Yoruba", "English", "translation", "dictionary", "African languages"],
+  icons: {
+    icon: [{ url: "/alarino_logo_only.svg", type: "image/svg+xml" }],
+    shortcut: "/alarino_logo_only.svg"
+  },
   alternates: {
     canonical: "/"
   }
