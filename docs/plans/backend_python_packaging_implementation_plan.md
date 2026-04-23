@@ -178,11 +178,11 @@ Target command style:
 
 ```bash
 cd alarino_backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .[dev]
+conda create -n alarino python=3.11
+conda activate alarino
+python -m pip install -e .[dev]
 python -m alarino_backend.app
-pytest
+python -m pytest
 ```
 
 Preferred Flask command style:

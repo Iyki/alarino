@@ -8,10 +8,6 @@ import xml.dom.minidom
 from xml.etree import ElementTree
 from urllib.parse import quote
 
-# Add the parent directory to the path to import the app modules
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-# Import the app modules
 from alarino_backend import create_app
 from alarino_backend.db_models import Word, Translation
 from alarino_backend.languages import Language
@@ -22,7 +18,7 @@ DATA_DIR = Path(__file__).resolve().parent
 
 # Add this to your crontab with: crontab -e
 # Run the sitemap generator every day at 1:00 AM
-# 0 1 * * * cd alarino_backend/data && /usr/bin/python3 data/generate_sitemap.py >> data/sitemap_generation.log 2>&1
+# 0 1 * * * cd /path/to/alarino/alarino_backend && /usr/bin/python3 -m alarino_backend.data.generate_sitemap >> sitemap_generation.log 2>&1
 
 SITE_DOMAIN = os.getenv("SITE_DOMAIN", "https://alarino.com")  # Default domain, override with environment variable
 
