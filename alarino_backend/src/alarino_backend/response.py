@@ -1,7 +1,7 @@
 from dataclasses import dataclass, asdict
 from typing import List, Optional, Any
 
-from main.languages import Language
+from alarino_backend.languages import Language
 
 
 @dataclass
