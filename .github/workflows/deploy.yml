@@ -30,15 +30,15 @@ jobs:
       - name: Backend import smoke test
         working-directory: alarino_backend
         env:
-          DATABASE_URL: sqlite:///:memory:
-          ADMIN_API_KEY: ci-test-key
+          DATABASE_URL: "sqlite:///:memory:"
+          ADMIN_API_KEY: "ci-test-key"
         run: python -c "from alarino_backend.app import create_app; app = create_app(); assert 'sqlalchemy' in app.extensions"
 
       - name: Backend tests
         working-directory: alarino_backend
         env:
-          DATABASE_URL: sqlite:///:memory:
-          ADMIN_API_KEY: ci-test-key
+          DATABASE_URL: "sqlite:///:memory:"
+          ADMIN_API_KEY: "ci-test-key"
         run: python -m pytest
 
       - name: Set up Node.js
