@@ -14,6 +14,9 @@ Provides API-only endpoints consumed by the Next.js frontend and direct API clie
 - `GET /api/health`
 
 ## Local Run (without Docker)
+Backend Python dependencies are expected to be installed in the Conda environment
+`alarino`.
+
 ```bash
 cd alarino_backend
 conda create -n alarino python=3.11
@@ -24,6 +27,8 @@ python -m alarino_backend.app
 
 If you prefer a plain virtualenv, create and activate `.venv`, then run the same
 `python -m pip install -e .[dev]` command.
+
+Docker production runs the API with Gunicorn via `alarino_backend.wsgi:app`.
 
 ## Environment Variables
 Required in `alarino_backend/.env`:
@@ -39,6 +44,9 @@ Optional:
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://alarino.com,https://www.alarino.com
 MAIN_PORT=5001
 SITE_DOMAIN=https://alarino.com
+GUNICORN_WORKERS=2
+GUNICORN_THREADS=4
+GUNICORN_TIMEOUT=120
 ```
 
 ## Tests

@@ -26,6 +26,12 @@ def test_app_module_import_succeeds():
     assert imported is app_module
 
 
+def test_wsgi_module_exposes_app():
+    imported = importlib.import_module("alarino_backend.wsgi")
+
+    assert imported.app.name == "alarino_backend.app"
+
+
 def test_create_app_returns_flask_app(app):
     assert app.name == "alarino_backend.app"
 
