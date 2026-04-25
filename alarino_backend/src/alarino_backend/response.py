@@ -1,4 +1,4 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import List, Optional, Any
 
 from alarino_backend.languages import Language
@@ -11,10 +11,46 @@ class BaseResponseData:
 
 
 @dataclass
+class TranslationInSenseGroup:
+    """A single target-language translation surfaced under a sense group.
+    Carries the per-Translation metadata (note, provenance) as well as
+    sense-scoped examples (Phase 6b backfilled examples to point at sense
+    pairs; this surfaces them here)."""
+
+    word: str
+    note: Optional[str] = None
+    provenance: Optional[str] = None
+    examples: List[dict] = field(default_factory=list)
+
+
+@dataclass
+class SenseGroup:
+    """Sense-grouped translation results, added in Phase 6c. One group per
+    distinct sense of the looked-up word. ``label``, ``definition``,
+    ``register``, ``domain``, ``part_of_speech`` come from the looked-up
+    word's sense; ``translations`` lists target-language matches under
+    that sense.
+
+    Today most words have a single default sense with NULL metadata
+    fields, so a typical response carries one group with mostly-empty
+    metadata. As polysemy data is curated (e.g., "bank — financial" vs
+    "bank — riverbank") the same response shape naturally surfaces
+    multiple groups without an API rev."""
+
+    label: Optional[str] = None
+    definition: Optional[str] = None
+    register: Optional[str] = None
+    domain: Optional[str] = None
+    part_of_speech: Optional[str] = None
+    translations: List[TranslationInSenseGroup] = field(default_factory=list)
+
+
+@dataclass
 class TranslationResponseData(BaseResponseData):
     translation: List[str]
     source_word: str
     to_language: Language
+    senses: List[SenseGroup] = field(default_factory=list)
 
 
 @dataclass

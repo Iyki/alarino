@@ -72,7 +72,6 @@ def get_translation(text: str, source_language: Language, target_language: Langu
         text,
         source_language,
         target_language,
-        request.remote_addr,
         request.headers.get("User-Agent", "unknown"),
     )
 

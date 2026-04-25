@@ -1,27 +1,80 @@
 from datetime import date, datetime
-from sqlalchemy import Index
+from sqlalchemy import Index, String, Text, func
+from sqlalchemy import text as sql_text
+from sqlalchemy.types import TypeDecorator
 
 from alarino_backend.flask_extensions import db
+from alarino_backend.normalization import normalize_text, normalize_word_text
+from alarino_backend.parts_of_speech import ALLOWED_POS_VALUES
+
+
+_POS_CHECK_CLAUSE = (
+    "part_of_speech IS NULL OR part_of_speech IN ("
+    + ", ".join(f"'{v}'" for v in ALLOWED_POS_VALUES)
+    + ")"
+)
+
+
+class NFCWord(TypeDecorator):
+    """Word-level canonical text column. Mirrors normalize_word_text():
+    strip outer whitespace + punctuation, lowercase, then NFC. Applied at
+    SQLAlchemy bind time so every ORM write *and* every parameterized query
+    against this column normalizes the value, regardless of whether the
+    call site remembered to. Defense against a class of drift bugs we
+    repeatedly hit during the schema evolution work."""
+
+    impl = String
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return normalize_word_text(value)
+
+
+class NFCText(TypeDecorator):
+    """Sentence/proverb-level canonical text column. Mirrors normalize_text():
+    strip leading and trailing whitespace then NFC. Case and inner punctuation
+    preserved. Same bind-time normalization guarantee as NFCWord."""
+
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return normalize_text(value)
 
 class Word(db.Model):
     __tablename__ = 'words'
 
     w_id = db.Column(db.Integer, primary_key=True)
     language = db.Column(db.String(3), nullable=False)
-    word = db.Column(db.String(200), nullable=False)  ##todo: rename to text
-    part_of_speech = db.Column(db.String(20))
-    created_at = db.Column(db.DateTime, default=datetime.now())
+    # Phase 7 renamed this column from `word` to `text`. The class is still
+    # named Word (it represents a word as a vocabulary entry); only the
+    # column holding the lexical string was renamed for clarity, since
+    # `word.word` was awkward and `word.text` reads naturally.
+    text = db.Column(NFCWord(200), nullable=False)
+    # Phase 6d removed Word.part_of_speech. POS is now a sense-level attribute
+    # only — a polysemous word can carry distinct POS values per sense (e.g.,
+    # "run" as both noun and verb). Set Sense.part_of_speech instead.
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.now,
+        server_default=func.now(),
+    )
 
     __table_args__ = (
-        db.UniqueConstraint('language', 'word', name='unique_language_word'),
-        # Add index on language and word for faster lookups
-        Index('idx_words_language_word', 'language', 'word'),
-        # Add index on just language for filtering words by language
-        Index('idx_words_language', 'language'),
+        db.UniqueConstraint('language', 'text', name='unique_language_text'),
+        db.CheckConstraint(
+            "language IN ('en', 'yo')",
+            name='ck_words_language_valid',
+        ),
     )
 
     def __repr__(self):
-        return f"<Word {self.language}:{self.word}>"
+        return f"<Word {self.language}:{self.text}>"
 
 
 class Translation(db.Model):
@@ -30,33 +83,120 @@ class Translation(db.Model):
     t_id = db.Column(db.Integer, primary_key=True)
     source_word_id = db.Column(db.Integer, db.ForeignKey('words.w_id', ondelete='CASCADE'), nullable=False)
     target_word_id = db.Column(db.Integer, db.ForeignKey('words.w_id', ondelete='CASCADE'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now)
+    # Phase 6a added these FKs nullable; Phase 6b cut writes over to populate
+    # them on every new Translation; Phase 6d makes them NOT NULL now that
+    # every existing row is backfilled and every new row sets them.
+    source_sense_id = db.Column(
+        db.Integer,
+        db.ForeignKey('senses.sense_id', name='fk_translations_source_sense_id', ondelete='CASCADE'),
+        nullable=False,
+    )
+    target_sense_id = db.Column(
+        db.Integer,
+        db.ForeignKey('senses.sense_id', name='fk_translations_target_sense_id', ondelete='CASCADE'),
+        nullable=False,
+    )
+    note = db.Column(db.Text, nullable=True)
+    confidence = db.Column(db.Float, nullable=True)
+    provenance = db.Column(db.String(40), nullable=True)
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.now,
+        server_default=func.now(),
+    )
 
     source_word = db.relationship('Word', foreign_keys=[source_word_id], backref='translations_from')
     target_word = db.relationship('Word', foreign_keys=[target_word_id], backref='translations_to')
+    source_sense = db.relationship('Sense', foreign_keys=[source_sense_id])
+    target_sense = db.relationship('Sense', foreign_keys=[target_sense_id])
 
     __table_args__ = (
-        db.UniqueConstraint('source_word_id', 'target_word_id', name='unique_translation_pair'),
-        # Add indexes for faster joins and lookups
+        # Uniqueness is on the SENSE pair, not the WORD pair, so polysemy can
+        # express two distinct (source_sense, target_sense) translations even
+        # when they happen to involve the same surface words. See Phase 7
+        # bug-fix migration f0e8d3a4c612 for the rationale.
+        db.UniqueConstraint(
+            'source_sense_id', 'target_sense_id',
+            name='unique_translation_sense_pair',
+        ),
+        # Both word_id columns are indexed for the bidirectional translate()
+        # join; without an index on source_word_id, that side scans.
         Index('idx_translations_source_word_id', 'source_word_id'),
         Index('idx_translations_target_word_id', 'target_word_id'),
     )
 
     def __repr__(self):
-        return f"<Translation {self.source_word.word} -> {self.target_word.word}>"
+        return f"<Translation {self.source_word.text} -> {self.target_word.text}>"
+
+
+class Sense(db.Model):
+    __tablename__ = 'senses'
+
+    sense_id = db.Column(db.Integer, primary_key=True)
+    word_id = db.Column(
+        db.Integer,
+        db.ForeignKey('words.w_id', ondelete='CASCADE'),
+        nullable=False,
+    )
+    # Phase 6d removed Word.part_of_speech. Sense.part_of_speech is now the
+    # only place POS lives. Polysemous words can carry distinct POS values
+    # per sense.
+    part_of_speech = db.Column(db.String(20), nullable=True)
+    sense_label = db.Column(db.String(80), nullable=True)
+    definition = db.Column(db.Text, nullable=True)
+    register = db.Column(db.String(40), nullable=True)
+    domain = db.Column(db.String(80), nullable=True)
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.now,
+        server_default=func.now(),
+    )
+
+    word = db.relationship('Word', backref='senses')
+
+    __table_args__ = (
+        Index('idx_senses_word_id', 'word_id'),
+        db.CheckConstraint(
+            _POS_CHECK_CLAUSE,
+            name='ck_senses_part_of_speech_valid',
+        ),
+    )
+
+    def __repr__(self):
+        return f"<Sense {self.sense_id} for word {self.word_id} label={self.sense_label!r}>"
 
 
 class DailyWord(db.Model):
     __tablename__ = "daily_words"
 
     dw_id = db.Column(db.Integer, primary_key=True)
-    word_id = db.Column(db.Integer, db.ForeignKey("words.w_id"), nullable=False)
-    en_word_id = db.Column(db.Integer, db.ForeignKey("words.w_id"), nullable=False)
+    # Phase 5: replaces word_id + en_word_id with a single FK to the translation
+    # pair. Makes "daily word is a translation pair" a structural fact instead
+    # of a conventional pairing of two unrelated word_id columns. Read paths
+    # derive the Yoruba and English sides by joining Word and inspecting
+    # Word.language — never by assuming a column position.
+    translation_id = db.Column(
+        db.Integer,
+        db.ForeignKey('translations.t_id', ondelete='CASCADE'),
+        nullable=False,
+        # NOT unique — a translation can legitimately recur as the daily word
+        # on different dates. The original Phase 5 design had unique=True but
+        # that conflicted with find_random_unused_translation's default
+        # can_reuse=True path, causing 500s when an already-seen translation
+        # was picked. Date uniqueness (one daily word per date) is enforced
+        # via the date column. See Phase 7 bug-fix migration f0e8d3a4c612.
+    )
     date = db.Column(db.Date, default=date.today, unique=True)
-    created_at = db.Column(db.DateTime, default=datetime.now)
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.now,
+        server_default=func.now(),
+    )
 
-    word = db.relationship("Word", foreign_keys=[word_id])
-    en_word = db.relationship("Word", foreign_keys=[en_word_id])
+    translation = db.relationship("Translation")
 
     __table_args__ = (
         # Add index on date for faster lookups of daily words
@@ -64,25 +204,40 @@ class DailyWord(db.Model):
     )
 
     def __repr__(self):
-        return f"<DailyWord {self.word.word} for {self.date}>"
+        return f"<DailyWord translation_id={self.translation_id} for {self.date}>"
 
 
 class MissingTranslation(db.Model):
     __tablename__ = 'missing_translations'
 
     m_id = db.Column(db.Integer, primary_key=True)
-    text = db.Column(db.String(200), nullable=False)
+    text = db.Column(NFCWord(200), nullable=False)
     source_language = db.Column(db.String(3), nullable=False)
     target_language = db.Column(db.String(3), nullable=False)
-    user_ip = db.Column(db.String(45))
     user_agent = db.Column(db.Text)
-    hit_count = db.Column(db.Integer, default=1)
-    created_at = db.Column(db.DateTime, default=datetime.now)
+    hit_count = db.Column(
+        db.Integer,
+        nullable=False,
+        default=1,
+        server_default=sql_text("1"),
+    )
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.now,
+        server_default=func.now(),
+    )
 
     __table_args__ = (
         db.UniqueConstraint('text', 'source_language', 'target_language', name='unique_missing_translation'),
-        # Add composite index for faster lookups
-        Index('idx_missing_text_source_target', 'text', 'source_language', 'target_language'),
+        db.CheckConstraint(
+            "source_language IN ('en', 'yo')",
+            name='ck_missing_translations_source_language_valid',
+        ),
+        db.CheckConstraint(
+            "target_language IN ('en', 'yo')",
+            name='ck_missing_translations_target_language_valid',
+        ),
         # Add index on hit_count to quickly find most requested missing translations
         Index('idx_missing_hit_count', 'hit_count', postgresql_ops={'hit_count': 'DESC'}),
     )
@@ -95,29 +250,100 @@ class Example(db.Model):
     __tablename__ = 'examples'
 
     e_id = db.Column(db.Integer, primary_key=True)
-    translation_id = db.Column(db.Integer, db.ForeignKey('translations.t_id', ondelete='CASCADE'), nullable=False)
+    # Phase 6d dropped translation_id. Examples are now sense-pair-scoped
+    # only — the (source_sense_id, target_sense_id) pair identifies which
+    # translation the example belongs to. Sense FKs stay nullable in 6d
+    # because Example creation paths don't yet exist in app code; future
+    # callers must set them explicitly to make the example queryable.
+    source_sense_id = db.Column(
+        db.Integer,
+        db.ForeignKey('senses.sense_id', name='fk_examples_source_sense_id', ondelete='CASCADE'),
+        nullable=True,
+    )
+    target_sense_id = db.Column(
+        db.Integer,
+        db.ForeignKey('senses.sense_id', name='fk_examples_target_sense_id', ondelete='CASCADE'),
+        nullable=True,
+    )
     example_source = db.Column(db.Text, nullable=False)
     example_target = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now)
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.now,
+        server_default=func.now(),
+    )
 
-    translation = db.relationship('Translation', backref='examples')
+    source_sense = db.relationship('Sense', foreign_keys=[source_sense_id])
+    target_sense = db.relationship('Sense', foreign_keys=[target_sense_id])
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            'source_sense_id',
+            'target_sense_id',
+            'example_source',
+            'example_target',
+            name='unique_example_per_sense_pair',
+        ),
+    )
 
     def __repr__(self):
-        return f"<Example for Translation {self.translation_id}>"
+        return f"<Example sense_pair=({self.source_sense_id}, {self.target_sense_id})>"
 
 
 class Proverb(db.Model):
     __tablename__ = 'proverbs'
 
     p_id = db.Column(db.Integer, primary_key=True)
-    yoruba_text = db.Column(db.Text, nullable=False)
-    english_text = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now)
+    yoruba_text = db.Column(NFCText, nullable=False)
+    english_text = db.Column(NFCText, nullable=False)
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.now,
+        server_default=func.now(),
+    )
 
     __table_args__ = (
         db.UniqueConstraint('yoruba_text', 'english_text', name='unique_proverb_pair'),
-        Index('idx_proverbs_yoruba_text', 'yoruba_text'),
     )
 
     def __repr__(self):
         return f"<Proverb Yoruba: '{self.yoruba_text}' English: '{self.english_text}'>"
+
+
+class ProverbWord(db.Model):
+    __tablename__ = 'proverb_words'
+
+    proverb_id = db.Column(
+        db.Integer,
+        db.ForeignKey('proverbs.p_id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    word_id = db.Column(
+        db.Integer,
+        db.ForeignKey('words.w_id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    language = db.Column(db.String(3), primary_key=True)
+    # position is the 0-indexed order of the word within its language sequence
+    # in the proverb. Repeated occurrences of the same word get distinct
+    # position values so the composite PK stays unique.
+    position = db.Column(db.Integer, primary_key=True)
+
+    proverb = db.relationship('Proverb', backref='proverb_words')
+    word = db.relationship('Word')
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "language IN ('en', 'yo')",
+            name='ck_proverb_words_language_valid',
+        ),
+        Index('idx_proverb_words_word_id', 'word_id'),
+    )
+
+    def __repr__(self):
+        return (
+            f"<ProverbWord proverb={self.proverb_id} word={self.word_id} "
+            f"lang={self.language} pos={self.position}>"
+        )

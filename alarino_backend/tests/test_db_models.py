@@ -1,0 +1,172 @@
+"""Tests for db_models.py schema constraints introduced by the schema
+evolution plan. These guard against regressions in column metadata; the
+migrations themselves are exercised separately via `flask db upgrade`."""
+
+import pytest
+from sqlalchemy.exc import IntegrityError
+
+import alarino_backend.app as app_module
+from alarino_backend import db
+from alarino_backend.db_models import (
+    Example,
+    MissingTranslation,
+    Proverb,
+    ProverbWord,
+    Translation,
+    Word,
+)
+
+
+TIMESTAMPED_MODELS = (Word, Translation, MissingTranslation, Example)
+
+
+@pytest.fixture
+def db_app():
+    app = app_module.create_app()
+    app.config["TESTING"] = True
+    with app.app_context():
+        db.create_all()
+        try:
+            yield app
+        finally:
+            db.session.remove()
+            db.drop_all()
+
+
+@pytest.mark.parametrize("model", TIMESTAMPED_MODELS, ids=lambda m: m.__name__)
+def test_created_at_is_not_null_with_server_default(model):
+    column = model.__table__.c.created_at
+    assert column.nullable is False, (
+        f"{model.__name__}.created_at must be NOT NULL"
+    )
+    assert column.server_default is not None, (
+        f"{model.__name__}.created_at must have a server_default"
+    )
+
+
+def test_missing_translation_hit_count_is_not_null_with_default():
+    column = MissingTranslation.__table__.c.hit_count
+    assert column.nullable is False
+    assert column.server_default is not None
+
+
+def test_example_has_unique_constraint():
+    # Phase 6d renamed unique_example_per_translation to
+    # unique_example_per_sense_pair (translation_id was dropped; uniqueness
+    # is now on the sense pair plus the example text).
+    constraint_names = {c.name for c in Example.__table__.constraints}
+    assert "unique_example_per_sense_pair" in constraint_names
+
+
+def test_redundant_indexes_are_not_declared_on_models():
+    # These indexes were redundant with their unique constraints (or unused
+    # in the planner); Phase 1 dropped them and the model definitions must
+    # not redeclare them. Note: idx_translations_source_word_id was dropped
+    # in Phase 1 (covered by unique_translation_pair prefix), then re-added
+    # in the Phase 7 bug-fix when uniqueness moved to the sense pair — it
+    # is no longer redundant.
+    declared_indexes = (
+        {idx.name for idx in Word.__table__.indexes}
+        | {idx.name for idx in MissingTranslation.__table__.indexes}
+    )
+    assert "idx_words_language_word" not in declared_indexes
+    assert "idx_words_language" not in declared_indexes
+    assert "idx_missing_text_source_target" not in declared_indexes
+
+
+def test_inserting_word_without_created_at_uses_server_default(db_app):
+    word = Word(language="yo", text="ile")
+    db.session.add(word)
+    db.session.commit()
+
+    refreshed = Word.query.filter_by(language="yo", text="ile").one()
+    assert refreshed.created_at is not None
+
+
+def test_missing_translation_no_longer_has_user_ip_column():
+    columns = {c.name for c in MissingTranslation.__table__.columns}
+    assert "user_ip" not in columns
+
+
+def test_word_language_check_constraint_rejects_invalid_code(db_app):
+    db.session.add(Word(language="zz", text="bogus"))
+    with pytest.raises(IntegrityError):
+        db.session.commit()
+    db.session.rollback()
+
+
+def test_missing_translation_language_check_constraint_rejects_invalid_code(db_app):
+    db.session.add(
+        MissingTranslation(
+            text="ile",
+            source_language="zz",
+            target_language="en",
+            user_agent="pytest-agent",
+        )
+    )
+    with pytest.raises(IntegrityError):
+        db.session.commit()
+    db.session.rollback()
+
+
+def test_proverb_words_table_exists_with_check_constraint():
+    table = ProverbWord.__table__
+    constraint_names = {c.name for c in table.constraints}
+    assert "ck_proverb_words_language_valid" in constraint_names
+    pk_columns = {c.name for c in table.primary_key.columns}
+    assert pk_columns == {"proverb_id", "word_id", "language", "position"}
+
+
+def test_proverb_word_language_check_rejects_invalid_code(db_app):
+    proverb = Proverb(yoruba_text="t1", english_text="t1-en")
+    word = Word(language="yo", text="ile")
+    db.session.add_all([proverb, word])
+    db.session.flush()
+
+    db.session.add(
+        ProverbWord(
+            proverb_id=proverb.p_id,
+            word_id=word.w_id,
+            language="zz",
+            position=0,
+        )
+    )
+    with pytest.raises(IntegrityError):
+        db.session.commit()
+    db.session.rollback()
+
+
+def test_duplicate_example_is_rejected(db_app):
+    # Phase 6d: examples uniqueness is on the sense-pair plus text.
+    from alarino_backend.db_models import Sense
+
+    yoruba = Word(language="yo", text="ile")
+    english = Word(language="en", text="house")
+    db.session.add_all([yoruba, english])
+    db.session.flush()
+    yo_sense = Sense(word_id=yoruba.w_id)
+    en_sense = Sense(word_id=english.w_id)
+    db.session.add_all([yo_sense, en_sense])
+    db.session.flush()
+
+    db.session.add(
+        Example(
+            source_sense_id=en_sense.sense_id,
+            target_sense_id=yo_sense.sense_id,
+            example_source="hello there",
+            example_target="bawo nibe",
+        )
+    )
+    db.session.commit()
+
+    db.session.add(
+        Example(
+            source_sense_id=en_sense.sense_id,
+            target_sense_id=yo_sense.sense_id,
+            example_source="hello there",
+            example_target="bawo nibe",
+        )
+    )
+    with pytest.raises(IntegrityError):
+        db.session.commit()
+    db.session.rollback()

@@ -4,8 +4,12 @@ import unicodedata
 from pathlib import Path
 from typing import Callable
 
-from alarino_backend.db_models import Proverb, db, Word, Translation
+from alarino_backend.db_models import Proverb, ProverbWord, Sense, db, Word, Translation
 from alarino_backend.languages import Language
+# normalize_word_text and normalize_text live in alarino_backend.normalization
+# so the TypeDecorators in db_models.py can use them without a circular import.
+# Re-exported here for callers that import them from this module.
+from alarino_backend.normalization import normalize_text, normalize_word_text  # noqa: F401
 from alarino_backend.runtime import logger
 
 # Define valid Yoruba character sets
@@ -15,9 +19,12 @@ _YORUBA_NASAL_VOWELS = "mḿm̀nńǹ"  # Nasal vowels with tone marks
 _YORUBA_CHARACTER_SET = _YORUBA_CONSONANTS + _YORUBA_VOWELS + _YORUBA_NASAL_VOWELS
 
 
-def add_word(language: Language, word_text: str, part_of_speech: str = None):
-    word_text = word_text.strip().strip(" ,.?!()").lower()
-    word_text = unicodedata.normalize('NFC', word_text)
+def add_word(language: Language, word_text: str):
+    """Insert a word, returning the existing row if (language, word) already
+    exists. POS is no longer a Word-level attribute (Phase 6d dropped
+    Word.part_of_speech) — to attach POS, set it on a Sense for this Word
+    after creation."""
+    word_text = normalize_word_text(word_text)
 
     if language == Language.YORUBA and not is_valid_yoruba_word(word_text):
         logger.debug(f"Invalid Yoruba word rejected: {word_text}")
@@ -26,10 +33,10 @@ def add_word(language: Language, word_text: str, part_of_speech: str = None):
         logger.debug(f"Invalid English word rejected: {word_text}")
         return None
 
-    existing_word = Word.query.filter_by(language=language, word=word_text).first()
+    existing_word = Word.query.filter_by(language=language, text=word_text).first()
     if existing_word:
         return existing_word
-    word = Word(language=language, word=word_text, part_of_speech=part_of_speech)
+    word = Word(language=language, text=word_text)
     db.session.add(word)
     return word
 
@@ -42,6 +49,12 @@ def add_proverb(yoruba_proverb: str, english_proverb: str):
         yoruba_proverb: The Yoruba version of the proverb.
         english_proverb: The English version of the proverb.
     """
+    # Normalize text-level inputs to NFC before any storage or comparison so
+    # canonically-equivalent forms (precomposed vs decomposed Yoruba) collide
+    # at the unique constraint and at duplicate detection.
+    yoruba_proverb = normalize_text(yoruba_proverb)
+    english_proverb = normalize_text(english_proverb)
+
     # Check if the proverb already exists
     existing_proverb = Proverb.query.filter_by(
         yoruba_text=yoruba_proverb,
@@ -55,17 +68,31 @@ def add_proverb(yoruba_proverb: str, english_proverb: str):
     # Add the new proverb
     new_proverb = Proverb(yoruba_text=yoruba_proverb, english_text=english_proverb)
     db.session.add(new_proverb)
+    db.session.flush()  # Need new_proverb.p_id to populate proverb_words.
     logger.info(f"Added proverb: '{yoruba_proverb}'")
 
-    # Extract and add individual words
-    yoruba_words = re.findall(r'\b\w+\b', yoruba_proverb)
-    english_words = re.findall(r'\b\w+\b', english_proverb)
-
-    for word in yoruba_words:
-        add_word(language=Language.YORUBA, word_text=word)
-
-    for word in english_words:
-        add_word(language=Language.ENGLISH, word_text=word)
+    # Extract individual words and connect them to the proverb via proverb_words.
+    # Words that fail validation (add_word returns None) are silently skipped — the
+    # proverb itself is still stored, only the join entry is missing.
+    for language, raw_text in (
+        (Language.YORUBA, yoruba_proverb),
+        (Language.ENGLISH, english_proverb),
+    ):
+        position = 0
+        for token in re.findall(r'\b\w+\b', raw_text):
+            word = add_word(language=language, word_text=token)
+            if word is None:
+                continue
+            db.session.flush()  # Need word.w_id if add_word inserted a new row.
+            db.session.add(
+                ProverbWord(
+                    proverb_id=new_proverb.p_id,
+                    word_id=word.w_id,
+                    language=language.value,
+                    position=position,
+                )
+            )
+            position += 1
 
 
 def _is_valid_yoruba(text: str, extra_chars: str) -> bool:
@@ -79,7 +106,10 @@ def _is_valid_yoruba(text: str, extra_chars: str) -> bool:
     """
     if not text:
         return False
-    text = text.strip().lower()
+    # Normalize input to NFC so the codepoints align with the (NFC) char class
+    # below. Without this, NFD input that is canonically valid Yoruba would be
+    # rejected because its decomposed codepoints don't appear in the char set.
+    text = unicodedata.normalize('NFC', text.strip().lower())
     valid_chars = unicodedata.normalize('NFC', _YORUBA_CHARACTER_SET + extra_chars)
     escaped_chars = re.escape(valid_chars)
     pattern = f"^[{escaped_chars}]+$"
@@ -116,7 +146,10 @@ def is_valid_english_word(word: str) -> bool:
     Returns:
         bool: Whether the word contains only valid English characters
     """
-    word = word.strip().lower()
+    # NFC normalize for consistency with the Yoruba validators. ASCII is
+    # invariant under NFC/NFD, so this is a no-op for ASCII input but ensures
+    # any stray combining marks in input are handled the same way storage does.
+    word = unicodedata.normalize("NFC", word.strip().lower())
     if not word:
         return False
 
@@ -132,7 +165,7 @@ def is_valid_english_text(text: str) -> bool:
     Returns:
         bool: Whether the text is valid.
     """
-    text = text.strip().lower()
+    text = unicodedata.normalize("NFC", text.strip().lower())
     if not text:
         return False
 
@@ -140,14 +173,76 @@ def is_valid_english_text(text: str) -> bool:
     pattern = r"^[a-z' .,?!;:-]+$"
     return bool(re.match(pattern, text, re.UNICODE))
 
+class AmbiguousSenseError(ValueError):
+    """Raised when a write path that doesn't specify a sense is asked to
+    operate on a word that has more than one curated sense. The caller must
+    either pick a sense explicitly or fall back to a sense-aware API."""
+
+
+def _ensure_default_sense(word: Word) -> Sense:
+    """Return THE sense for the word, creating a default one if none exist.
+
+    Strict: if the word already has multiple senses, this raises
+    AmbiguousSenseError. Bulk-upload and similar write paths that carry no
+    sense information would otherwise silently bind a new translation to
+    whichever sense has the lowest sense_id — an arbitrary choice that
+    almost certainly doesn't match curator intent. Failing loud forces
+    the caller to use a sense-aware path (or for the curator to deduplicate
+    senses on the word) before the silent corruption can land.
+    """
+    word.w_id  # ensure attribute is loaded; flush if needed
+    if word.w_id is None:
+        db.session.flush()
+    senses = (
+        Sense.query
+        .filter_by(word_id=word.w_id)
+        .order_by(Sense.sense_id)
+        .all()
+    )
+    if len(senses) > 1:
+        labels = [(s.sense_id, s.sense_label) for s in senses]
+        raise AmbiguousSenseError(
+            f"Word w_id={word.w_id} ({word.language}:{word.text!r}) has "
+            f"{len(senses)} senses {labels!r}; cannot pick a default. "
+            "Use a sense-aware API to specify which sense the new "
+            "translation should attach to."
+        )
+    if senses:
+        return senses[0]
+    # Default sense carries no POS metadata. Phase 6d removed the
+    # Word.part_of_speech column that this previously copied; callers who
+    # want POS set it on the Sense explicitly via a future curation flow.
+    sense = Sense(word_id=word.w_id)
+    db.session.add(sense)
+    db.session.flush()
+    return sense
+
+
 def create_translation(source: Word, target: Word):
+    """Create a Translation between two Words, attaching to each Word's
+    default sense. Raises AmbiguousSenseError if either word has multiple
+    curated senses (the bulk-upload format carries no sense info; binding
+    to whichever sense_id is lowest would silently corrupt curator intent).
+
+    Idempotent on the (source_sense, target_sense) pair: if a Translation
+    already exists with the resolved sense pair, this is a no-op. Polysemy
+    that targets the same surface words via *different* sense pairs is
+    representable — that's exactly what the unique_translation_sense_pair
+    constraint allows."""
+    source_sense = _ensure_default_sense(source)
+    target_sense = _ensure_default_sense(target)
     existing = Translation.query.filter_by(
-        source_word_id=source.w_id,
-        target_word_id=target.w_id
+        source_sense_id=source_sense.sense_id,
+        target_sense_id=target_sense.sense_id,
     ).first()
     if existing:
         return
-    translation = Translation(source_word=source, target_word=target)
+    translation = Translation(
+        source_word=source,
+        target_word=target,
+        source_sense_id=source_sense.sense_id,
+        target_sense_id=target_sense.sense_id,
+    )
     db.session.add(translation)
 
 
