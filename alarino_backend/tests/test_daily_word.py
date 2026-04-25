@@ -30,8 +30,8 @@ def _seed_translation(en: str, yo: str, *, en_to_yo: bool = True) -> Translation
     # would fail the constraint).
     from alarino_backend.data.seed_data_utils import create_translation
 
-    en_word = Word(language="en", word=en)
-    yo_word = Word(language="yo", word=yo)
+    en_word = Word(language="en", text=en)
+    yo_word = Word(language="yo", text=yo)
     db.session.add_all([en_word, yo_word])
     db.session.flush()
     src, tgt = (en_word, yo_word) if en_to_yo else (yo_word, en_word)

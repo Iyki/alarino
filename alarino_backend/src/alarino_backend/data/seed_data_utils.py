@@ -33,10 +33,10 @@ def add_word(language: Language, word_text: str):
         logger.debug(f"Invalid English word rejected: {word_text}")
         return None
 
-    existing_word = Word.query.filter_by(language=language, word=word_text).first()
+    existing_word = Word.query.filter_by(language=language, text=word_text).first()
     if existing_word:
         return existing_word
-    word = Word(language=language, word=word_text)
+    word = Word(language=language, text=word_text)
     db.session.add(word)
     return word
 

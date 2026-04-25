@@ -58,9 +58,9 @@ def audit_normalization_integrity(db) -> dict[str, list[int]]:
 
     violations: dict[str, list[int]] = {}
 
-    for row in db.session.query(Word.w_id, Word.word).all():
-        if row.word != normalize_word_text(row.word):
-            violations.setdefault("words.word", []).append(row.w_id)
+    for row in db.session.query(Word.w_id, Word.text).all():
+        if row.text != normalize_word_text(row.text):
+            violations.setdefault("words.text", []).append(row.w_id)
 
     for row in db.session.query(
         MissingTranslation.m_id, MissingTranslation.text

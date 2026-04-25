@@ -32,8 +32,8 @@ def test_add_proverb_populates_proverb_words(db_app):
     yoruba_links = [link for link in links if link.language == "yo"]
     english_links = [link for link in links if link.language == "en"]
 
-    yoruba_words = {link.word.word for link in yoruba_links}
-    english_words = {link.word.word for link in english_links}
+    yoruba_words = {link.word.text for link in yoruba_links}
+    english_words = {link.word.text for link in english_links}
     assert yoruba_words == {"ile", "mi"}
     assert english_words == {"my", "house"}
 
@@ -90,7 +90,7 @@ def test_repeated_word_in_proverb_gets_distinct_position(db_app):
         .filter(
             ProverbWord.proverb_id == proverb.p_id,
             ProverbWord.language == "yo",
-            Word.word == "ile",
+            Word.text == "ile",
         )
         .all()
     )

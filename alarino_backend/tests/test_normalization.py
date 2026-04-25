@@ -80,7 +80,7 @@ def test_add_word_stores_nfc_regardless_of_input_form(db_app):
     db.session.commit()
 
     rows = Word.query.filter_by(language=Language.YORUBA).all()
-    assert [row.word for row in rows] == [NFC_OMO]
+    assert [row.text for row in rows] == [NFC_OMO]
 
 
 def test_add_word_collapses_nfd_and_nfc_to_one_row(db_app):

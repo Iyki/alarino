@@ -77,7 +77,7 @@ def test_translation_sense_fk_columns_are_not_null_in_phase_6d():
 
 
 def test_sense_can_be_created_for_a_word(db_app):
-    word = Word(language="yo", word="ile")
+    word = Word(language="yo", text="ile")
     db.session.add(word)
     db.session.flush()
     sense = Sense(
@@ -99,7 +99,7 @@ def test_sense_can_be_created_for_a_word(db_app):
 
 def test_word_to_senses_relationship(db_app):
     # Word.senses backref returns a list, supporting polysemy from Phase 6b on.
-    word = Word(language="en", word="bank")
+    word = Word(language="en", text="bank")
     db.session.add(word)
     db.session.flush()
     db.session.add_all([
@@ -108,13 +108,13 @@ def test_word_to_senses_relationship(db_app):
     ])
     db.session.commit()
 
-    refreshed = Word.query.filter_by(word="bank").one()
+    refreshed = Word.query.filter_by(text="bank").one()
     assert {s.sense_label for s in refreshed.senses} == {"financial", "river"}
 
 
 def test_translation_can_carry_metadata(db_app):
-    en = Word(language="en", word="hello")
-    yo = Word(language="yo", word="bawo")
+    en = Word(language="en", text="hello")
+    yo = Word(language="yo", text="bawo")
     db.session.add_all([en, yo])
     db.session.flush()
     en_sense = Sense(word_id=en.w_id, sense_label="greeting")
@@ -329,7 +329,7 @@ def test_sense_word_id_fk_uses_db_level_cascade(db_app):
     # SQLAlchemy's ORM cascade, which has its own pre-delete NULL-out
     # behavior that would interfere). On SQLite, foreign keys must be
     # enabled per-connection.
-    word = Word(language="yo", word="ile")
+    word = Word(language="yo", text="ile")
     db.session.add(word)
     db.session.flush()
     db.session.add(Sense(word_id=word.w_id, sense_label="building"))

@@ -74,11 +74,11 @@ def test_redundant_indexes_are_not_declared_on_models():
 
 
 def test_inserting_word_without_created_at_uses_server_default(db_app):
-    word = Word(language="yo", word="ile")
+    word = Word(language="yo", text="ile")
     db.session.add(word)
     db.session.commit()
 
-    refreshed = Word.query.filter_by(language="yo", word="ile").one()
+    refreshed = Word.query.filter_by(language="yo", text="ile").one()
     assert refreshed.created_at is not None
 
 
@@ -88,7 +88,7 @@ def test_missing_translation_no_longer_has_user_ip_column():
 
 
 def test_word_language_check_constraint_rejects_invalid_code(db_app):
-    db.session.add(Word(language="zz", word="bogus"))
+    db.session.add(Word(language="zz", text="bogus"))
     with pytest.raises(IntegrityError):
         db.session.commit()
     db.session.rollback()
@@ -118,7 +118,7 @@ def test_proverb_words_table_exists_with_check_constraint():
 
 def test_proverb_word_language_check_rejects_invalid_code(db_app):
     proverb = Proverb(yoruba_text="t1", english_text="t1-en")
-    word = Word(language="yo", word="ile")
+    word = Word(language="yo", text="ile")
     db.session.add_all([proverb, word])
     db.session.flush()
 
@@ -139,8 +139,8 @@ def test_duplicate_example_is_rejected(db_app):
     # Phase 6d: examples uniqueness is on the sense-pair plus text.
     from alarino_backend.db_models import Sense
 
-    yoruba = Word(language="yo", word="ile")
-    english = Word(language="en", word="house")
+    yoruba = Word(language="yo", text="ile")
+    english = Word(language="en", text="house")
     db.session.add_all([yoruba, english])
     db.session.flush()
     yo_sense = Sense(word_id=yoruba.w_id)

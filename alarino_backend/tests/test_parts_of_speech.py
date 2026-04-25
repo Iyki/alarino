@@ -50,7 +50,7 @@ def test_word_no_longer_has_part_of_speech_column():
 
 @pytest.mark.parametrize("pos", list(PartOfSpeech))
 def test_sense_check_constraint_accepts_every_canonical_pos_value(db_app, pos):
-    word = Word(language="yo", word=f"w-{pos.value}")
+    word = Word(language="yo", text=f"w-{pos.value}")
     db.session.add(word)
     db.session.flush()
     db.session.add(Sense(word_id=word.w_id, part_of_speech=pos.value))
@@ -60,7 +60,7 @@ def test_sense_check_constraint_accepts_every_canonical_pos_value(db_app, pos):
 
 
 def test_sense_check_constraint_rejects_non_canonical_pos(db_app):
-    word = Word(language="yo", word="ile")
+    word = Word(language="yo", text="ile")
     db.session.add(word)
     db.session.flush()
     db.session.add(Sense(word_id=word.w_id, part_of_speech="bogus_pos"))
@@ -70,7 +70,7 @@ def test_sense_check_constraint_rejects_non_canonical_pos(db_app):
 
 
 def test_sense_accepts_null_part_of_speech(db_app):
-    word = Word(language="yo", word="ile")
+    word = Word(language="yo", text="ile")
     db.session.add(word)
     db.session.flush()
     db.session.add(Sense(word_id=word.w_id))

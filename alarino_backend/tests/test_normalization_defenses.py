@@ -48,8 +48,8 @@ def db_app():
 # ---- TypeDecorators are wired onto the right columns ----
 
 
-def test_word_word_column_uses_nfcword():
-    assert isinstance(Word.__table__.c.word.type, NFCWord)
+def test_word_text_column_uses_nfcword():
+    assert isinstance(Word.__table__.c.text.type, NFCWord)
 
 
 def test_missing_translation_text_column_uses_nfcword():
@@ -68,14 +68,14 @@ def test_nfcword_normalizes_on_bind_without_explicit_normalize_call(db_app):
     # Bypass the explicit add_word() pre-normalization. Construct Word
     # directly with NFD input. The NFCWord TypeDecorator must convert it
     # to NFC at SQL bind time.
-    db.session.add(Word(language="yo", word=NFD_OMO))
+    db.session.add(Word(language="yo", text=NFD_OMO))
     db.session.commit()
 
     stored = Word.query.filter_by(language="yo").one()
-    assert stored.word == NFC_OMO
+    assert stored.text == NFC_OMO
     # And byte-level: the stored value must match NFC bytes, not NFD bytes.
-    assert stored.word.encode() == NFC_OMO.encode()
-    assert stored.word.encode() != NFD_OMO.encode()
+    assert stored.text.encode() == NFC_OMO.encode()
+    assert stored.text.encode() != NFD_OMO.encode()
 
 
 def test_nfctext_normalizes_on_bind_without_explicit_normalize_call(db_app):
@@ -95,12 +95,12 @@ def test_nfcword_normalizes_on_query_parameters_too(db_app):
     # Storage is NFC. Query with NFD input. The NFCWord type normalizes
     # parameters at bind time, so the WHERE clause sees NFC bytes and
     # finds the row.
-    db.session.add(Word(language="yo", word=NFC_OMO))
+    db.session.add(Word(language="yo", text=NFC_OMO))
     db.session.commit()
 
-    found = Word.query.filter_by(word=NFD_OMO).first()
+    found = Word.query.filter_by(text=NFD_OMO).first()
     assert found is not None
-    assert found.word == NFC_OMO
+    assert found.text == NFC_OMO
 
 
 # ---- audit_normalization_integrity ----
@@ -108,8 +108,8 @@ def test_nfcword_normalizes_on_query_parameters_too(db_app):
 
 def test_audit_returns_empty_dict_for_clean_db(db_app):
     db.session.add_all([
-        Word(language="yo", word="ile"),
-        Word(language="en", word="house"),
+        Word(language="yo", text="ile"),
+        Word(language="en", text="house"),
         Proverb(yoruba_text="ile mi", english_text="my house"),
         MissingTranslation(
             text="hello",
@@ -127,21 +127,22 @@ def test_audit_detects_smuggled_nfd_in_words(db_app):
     # Bypass both the TypeDecorator (which normalizes on bind) and the
     # service helpers, by using a raw SQL INSERT that the DBAPI driver
     # writes verbatim. The audit must report the violation.
-    db.session.add(Word(language="yo", word="dummy"))  # placeholder so table exists
+    db.session.add(Word(language="yo", text="dummy"))  # placeholder so table exists
     db.session.commit()
 
     db.session.execute(
-        db.text("INSERT INTO words (language, word) VALUES (:lang, :word)"),
-        {"lang": "yo", "word": NFD_OMO},
+        db.text("INSERT INTO words (language, text) VALUES (:lang, :text_val)"),
+        {"lang": "yo", "text_val": NFD_OMO},
     )
     db.session.commit()
 
     smuggled_w_id = db.session.execute(
-        db.text("SELECT w_id FROM words WHERE word = :w"), {"w": NFD_OMO}
+        db.text("SELECT w_id FROM words WHERE text = :text_val"),
+        {"text_val": NFD_OMO},
     ).scalar()
 
     violations = audit_normalization_integrity(db)
-    assert violations == {"words.word": [smuggled_w_id]}
+    assert violations == {"words.text": [smuggled_w_id]}
 
 
 def test_audit_detects_smuggled_nfd_in_proverb_columns(db_app):

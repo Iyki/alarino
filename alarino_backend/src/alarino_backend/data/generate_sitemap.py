@@ -53,7 +53,7 @@ def generate_sitemap(output_path: str) -> None:
 
     # Add English word pages
     for word in english_words:
-        word_text = word.word.strip().lower()
+        word_text = word.text.strip().lower()
         if word_text and word_text not in processed_words:
             processed_words.add(word_text)
             # Create word-specific URL with proper encoding

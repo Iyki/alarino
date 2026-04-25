@@ -52,7 +52,7 @@ def translate(db, text: str, source: Language, target: Language, user_agent: str
     if not text:
         return APIResponse.error("Text must not be empty.", 400).as_response()
 
-    source_word = Word.query.filter_by(language=source, word=text).first()
+    source_word = Word.query.filter_by(language=source, text=text).first()
     if not source_word:
         log_missing_translation(db, text, source, target, user_agent)
         return APIResponse.error("Word not found.", 404).as_response()
@@ -92,7 +92,7 @@ def translate(db, text: str, source: Language, target: Language, user_agent: str
         if other.language != target.value or other.w_id in seen_word_ids:
             continue
         seen_word_ids.add(other.w_id)
-        translated_words.append(other.word)
+        translated_words.append(other.text)
 
         sense_key = my_sense.sense_id if my_sense is not None else None
         if sense_key not in sense_buckets:
@@ -106,7 +106,7 @@ def translate(db, text: str, source: Language, target: Language, user_agent: str
         examples = _examples_for_sense_pair(my_sense, other_sense)
         sense_buckets[sense_key].translations.append(
             TranslationInSenseGroup(
-                word=other.word,
+                word=other.text,
                 note=translation.note,
                 provenance=translation.provenance,
                 examples=examples,
@@ -127,7 +127,7 @@ def translate(db, text: str, source: Language, target: Language, user_agent: str
     )
     response_data = TranslationResponseData(
         translation=translated_words,
-        source_word=source_word.word,
+        source_word=source_word.text,
         to_language=target,
         senses=[group for _, group in ordered_groups],
     )
@@ -226,7 +226,7 @@ def find_random_unused_translation(db, can_reuse: bool = True) -> Optional[Trans
             if translation.source_word.language == yoruba
             else translation.target_word
         )
-        if " " not in yo_word.word:
+        if " " not in yo_word.text:
             return translation
     return None
 
@@ -251,8 +251,8 @@ def get_word_of_the_day(db, daily_word_cache: Dict[date, Tuple[str, str]]) -> Tu
         existing = DailyWord.query.filter_by(date=today).first()
         if existing:
             yoruba_word_obj, english_word_obj = _derive_yoruba_english(existing.translation)
-            yoruba_word = yoruba_word_obj.word
-            english_word = english_word_obj.word
+            yoruba_word = yoruba_word_obj.text
+            english_word = english_word_obj.text
             daily_word_cache[today] = (yoruba_word, english_word)
 
             response_data = WordOfTheDayResponseData(yoruba_word=yoruba_word, english_word=english_word)
@@ -270,10 +270,10 @@ def get_word_of_the_day(db, daily_word_cache: Dict[date, Tuple[str, str]]) -> Tu
         daily = DailyWord(translation=translation)
         db.session.add(daily)
         db.session.commit()
-        daily_word_cache[today] = (yoruba_word_obj.word, english_word_obj.word)
+        daily_word_cache[today] = (yoruba_word_obj.text, english_word_obj.text)
 
         response_data = WordOfTheDayResponseData(
-            yoruba_word=yoruba_word_obj.word, english_word=english_word_obj.word
+            yoruba_word=yoruba_word_obj.text, english_word=english_word_obj.text
         )
         return APIResponse.success("Word of the day fetched successfully.", response_data).as_response()
 
@@ -297,7 +297,7 @@ def get_proverbs_containing(db, language: Language, word_text: str) -> list[Prov
         Proverb.query
         .join(ProverbWord, ProverbWord.proverb_id == Proverb.p_id)
         .join(Word, Word.w_id == ProverbWord.word_id)
-        .filter(Word.language == language, Word.word == word_text)
+        .filter(Word.language == language, Word.text == word_text)
         .distinct()
         .all()
     )

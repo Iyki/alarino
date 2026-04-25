@@ -77,7 +77,7 @@ def test_translate_logs_missing_word_when_source_word_does_not_exist(monkeypatch
 
     assert status == 404
     assert response["message"] == "Word not found."
-    assert word_query.filter_by_calls == [{"language": Language.ENGLISH, "word": "hello"}]
+    assert word_query.filter_by_calls == [{"language": Language.ENGLISH, "text": "hello"}]
     assert missing_logs == [
         (
             fake_db,
@@ -91,7 +91,7 @@ def test_translate_logs_missing_word_when_source_word_does_not_exist(monkeypatch
 
 def test_translate_logs_missing_when_translation_is_unavailable(db_app):
     # Word exists but no Translation row in either direction.
-    db.session.add(Word(language="en", word="hello"))
+    db.session.add(Word(language="en", text="hello"))
     db.session.commit()
 
     response, status = translation_service.translate(
@@ -111,8 +111,8 @@ def test_translate_logs_missing_when_translation_is_unavailable(db_app):
 def test_translate_returns_successful_translation_payload(db_app):
     from alarino_backend.data.seed_data_utils import create_translation
 
-    hello = Word(language="en", word="hello")
-    bawo = Word(language="yo", word="bawo")
+    hello = Word(language="en", text="hello")
+    bawo = Word(language="yo", text="bawo")
     db.session.add_all([hello, bawo])
     db.session.flush()
     create_translation(hello, bawo)
@@ -319,8 +319,8 @@ def _seed_one_directional_pair(en_text: str, yo_text: str):
     """Seed a single curated en→yo Translation. Returns (en_word, yo_word)."""
     from alarino_backend.data.seed_data_utils import create_translation
 
-    en = Word(language="en", word=en_text)
-    yo = Word(language="yo", word=yo_text)
+    en = Word(language="en", text=en_text)
+    yo = Word(language="yo", text=yo_text)
     db.session.add_all([en, yo])
     db.session.flush()
     create_translation(en, yo)
@@ -374,9 +374,9 @@ def test_translate_returns_all_target_language_translations_in_either_direction(
     # Yoruba synonyms.
     from alarino_backend.data.seed_data_utils import create_translation
 
-    child = Word(language="en", word="child")
-    omo = Word(language="yo", word="ọmọ")
-    egbon = Word(language="yo", word="ẹgbọn")
+    child = Word(language="en", text="child")
+    omo = Word(language="yo", text="ọmọ")
+    egbon = Word(language="yo", text="ẹgbọn")
     db.session.add_all([child, omo, egbon])
     db.session.flush()
     create_translation(child, omo)
@@ -398,7 +398,7 @@ def test_translate_returns_all_target_language_translations_in_either_direction(
 
 def test_translate_returns_404_when_no_curated_translation_in_either_direction(db_app):
     # Word exists in source language but no Translation row at all.
-    db.session.add(Word(language="en", word="lonely"))
+    db.session.add(Word(language="en", text="lonely"))
     db.session.commit()
 
     response, status = translation_service.translate(

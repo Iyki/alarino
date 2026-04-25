@@ -50,7 +50,11 @@ class Word(db.Model):
 
     w_id = db.Column(db.Integer, primary_key=True)
     language = db.Column(db.String(3), nullable=False)
-    word = db.Column(NFCWord(200), nullable=False)  ##todo: rename to text
+    # Phase 7 renamed this column from `word` to `text`. The class is still
+    # named Word (it represents a word as a vocabulary entry); only the
+    # column holding the lexical string was renamed for clarity, since
+    # `word.word` was awkward and `word.text` reads naturally.
+    text = db.Column(NFCWord(200), nullable=False)
     # Phase 6d removed Word.part_of_speech. POS is now a sense-level attribute
     # only — a polysemous word can carry distinct POS values per sense (e.g.,
     # "run" as both noun and verb). Set Sense.part_of_speech instead.
@@ -62,7 +66,7 @@ class Word(db.Model):
     )
 
     __table_args__ = (
-        db.UniqueConstraint('language', 'word', name='unique_language_word'),
+        db.UniqueConstraint('language', 'text', name='unique_language_text'),
         db.CheckConstraint(
             "language IN ('en', 'yo')",
             name='ck_words_language_valid',
@@ -70,7 +74,7 @@ class Word(db.Model):
     )
 
     def __repr__(self):
-        return f"<Word {self.language}:{self.word}>"
+        return f"<Word {self.language}:{self.text}>"
 
 
 class Translation(db.Model):
@@ -115,7 +119,7 @@ class Translation(db.Model):
     )
 
     def __repr__(self):
-        return f"<Translation {self.source_word.word} -> {self.target_word.word}>"
+        return f"<Translation {self.source_word.text} -> {self.target_word.text}>"
 
 
 class Sense(db.Model):
