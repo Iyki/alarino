@@ -44,7 +44,6 @@ def test_translate_returns_400_for_empty_text():
         text="   ",
         source=Language.ENGLISH,
         target=Language.YORUBA,
-        addr="203.0.113.10",
         user_agent="pytest-agent",
     )
 
@@ -73,7 +72,6 @@ def test_translate_logs_missing_word_when_source_word_does_not_exist(monkeypatch
         text=" Hello ",
         source=Language.ENGLISH,
         target=Language.YORUBA,
-        addr="203.0.113.10",
         user_agent="pytest-agent",
     )
 
@@ -86,7 +84,6 @@ def test_translate_logs_missing_word_when_source_word_does_not_exist(monkeypatch
             "hello",
             Language.ENGLISH,
             Language.YORUBA,
-            "203.0.113.10",
             "pytest-agent",
         )
     ]
@@ -120,7 +117,6 @@ def test_translate_logs_missing_when_translation_is_unavailable(monkeypatch):
         text="hello",
         source=Language.ENGLISH,
         target=Language.YORUBA,
-        addr="203.0.113.10",
         user_agent="pytest-agent",
     )
 
@@ -133,7 +129,6 @@ def test_translate_logs_missing_when_translation_is_unavailable(monkeypatch):
             "hello",
             Language.ENGLISH,
             Language.YORUBA,
-            "203.0.113.10",
             "pytest-agent",
         )
     ]
@@ -167,7 +162,6 @@ def test_translate_returns_successful_translation_payload(monkeypatch):
         text=" Hello ",
         source=Language.ENGLISH,
         target=Language.YORUBA,
-        addr="203.0.113.10",
         user_agent="pytest-agent",
     )
 
@@ -296,7 +290,7 @@ def db_app():
 
 def test_log_missing_translation_inserts_on_first_call(db_app):
     translation_service.log_missing_translation(
-        db, "ile", Language.YORUBA, Language.ENGLISH, "203.0.113.10", "pytest-agent"
+        db, "ile", Language.YORUBA, Language.ENGLISH, "pytest-agent"
     )
 
     rows = MissingTranslation.query.all()
@@ -305,40 +299,38 @@ def test_log_missing_translation_inserts_on_first_call(db_app):
     assert row.text == "ile"
     assert row.source_language == Language.YORUBA.value
     assert row.target_language == Language.ENGLISH.value
-    assert row.user_ip == "203.0.113.10"
     assert row.user_agent == "pytest-agent"
     assert row.hit_count == 1
 
 
 def test_log_missing_translation_increments_hit_count_on_conflict(db_app):
     translation_service.log_missing_translation(
-        db, "ile", Language.YORUBA, Language.ENGLISH, "203.0.113.10", "first-agent"
+        db, "ile", Language.YORUBA, Language.ENGLISH, "first-agent"
     )
     translation_service.log_missing_translation(
-        db, "ile", Language.YORUBA, Language.ENGLISH, "198.51.100.20", "second-agent"
+        db, "ile", Language.YORUBA, Language.ENGLISH, "second-agent"
     )
     translation_service.log_missing_translation(
-        db, "ile", Language.YORUBA, Language.ENGLISH, "198.51.100.21", "third-agent"
+        db, "ile", Language.YORUBA, Language.ENGLISH, "third-agent"
     )
 
     rows = MissingTranslation.query.all()
     assert len(rows) == 1
     row = rows[0]
     assert row.hit_count == 3
-    # First reporter's identity is preserved; subsequent IPs/agents do not overwrite.
-    assert row.user_ip == "203.0.113.10"
+    # First reporter's user_agent is preserved; subsequent values do not overwrite.
     assert row.user_agent == "first-agent"
 
 
 def test_log_missing_translation_distinct_tuples_create_separate_rows(db_app):
     translation_service.log_missing_translation(
-        db, "ile", Language.YORUBA, Language.ENGLISH, "203.0.113.10", "pytest-agent"
+        db, "ile", Language.YORUBA, Language.ENGLISH, "pytest-agent"
     )
     translation_service.log_missing_translation(
-        db, "house", Language.ENGLISH, Language.YORUBA, "203.0.113.10", "pytest-agent"
+        db, "house", Language.ENGLISH, Language.YORUBA, "pytest-agent"
     )
     translation_service.log_missing_translation(
-        db, "ile", Language.YORUBA, Language.ENGLISH, "203.0.113.10", "pytest-agent"
+        db, "ile", Language.YORUBA, Language.ENGLISH, "pytest-agent"
     )
 
     rows = MissingTranslation.query.order_by(MissingTranslation.text).all()

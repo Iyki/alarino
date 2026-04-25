@@ -10,6 +10,8 @@ from alarino_backend import db
 from alarino_backend.db_models import (
     Example,
     MissingTranslation,
+    Proverb,
+    ProverbWord,
     Translation,
     Word,
 )
@@ -75,6 +77,59 @@ def test_inserting_word_without_created_at_uses_server_default(db_app):
 
     refreshed = Word.query.filter_by(language="yo", word="ile").one()
     assert refreshed.created_at is not None
+
+
+def test_missing_translation_no_longer_has_user_ip_column():
+    columns = {c.name for c in MissingTranslation.__table__.columns}
+    assert "user_ip" not in columns
+
+
+def test_word_language_check_constraint_rejects_invalid_code(db_app):
+    db.session.add(Word(language="zz", word="bogus"))
+    with pytest.raises(IntegrityError):
+        db.session.commit()
+    db.session.rollback()
+
+
+def test_missing_translation_language_check_constraint_rejects_invalid_code(db_app):
+    db.session.add(
+        MissingTranslation(
+            text="ile",
+            source_language="zz",
+            target_language="en",
+            user_agent="pytest-agent",
+        )
+    )
+    with pytest.raises(IntegrityError):
+        db.session.commit()
+    db.session.rollback()
+
+
+def test_proverb_words_table_exists_with_check_constraint():
+    table = ProverbWord.__table__
+    constraint_names = {c.name for c in table.constraints}
+    assert "ck_proverb_words_language_valid" in constraint_names
+    pk_columns = {c.name for c in table.primary_key.columns}
+    assert pk_columns == {"proverb_id", "word_id", "language", "position"}
+
+
+def test_proverb_word_language_check_rejects_invalid_code(db_app):
+    proverb = Proverb(yoruba_text="t1", english_text="t1-en")
+    word = Word(language="yo", word="ile")
+    db.session.add_all([proverb, word])
+    db.session.flush()
+
+    db.session.add(
+        ProverbWord(
+            proverb_id=proverb.p_id,
+            word_id=word.w_id,
+            language="zz",
+            position=0,
+        )
+    )
+    with pytest.raises(IntegrityError):
+        db.session.commit()
+    db.session.rollback()
 
 
 def test_duplicate_example_is_rejected(db_app):

@@ -20,6 +20,10 @@ class Word(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint('language', 'word', name='unique_language_word'),
+        db.CheckConstraint(
+            "language IN ('en', 'yo')",
+            name='ck_words_language_valid',
+        ),
     )
 
     def __repr__(self):
@@ -86,7 +90,6 @@ class MissingTranslation(db.Model):
     text = db.Column(db.String(200), nullable=False)
     source_language = db.Column(db.String(3), nullable=False)
     target_language = db.Column(db.String(3), nullable=False)
-    user_ip = db.Column(db.String(45))
     user_agent = db.Column(db.Text)
     hit_count = db.Column(
         db.Integer,
@@ -103,6 +106,14 @@ class MissingTranslation(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint('text', 'source_language', 'target_language', name='unique_missing_translation'),
+        db.CheckConstraint(
+            "source_language IN ('en', 'yo')",
+            name='ck_missing_translations_source_language_valid',
+        ),
+        db.CheckConstraint(
+            "target_language IN ('en', 'yo')",
+            name='ck_missing_translations_target_language_valid',
+        ),
         # Add index on hit_count to quickly find most requested missing translations
         Index('idx_missing_hit_count', 'hit_count', postgresql_ops={'hit_count': 'DESC'}),
     )
@@ -159,3 +170,40 @@ class Proverb(db.Model):
 
     def __repr__(self):
         return f"<Proverb Yoruba: '{self.yoruba_text}' English: '{self.english_text}'>"
+
+
+class ProverbWord(db.Model):
+    __tablename__ = 'proverb_words'
+
+    proverb_id = db.Column(
+        db.Integer,
+        db.ForeignKey('proverbs.p_id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    word_id = db.Column(
+        db.Integer,
+        db.ForeignKey('words.w_id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    language = db.Column(db.String(3), primary_key=True)
+    # position is the 0-indexed order of the word within its language sequence
+    # in the proverb. Repeated occurrences of the same word get distinct
+    # position values so the composite PK stays unique.
+    position = db.Column(db.Integer, primary_key=True)
+
+    proverb = db.relationship('Proverb', backref='proverb_words')
+    word = db.relationship('Word')
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "language IN ('en', 'yo')",
+            name='ck_proverb_words_language_valid',
+        ),
+        Index('idx_proverb_words_word_id', 'word_id'),
+    )
+
+    def __repr__(self):
+        return (
+            f"<ProverbWord proverb={self.proverb_id} word={self.word_id} "
+            f"lang={self.language} pos={self.position}>"
+        )

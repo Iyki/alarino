@@ -93,13 +93,12 @@ def test_translate_returns_service_response(client, monkeypatch):
         },
     }
 
-    def fake_translate(db_arg, text, source_language, target_language, addr, user_agent):
+    def fake_translate(db_arg, text, source_language, target_language, user_agent):
         captured.update(
             db_arg=db_arg,
             text=text,
             source_language=source_language,
             target_language=target_language,
-            addr=addr,
             user_agent=user_agent,
         )
         return payload, 200
@@ -114,7 +113,6 @@ def test_translate_returns_service_response(client, monkeypatch):
             "target_lang": Language.YORUBA.value,
         },
         headers={"User-Agent": "pytest-agent"},
-        environ_overrides={"REMOTE_ADDR": "203.0.113.10"},
     )
 
     assert response.status_code == 200
@@ -124,7 +122,6 @@ def test_translate_returns_service_response(client, monkeypatch):
         "text": "hello",
         "source_language": Language.ENGLISH,
         "target_language": Language.YORUBA,
-        "addr": "203.0.113.10",
         "user_agent": "pytest-agent",
     }
 

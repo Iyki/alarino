@@ -5,8 +5,8 @@ from datetime import date
 import threading
 from typing import Tuple, Dict, Optional
 
-from alarino_backend.data.seed_data_utils import add_word, create_translation, is_valid_english_word, is_valid_yoruba_word
-from alarino_backend.db_models import Word, DailyWord, Translation, MissingTranslation, Proverb
+from alarino_backend.data.seed_data_utils import add_word, create_translation, is_valid_english_word, is_valid_yoruba_word, normalize_word_text
+from alarino_backend.db_models import Word, DailyWord, Translation, MissingTranslation, Proverb, ProverbWord
 from alarino_backend.languages import Language
 from alarino_backend.llm_service import get_llm_service
 from alarino_backend.response import APIResponse, TranslationResponseData, WordOfTheDayResponseData, ProverbResponseData, BulkUploadResponseData
@@ -15,7 +15,7 @@ from alarino_backend.runtime import logger
 
 def translate_llm(text: str, source: Language, target: Language) -> tuple[dict, int]:
     """Translates text using the LLM service."""
-    text = text.strip().lower()
+    text = normalize_word_text(text)
     if not text:
         return APIResponse.error("Text must not be empty.", 400).as_response()
 
@@ -39,14 +39,14 @@ def translate_llm(text: str, source: Language, target: Language) -> tuple[dict, 
         return APIResponse.error("An error occurred during translation.", 500).as_response()
 
 
-def translate(db, text: str, source: Language, target: Language, addr: str, user_agent: str) -> tuple[dict, int]:
-    text = text.strip().lower()
+def translate(db, text: str, source: Language, target: Language, user_agent: str) -> tuple[dict, int]:
+    text = normalize_word_text(text)
     if not text:
         return APIResponse.error("Text must not be empty.", 400).as_response()
 
     source_word = Word.query.filter_by(language=source, word=text).first()
     if not source_word:
-        log_missing_translation(db, text, source, target, addr, user_agent)
+        log_missing_translation(db, text, source, target, user_agent)
         return APIResponse.error("Word not found.", 404).as_response()
 
     translations = (
@@ -57,7 +57,7 @@ def translate(db, text: str, source: Language, target: Language, addr: str, user
         .all()
     )
     if not translations:
-        log_missing_translation(db, text, source, target, addr, user_agent)
+        log_missing_translation(db, text, source, target, user_agent)
         return APIResponse.error("Word found but translation not available.", 404).as_response()
 
     translated_words = [t.target_word.word for t in translations]
@@ -71,9 +71,9 @@ def translate(db, text: str, source: Language, target: Language, addr: str, user
     return APIResponse.success("Translation successful.", response_data).as_response()
 
 
-def log_missing_translation(db, text, source_lang, target_lang, addr, user_agent):
-    # Atomic upsert: on first hit insert with addr/user_agent and hit_count=1; on
-    # subsequent hits increment hit_count without overwriting addr/user_agent. The
+def log_missing_translation(db, text, source_lang, target_lang, user_agent):
+    # Atomic upsert: on first hit insert with user_agent and hit_count=1; on
+    # subsequent hits increment hit_count without overwriting user_agent. The
     # previous read-modify-write pattern lost concurrent increments under load.
     dialect_name = db.session.get_bind().dialect.name
     if dialect_name == "postgresql":
@@ -90,7 +90,6 @@ def log_missing_translation(db, text, source_lang, target_lang, addr, user_agent
         text=text,
         source_language=source_lang,
         target_language=target_lang,
-        user_ip=addr,
         user_agent=user_agent,
     )
     stmt = stmt.on_conflict_do_update(
@@ -198,6 +197,28 @@ def get_word_of_the_day(db, daily_word_cache: Dict[date, Tuple[str, str]]) -> Tu
 
     except Exception as e:
         return APIResponse.error(str(e), 500).as_response()
+
+
+def get_proverbs_containing(db, language: Language, word_text: str) -> list[Proverb]:
+    """Return every Proverb whose `proverb_words` join entries reference a Word
+    matching (language, word_text). Returns an empty list if no match.
+
+    Phase 3 backfill is best-effort: proverbs that predate Phase 3 are linked
+    only if their tokenized words match an existing Word row at backfill time.
+    Misses are silently skipped, so a missing result here does not necessarily
+    mean the proverb does not contain the word — it may just predate the link.
+    """
+    word_text = normalize_word_text(word_text)
+    if not word_text:
+        return []
+    return (
+        Proverb.query
+        .join(ProverbWord, ProverbWord.proverb_id == Proverb.p_id)
+        .join(Word, Word.w_id == ProverbWord.word_id)
+        .filter(Word.language == language, Word.word == word_text)
+        .distinct()
+        .all()
+    )
 
 
 def get_random_proverb(db):

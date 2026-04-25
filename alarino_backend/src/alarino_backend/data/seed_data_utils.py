@@ -4,7 +4,7 @@ import unicodedata
 from pathlib import Path
 from typing import Callable
 
-from alarino_backend.db_models import Proverb, db, Word, Translation
+from alarino_backend.db_models import Proverb, ProverbWord, db, Word, Translation
 from alarino_backend.languages import Language
 from alarino_backend.runtime import logger
 
@@ -15,9 +15,24 @@ _YORUBA_NASAL_VOWELS = "mḿm̀nńǹ"  # Nasal vowels with tone marks
 _YORUBA_CHARACTER_SET = _YORUBA_CONSONANTS + _YORUBA_VOWELS + _YORUBA_NASAL_VOWELS
 
 
+def normalize_word_text(text: str) -> str:
+    """Canonical normalization for word lookups: strip surrounding whitespace
+    and punctuation, lowercase, then NFC. Storage and read paths must both go
+    through this so canonically-equivalent inputs (e.g., precomposed vs.
+    decomposed Yoruba diacritics) collapse to the same key."""
+    cleaned = text.strip().strip(" ,.?!()").lower()
+    return unicodedata.normalize("NFC", cleaned)
+
+
+def normalize_text(text: str) -> str:
+    """Canonical normalization for sentence/proverb-level text: strip leading
+    and trailing whitespace, then NFC. Case is preserved (proverbs may carry
+    intentional capitalization) and inner punctuation is preserved."""
+    return unicodedata.normalize("NFC", text.strip())
+
+
 def add_word(language: Language, word_text: str, part_of_speech: str = None):
-    word_text = word_text.strip().strip(" ,.?!()").lower()
-    word_text = unicodedata.normalize('NFC', word_text)
+    word_text = normalize_word_text(word_text)
 
     if language == Language.YORUBA and not is_valid_yoruba_word(word_text):
         logger.debug(f"Invalid Yoruba word rejected: {word_text}")
@@ -42,6 +57,12 @@ def add_proverb(yoruba_proverb: str, english_proverb: str):
         yoruba_proverb: The Yoruba version of the proverb.
         english_proverb: The English version of the proverb.
     """
+    # Normalize text-level inputs to NFC before any storage or comparison so
+    # canonically-equivalent forms (precomposed vs decomposed Yoruba) collide
+    # at the unique constraint and at duplicate detection.
+    yoruba_proverb = normalize_text(yoruba_proverb)
+    english_proverb = normalize_text(english_proverb)
+
     # Check if the proverb already exists
     existing_proverb = Proverb.query.filter_by(
         yoruba_text=yoruba_proverb,
@@ -55,17 +76,31 @@ def add_proverb(yoruba_proverb: str, english_proverb: str):
     # Add the new proverb
     new_proverb = Proverb(yoruba_text=yoruba_proverb, english_text=english_proverb)
     db.session.add(new_proverb)
+    db.session.flush()  # Need new_proverb.p_id to populate proverb_words.
     logger.info(f"Added proverb: '{yoruba_proverb}'")
 
-    # Extract and add individual words
-    yoruba_words = re.findall(r'\b\w+\b', yoruba_proverb)
-    english_words = re.findall(r'\b\w+\b', english_proverb)
-
-    for word in yoruba_words:
-        add_word(language=Language.YORUBA, word_text=word)
-
-    for word in english_words:
-        add_word(language=Language.ENGLISH, word_text=word)
+    # Extract individual words and connect them to the proverb via proverb_words.
+    # Words that fail validation (add_word returns None) are silently skipped — the
+    # proverb itself is still stored, only the join entry is missing.
+    for language, raw_text in (
+        (Language.YORUBA, yoruba_proverb),
+        (Language.ENGLISH, english_proverb),
+    ):
+        position = 0
+        for token in re.findall(r'\b\w+\b', raw_text):
+            word = add_word(language=language, word_text=token)
+            if word is None:
+                continue
+            db.session.flush()  # Need word.w_id if add_word inserted a new row.
+            db.session.add(
+                ProverbWord(
+                    proverb_id=new_proverb.p_id,
+                    word_id=word.w_id,
+                    language=language.value,
+                    position=position,
+                )
+            )
+            position += 1
 
 
 def _is_valid_yoruba(text: str, extra_chars: str) -> bool:
@@ -79,7 +114,10 @@ def _is_valid_yoruba(text: str, extra_chars: str) -> bool:
     """
     if not text:
         return False
-    text = text.strip().lower()
+    # Normalize input to NFC so the codepoints align with the (NFC) char class
+    # below. Without this, NFD input that is canonically valid Yoruba would be
+    # rejected because its decomposed codepoints don't appear in the char set.
+    text = unicodedata.normalize('NFC', text.strip().lower())
     valid_chars = unicodedata.normalize('NFC', _YORUBA_CHARACTER_SET + extra_chars)
     escaped_chars = re.escape(valid_chars)
     pattern = f"^[{escaped_chars}]+$"
@@ -116,7 +154,10 @@ def is_valid_english_word(word: str) -> bool:
     Returns:
         bool: Whether the word contains only valid English characters
     """
-    word = word.strip().lower()
+    # NFC normalize for consistency with the Yoruba validators. ASCII is
+    # invariant under NFC/NFD, so this is a no-op for ASCII input but ensures
+    # any stray combining marks in input are handled the same way storage does.
+    word = unicodedata.normalize("NFC", word.strip().lower())
     if not word:
         return False
 
@@ -132,7 +173,7 @@ def is_valid_english_text(text: str) -> bool:
     Returns:
         bool: Whether the text is valid.
     """
-    text = text.strip().lower()
+    text = unicodedata.normalize("NFC", text.strip().lower())
     if not text:
         return False
 
