@@ -69,6 +69,24 @@ class Translation(db.Model):
     t_id = db.Column(db.Integer, primary_key=True)
     source_word_id = db.Column(db.Integer, db.ForeignKey('words.w_id', ondelete='CASCADE'), nullable=False)
     target_word_id = db.Column(db.Integer, db.ForeignKey('words.w_id', ondelete='CASCADE'), nullable=False)
+    # Phase 6a additions: senses are between Word and Translation. These FKs
+    # are nullable in 6a (backfilled from one-sense-per-word during the
+    # migration) and become NOT NULL in 6d after the cutover. Read paths in
+    # 6c will use these to group polysemous matches; write paths in 6b will
+    # require them on every new Translation.
+    source_sense_id = db.Column(
+        db.Integer,
+        db.ForeignKey('senses.sense_id', name='fk_translations_source_sense_id', ondelete='CASCADE'),
+        nullable=True,
+    )
+    target_sense_id = db.Column(
+        db.Integer,
+        db.ForeignKey('senses.sense_id', name='fk_translations_target_sense_id', ondelete='CASCADE'),
+        nullable=True,
+    )
+    note = db.Column(db.Text, nullable=True)
+    confidence = db.Column(db.Float, nullable=True)
+    provenance = db.Column(db.String(40), nullable=True)
     created_at = db.Column(
         db.DateTime,
         nullable=False,
@@ -78,6 +96,8 @@ class Translation(db.Model):
 
     source_word = db.relationship('Word', foreign_keys=[source_word_id], backref='translations_from')
     target_word = db.relationship('Word', foreign_keys=[target_word_id], backref='translations_to')
+    source_sense = db.relationship('Sense', foreign_keys=[source_sense_id])
+    target_sense = db.relationship('Sense', foreign_keys=[target_sense_id])
 
     __table_args__ = (
         db.UniqueConstraint('source_word_id', 'target_word_id', name='unique_translation_pair'),
@@ -88,6 +108,40 @@ class Translation(db.Model):
 
     def __repr__(self):
         return f"<Translation {self.source_word.word} -> {self.target_word.word}>"
+
+
+class Sense(db.Model):
+    __tablename__ = 'senses'
+
+    sense_id = db.Column(db.Integer, primary_key=True)
+    word_id = db.Column(
+        db.Integer,
+        db.ForeignKey('words.w_id', ondelete='CASCADE'),
+        nullable=False,
+    )
+    # part_of_speech is duplicated on Word during Phases 6a-6c (read paths still
+    # use Word.part_of_speech). The Word column is dropped in Phase 6d once the
+    # sense layer is fully load-bearing.
+    part_of_speech = db.Column(db.String(20), nullable=True)
+    sense_label = db.Column(db.String(80), nullable=True)
+    definition = db.Column(db.Text, nullable=True)
+    register = db.Column(db.String(40), nullable=True)
+    domain = db.Column(db.String(80), nullable=True)
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.now,
+        server_default=func.now(),
+    )
+
+    word = db.relationship('Word', backref='senses')
+
+    __table_args__ = (
+        Index('idx_senses_word_id', 'word_id'),
+    )
+
+    def __repr__(self):
+        return f"<Sense {self.sense_id} for word {self.word_id} label={self.sense_label!r}>"
 
 
 class DailyWord(db.Model):
