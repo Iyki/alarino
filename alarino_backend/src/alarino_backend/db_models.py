@@ -51,7 +51,9 @@ class Word(db.Model):
     w_id = db.Column(db.Integer, primary_key=True)
     language = db.Column(db.String(3), nullable=False)
     word = db.Column(NFCWord(200), nullable=False)  ##todo: rename to text
-    part_of_speech = db.Column(db.String(20))
+    # Phase 6d removed Word.part_of_speech. POS is now a sense-level attribute
+    # only — a polysemous word can carry distinct POS values per sense (e.g.,
+    # "run" as both noun and verb). Set Sense.part_of_speech instead.
     created_at = db.Column(
         db.DateTime,
         nullable=False,
@@ -65,10 +67,6 @@ class Word(db.Model):
             "language IN ('en', 'yo')",
             name='ck_words_language_valid',
         ),
-        db.CheckConstraint(
-            _POS_CHECK_CLAUSE,
-            name='ck_words_part_of_speech_valid',
-        ),
     )
 
     def __repr__(self):
@@ -81,20 +79,18 @@ class Translation(db.Model):
     t_id = db.Column(db.Integer, primary_key=True)
     source_word_id = db.Column(db.Integer, db.ForeignKey('words.w_id', ondelete='CASCADE'), nullable=False)
     target_word_id = db.Column(db.Integer, db.ForeignKey('words.w_id', ondelete='CASCADE'), nullable=False)
-    # Phase 6a additions: senses are between Word and Translation. These FKs
-    # are nullable in 6a (backfilled from one-sense-per-word during the
-    # migration) and become NOT NULL in 6d after the cutover. Read paths in
-    # 6c will use these to group polysemous matches; write paths in 6b will
-    # require them on every new Translation.
+    # Phase 6a added these FKs nullable; Phase 6b cut writes over to populate
+    # them on every new Translation; Phase 6d makes them NOT NULL now that
+    # every existing row is backfilled and every new row sets them.
     source_sense_id = db.Column(
         db.Integer,
         db.ForeignKey('senses.sense_id', name='fk_translations_source_sense_id', ondelete='CASCADE'),
-        nullable=True,
+        nullable=False,
     )
     target_sense_id = db.Column(
         db.Integer,
         db.ForeignKey('senses.sense_id', name='fk_translations_target_sense_id', ondelete='CASCADE'),
-        nullable=True,
+        nullable=False,
     )
     note = db.Column(db.Text, nullable=True)
     confidence = db.Column(db.Float, nullable=True)
@@ -131,9 +127,9 @@ class Sense(db.Model):
         db.ForeignKey('words.w_id', ondelete='CASCADE'),
         nullable=False,
     )
-    # part_of_speech is duplicated on Word during Phases 6a-6c (read paths still
-    # use Word.part_of_speech). The Word column is dropped in Phase 6d once the
-    # sense layer is fully load-bearing.
+    # Phase 6d removed Word.part_of_speech. Sense.part_of_speech is now the
+    # only place POS lives. Polysemous words can carry distinct POS values
+    # per sense.
     part_of_speech = db.Column(db.String(20), nullable=True)
     sense_label = db.Column(db.String(80), nullable=True)
     definition = db.Column(db.Text, nullable=True)
@@ -237,12 +233,11 @@ class Example(db.Model):
     __tablename__ = 'examples'
 
     e_id = db.Column(db.Integer, primary_key=True)
-    translation_id = db.Column(db.Integer, db.ForeignKey('translations.t_id', ondelete='CASCADE'), nullable=False)
-    # Phase 6b additions: examples are sense-scoped, not just translation-scoped
-    # (an example for "bank — financial institution" shouldn't appear under
-    # "bank — riverbank"). Nullable here in 6b so the backfill can run
-    # incrementally; tightened in 6d. translation_id is intentionally kept
-    # until 6d so the existing relationship and read path keep working.
+    # Phase 6d dropped translation_id. Examples are now sense-pair-scoped
+    # only — the (source_sense_id, target_sense_id) pair identifies which
+    # translation the example belongs to. Sense FKs stay nullable in 6d
+    # because Example creation paths don't yet exist in app code; future
+    # callers must set them explicitly to make the example queryable.
     source_sense_id = db.Column(
         db.Integer,
         db.ForeignKey('senses.sense_id', name='fk_examples_source_sense_id', ondelete='CASCADE'),
@@ -262,21 +257,21 @@ class Example(db.Model):
         server_default=func.now(),
     )
 
-    translation = db.relationship('Translation', backref='examples')
     source_sense = db.relationship('Sense', foreign_keys=[source_sense_id])
     target_sense = db.relationship('Sense', foreign_keys=[target_sense_id])
 
     __table_args__ = (
         db.UniqueConstraint(
-            'translation_id',
+            'source_sense_id',
+            'target_sense_id',
             'example_source',
             'example_target',
-            name='unique_example_per_translation',
+            name='unique_example_per_sense_pair',
         ),
     )
 
     def __repr__(self):
-        return f"<Example for Translation {self.translation_id}>"
+        return f"<Example sense_pair=({self.source_sense_id}, {self.target_sense_id})>"
 
 
 class Proverb(db.Model):

@@ -25,21 +25,21 @@ def db_app():
 
 
 def _seed_translation(en: str, yo: str, *, en_to_yo: bool = True) -> Translation:
+    # Route through create_translation so sense FKs are populated (Phase 6d
+    # made them NOT NULL; constructing Translation directly without sense FKs
+    # would fail the constraint).
+    from alarino_backend.data.seed_data_utils import create_translation
+
     en_word = Word(language="en", word=en)
     yo_word = Word(language="yo", word=yo)
     db.session.add_all([en_word, yo_word])
     db.session.flush()
-    if en_to_yo:
-        t = Translation(
-            source_word_id=en_word.w_id, target_word_id=yo_word.w_id
-        )
-    else:
-        t = Translation(
-            source_word_id=yo_word.w_id, target_word_id=en_word.w_id
-        )
-    db.session.add(t)
+    src, tgt = (en_word, yo_word) if en_to_yo else (yo_word, en_word)
+    create_translation(src, tgt)
     db.session.commit()
-    return t
+    return Translation.query.filter_by(
+        source_word_id=src.w_id, target_word_id=tgt.w_id
+    ).one()
 
 
 def test_daily_word_no_longer_has_word_id_or_en_word_id_columns():

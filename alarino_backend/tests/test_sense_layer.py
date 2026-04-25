@@ -63,18 +63,14 @@ def test_translation_has_new_metadata_columns():
         assert new_col in columns, f"Translation must have new column {new_col!r}"
 
 
-def test_word_part_of_speech_still_present():
-    # Phase 6a keeps Word.part_of_speech for read-path compatibility.
-    # Phase 6d drops it after the cutover.
-    assert "part_of_speech" in {c.name for c in Word.__table__.columns}
+def test_word_part_of_speech_dropped_in_phase_6d():
+    # Phase 6d removed Word.part_of_speech. POS lives only on Sense now.
+    assert "part_of_speech" not in {c.name for c in Word.__table__.columns}
 
 
-def test_translation_sense_fk_columns_are_nullable_in_phase_6a():
-    # Phase 6a leaves source_sense_id and target_sense_id nullable so the
-    # backfill can run incrementally and so existing write paths that
-    # don't yet set them keep working. Phase 6d makes them NOT NULL.
-    assert Translation.__table__.c.source_sense_id.nullable is True
-    assert Translation.__table__.c.target_sense_id.nullable is True
+def test_translation_sense_fk_columns_are_not_null_in_phase_6d():
+    assert Translation.__table__.c.source_sense_id.nullable is False
+    assert Translation.__table__.c.target_sense_id.nullable is False
 
 
 # ---- Sense behavior under db.create_all (model-only, no migration backfill) ----
@@ -156,10 +152,10 @@ def test_example_has_sense_fk_columns():
     assert "target_sense_id" in columns
 
 
-def test_example_translation_id_still_present_in_phase_6b():
-    # Phase 6b keeps translation_id on Example so the legacy relationship
-    # and read paths keep working through 6c. Phase 6d drops it.
-    assert "translation_id" in {c.name for c in Example.__table__.columns}
+def test_example_translation_id_dropped_in_phase_6d():
+    # Phase 6d dropped Example.translation_id. The link to a translation
+    # is now indirect via the (source_sense_id, target_sense_id) pair.
+    assert "translation_id" not in {c.name for c in Example.__table__.columns}
 
 
 def test_example_sense_columns_nullable_in_phase_6b():
@@ -292,7 +288,6 @@ def test_translate_response_carries_examples_attached_to_sense_pair(db_app):
     t = Translation.query.one()
     db.session.add(
         Example(
-            translation_id=t.t_id,
             source_sense_id=t.source_sense_id,
             target_sense_id=t.target_sense_id,
             example_source="Hello there",

@@ -51,8 +51,11 @@ def test_missing_translation_hit_count_is_not_null_with_default():
 
 
 def test_example_has_unique_constraint():
+    # Phase 6d renamed unique_example_per_translation to
+    # unique_example_per_sense_pair (translation_id was dropped; uniqueness
+    # is now on the sense pair plus the example text).
     constraint_names = {c.name for c in Example.__table__.constraints}
-    assert "unique_example_per_translation" in constraint_names
+    assert "unique_example_per_sense_pair" in constraint_names
 
 
 def test_redundant_indexes_are_not_declared_on_models():
@@ -133,30 +136,34 @@ def test_proverb_word_language_check_rejects_invalid_code(db_app):
 
 
 def test_duplicate_example_is_rejected(db_app):
+    # Phase 6d: examples uniqueness is on the sense-pair plus text.
+    from alarino_backend.db_models import Sense
+
     yoruba = Word(language="yo", word="ile")
     english = Word(language="en", word="house")
     db.session.add_all([yoruba, english])
     db.session.flush()
-    translation = Translation(
-        source_word_id=yoruba.w_id, target_word_id=english.w_id
-    )
-    db.session.add(translation)
+    yo_sense = Sense(word_id=yoruba.w_id)
+    en_sense = Sense(word_id=english.w_id)
+    db.session.add_all([yo_sense, en_sense])
     db.session.flush()
 
     db.session.add(
         Example(
-            translation_id=translation.t_id,
-            example_source="ile mi",
-            example_target="my house",
+            source_sense_id=en_sense.sense_id,
+            target_sense_id=yo_sense.sense_id,
+            example_source="hello there",
+            example_target="bawo nibe",
         )
     )
     db.session.commit()
 
     db.session.add(
         Example(
-            translation_id=translation.t_id,
-            example_source="ile mi",
-            example_target="my house",
+            source_sense_id=en_sense.sense_id,
+            target_sense_id=yo_sense.sense_id,
+            example_source="hello there",
+            example_target="bawo nibe",
         )
     )
     with pytest.raises(IntegrityError):

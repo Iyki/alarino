@@ -110,17 +110,14 @@ def test_add_proverb_treats_nfc_and_nfd_as_same_proverb(db_app):
 
 
 def test_translate_finds_word_when_query_uses_decomposed_form(db_app):
+    from alarino_backend.data.seed_data_utils import create_translation
+
     # Seed a Word in NFC form (storage canonical).
     add_word(language=Language.YORUBA, word_text=NFC_OMO)
     english_word = add_word(language=Language.ENGLISH, word_text="child")
     db.session.flush()
-    from alarino_backend.db_models import Translation
     yoruba_word = Word.query.filter_by(language=Language.YORUBA).one()
-    db.session.add(
-        Translation(
-            source_word_id=yoruba_word.w_id, target_word_id=english_word.w_id
-        )
-    )
+    create_translation(yoruba_word, english_word)
     db.session.commit()
 
     response, status = translation_service.translate(

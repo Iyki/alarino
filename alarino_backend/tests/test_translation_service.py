@@ -109,13 +109,13 @@ def test_translate_logs_missing_when_translation_is_unavailable(db_app):
 
 
 def test_translate_returns_successful_translation_payload(db_app):
-    from alarino_backend.db_models import Translation
+    from alarino_backend.data.seed_data_utils import create_translation
 
     hello = Word(language="en", word="hello")
     bawo = Word(language="yo", word="bawo")
     db.session.add_all([hello, bawo])
     db.session.flush()
-    db.session.add(Translation(source_word_id=hello.w_id, target_word_id=bawo.w_id))
+    create_translation(hello, bawo)
     db.session.commit()
 
     response, status = translation_service.translate(
@@ -317,13 +317,13 @@ def test_log_missing_translation_distinct_tuples_create_separate_rows(db_app):
 
 def _seed_one_directional_pair(en_text: str, yo_text: str):
     """Seed a single curated en→yo Translation. Returns (en_word, yo_word)."""
-    from alarino_backend.db_models import Translation
+    from alarino_backend.data.seed_data_utils import create_translation
 
     en = Word(language="en", word=en_text)
     yo = Word(language="yo", word=yo_text)
     db.session.add_all([en, yo])
     db.session.flush()
-    db.session.add(Translation(source_word_id=en.w_id, target_word_id=yo.w_id))
+    create_translation(en, yo)
     db.session.commit()
     return en, yo
 
@@ -352,10 +352,10 @@ def test_translate_finds_reverse_direction_via_bidirectional_lookup(db_app):
 def test_translate_dedupes_when_both_directions_curated(db_app):
     # Curating both directions must not return duplicate results — the bidirectional
     # lookup deduplicates by w_id of the opposite-side word.
-    from alarino_backend.db_models import Translation
+    from alarino_backend.data.seed_data_utils import create_translation
 
     en, yo = _seed_one_directional_pair("hello", "bawo")
-    db.session.add(Translation(source_word_id=yo.w_id, target_word_id=en.w_id))
+    create_translation(yo, en)
     db.session.commit()
 
     forward, status_f = translation_service.translate(
@@ -372,17 +372,15 @@ def test_translate_returns_all_target_language_translations_in_either_direction(
     # Multiple Yoruba synonyms for "child", each curated en→yo. yo→en lookup of
     # any one must return ["child"]; en→yo lookup of "child" must return all
     # Yoruba synonyms.
-    from alarino_backend.db_models import Translation
+    from alarino_backend.data.seed_data_utils import create_translation
 
     child = Word(language="en", word="child")
     omo = Word(language="yo", word="ọmọ")
     egbon = Word(language="yo", word="ẹgbọn")
     db.session.add_all([child, omo, egbon])
     db.session.flush()
-    db.session.add_all([
-        Translation(source_word_id=child.w_id, target_word_id=omo.w_id),
-        Translation(source_word_id=child.w_id, target_word_id=egbon.w_id),
-    ])
+    create_translation(child, omo)
+    create_translation(child, egbon)
     db.session.commit()
 
     response, status = translation_service.translate(

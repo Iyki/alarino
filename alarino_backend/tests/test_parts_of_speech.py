@@ -1,5 +1,8 @@
-"""Tests for the PartOfSpeech enum + CHECK constraints (Phase 6b POS-check
-sub-phase, revision c4b8e1a5d927)."""
+"""Tests for the PartOfSpeech enum + CHECK constraint on Sense.part_of_speech.
+
+Phase 6b POS-check (revision c4b8e1a5d927) added CHECK constraints on both
+Word.part_of_speech and Sense.part_of_speech. Phase 6d (d8a3f0b71e5c)
+dropped Word.part_of_speech entirely — POS lives only on Sense now."""
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -40,34 +43,20 @@ def test_part_of_speech_str_returns_short_code():
     assert str(PartOfSpeech.INTERJECTION) == "interj"
 
 
+def test_word_no_longer_has_part_of_speech_column():
+    # Phase 6d removed it. Set POS on the Sense instead.
+    assert "part_of_speech" not in {c.name for c in Word.__table__.columns}
+
+
 @pytest.mark.parametrize("pos", list(PartOfSpeech))
-def test_word_check_constraint_accepts_every_canonical_pos_value(db_app, pos):
-    # Construct via model (not add_word) to bypass the Yoruba char-set
-    # validator — we're exercising the DB-level CHECK constraint here.
-    db.session.add(Word(language="yo", word=f"w-{pos.value}", part_of_speech=pos.value))
+def test_sense_check_constraint_accepts_every_canonical_pos_value(db_app, pos):
+    word = Word(language="yo", word=f"w-{pos.value}")
+    db.session.add(word)
+    db.session.flush()
+    db.session.add(Sense(word_id=word.w_id, part_of_speech=pos.value))
     db.session.commit()
-    stored = Word.query.filter_by(word=f"w-{pos.value}").one()
+    stored = Sense.query.filter_by(word_id=word.w_id).one()
     assert stored.part_of_speech == pos.value
-
-
-def test_word_accepts_null_part_of_speech(db_app):
-    add_word(language=Language.YORUBA, word_text="ile")
-    db.session.commit()
-    assert Word.query.filter_by(word="ile").one().part_of_speech is None
-
-
-def test_add_word_persists_part_of_speech_enum(db_app):
-    # Sanity that the seed_data_utils path forwards the enum value.
-    add_word(language=Language.YORUBA, word_text="ile", part_of_speech=PartOfSpeech.NOUN)
-    db.session.commit()
-    assert Word.query.filter_by(word="ile").one().part_of_speech == "n"
-
-
-def test_word_check_constraint_rejects_non_canonical_pos(db_app):
-    db.session.add(Word(language="yo", word="ile", part_of_speech="Noun"))
-    with pytest.raises(IntegrityError):
-        db.session.commit()
-    db.session.rollback()
 
 
 def test_sense_check_constraint_rejects_non_canonical_pos(db_app):
@@ -87,3 +76,10 @@ def test_sense_accepts_null_part_of_speech(db_app):
     db.session.add(Sense(word_id=word.w_id))
     db.session.commit()
     assert Sense.query.one().part_of_speech is None
+
+
+def test_add_word_no_longer_takes_part_of_speech_kwarg():
+    # Sanity: passing part_of_speech to add_word should be a TypeError now.
+    # POS is sense-scoped post-Phase-6d.
+    with pytest.raises(TypeError):
+        add_word(language=Language.YORUBA, word_text="ile", part_of_speech=PartOfSpeech.NOUN)

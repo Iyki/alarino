@@ -2,11 +2,10 @@ import json
 import re
 import unicodedata
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable
 
 from alarino_backend.db_models import Proverb, ProverbWord, Sense, db, Word, Translation
 from alarino_backend.languages import Language
-from alarino_backend.parts_of_speech import PartOfSpeech
 # normalize_word_text and normalize_text live in alarino_backend.normalization
 # so the TypeDecorators in db_models.py can use them without a circular import.
 # Re-exported here for callers that import them from this module.
@@ -20,15 +19,11 @@ _YORUBA_NASAL_VOWELS = "mḿm̀nńǹ"  # Nasal vowels with tone marks
 _YORUBA_CHARACTER_SET = _YORUBA_CONSONANTS + _YORUBA_VOWELS + _YORUBA_NASAL_VOWELS
 
 
-def add_word(
-    language: Language,
-    word_text: str,
-    part_of_speech: Optional[PartOfSpeech] = None,
-):
+def add_word(language: Language, word_text: str):
     """Insert a word, returning the existing row if (language, word) already
-    exists. ``part_of_speech`` must be a PartOfSpeech enum value or None;
-    arbitrary strings are no longer accepted (the DB-level
-    ck_words_part_of_speech_valid CHECK would reject them anyway)."""
+    exists. POS is no longer a Word-level attribute (Phase 6d dropped
+    Word.part_of_speech) — to attach POS, set it on a Sense for this Word
+    after creation."""
     word_text = normalize_word_text(word_text)
 
     if language == Language.YORUBA and not is_valid_yoruba_word(word_text):
@@ -41,8 +36,7 @@ def add_word(
     existing_word = Word.query.filter_by(language=language, word=word_text).first()
     if existing_word:
         return existing_word
-    pos_value = part_of_speech.value if part_of_speech is not None else None
-    word = Word(language=language, word=word_text, part_of_speech=pos_value)
+    word = Word(language=language, word=word_text)
     db.session.add(word)
     return word
 
@@ -201,7 +195,10 @@ def _ensure_default_sense(word: Word) -> Sense:
     )
     if existing is not None:
         return existing
-    sense = Sense(word_id=word.w_id, part_of_speech=word.part_of_speech)
+    # Default sense carries no POS metadata. Phase 6d removed the
+    # Word.part_of_speech column that this previously copied; callers who
+    # want POS set it on the Sense explicitly via a future curation flow.
+    sense = Sense(word_id=word.w_id)
     db.session.add(sense)
     db.session.flush()
     return sense
