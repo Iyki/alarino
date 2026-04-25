@@ -6,10 +6,18 @@ import threading
 from typing import Tuple, Dict, Optional
 
 from alarino_backend.data.seed_data_utils import add_word, create_translation, is_valid_english_word, is_valid_yoruba_word, normalize_word_text
-from alarino_backend.db_models import Word, DailyWord, Translation, MissingTranslation, Proverb, ProverbWord
+from alarino_backend.db_models import Word, DailyWord, Example, Sense, Translation, MissingTranslation, Proverb, ProverbWord
 from alarino_backend.languages import Language
 from alarino_backend.llm_service import get_llm_service
-from alarino_backend.response import APIResponse, TranslationResponseData, WordOfTheDayResponseData, ProverbResponseData, BulkUploadResponseData
+from alarino_backend.response import (
+    APIResponse,
+    BulkUploadResponseData,
+    ProverbResponseData,
+    SenseGroup,
+    TranslationInSenseGroup,
+    TranslationResponseData,
+    WordOfTheDayResponseData,
+)
 from alarino_backend.runtime import logger
 
 
@@ -65,15 +73,45 @@ def translate(db, text: str, source: Language, target: Language, user_agent: str
     )
     seen_word_ids: set[int] = set()
     translated_words: list[str] = []
+    # Group results by the *looked-up* word's sense (Phase 6c). For each
+    # matching translation, the looked-up side may be either source or target;
+    # the "my sense" is whichever sense FK sits on the same side. Default
+    # bucket (sense_id None) catches translations whose sense FKs are NULL —
+    # shouldn't happen post-Phase-6b for new data but kept as a safety net.
+    sense_buckets: dict[Optional[int], SenseGroup] = {}
     for translation in translations:
-        other = (
-            translation.target_word
-            if translation.source_word_id == source_word.w_id
-            else translation.source_word
+        if translation.source_word_id == source_word.w_id:
+            other = translation.target_word
+            my_sense = translation.source_sense
+            other_sense = translation.target_sense
+        else:
+            other = translation.source_word
+            my_sense = translation.target_sense
+            other_sense = translation.source_sense
+
+        if other.language != target.value or other.w_id in seen_word_ids:
+            continue
+        seen_word_ids.add(other.w_id)
+        translated_words.append(other.word)
+
+        sense_key = my_sense.sense_id if my_sense is not None else None
+        if sense_key not in sense_buckets:
+            sense_buckets[sense_key] = SenseGroup(
+                label=my_sense.sense_label if my_sense else None,
+                definition=my_sense.definition if my_sense else None,
+                register=my_sense.register if my_sense else None,
+                domain=my_sense.domain if my_sense else None,
+                part_of_speech=(my_sense.part_of_speech if my_sense else None),
+            )
+        examples = _examples_for_sense_pair(my_sense, other_sense)
+        sense_buckets[sense_key].translations.append(
+            TranslationInSenseGroup(
+                word=other.word,
+                note=translation.note,
+                provenance=translation.provenance,
+                examples=examples,
+            )
         )
-        if other.language == target.value and other.w_id not in seen_word_ids:
-            seen_word_ids.add(other.w_id)
-            translated_words.append(other.word)
 
     if not translated_words:
         log_missing_translation(db, text, source, target, user_agent)
@@ -81,12 +119,45 @@ def translate(db, text: str, source: Language, target: Language, user_agent: str
 
     logger.info(f"[Translated '{text}' from {source} to {target}]")
 
+    # Sense groups are ordered by first-seen sense_id for deterministic output;
+    # the default-sense bucket (key None) sorts to the end if present.
+    ordered_groups = sorted(
+        sense_buckets.items(),
+        key=lambda item: (item[0] is None, item[0] or 0),
+    )
     response_data = TranslationResponseData(
         translation=translated_words,
         source_word=source_word.word,
-        to_language=target
+        to_language=target,
+        senses=[group for _, group in ordered_groups],
     )
     return APIResponse.success("Translation successful.", response_data).as_response()
+
+
+def _examples_for_sense_pair(
+    source_sense: Optional[Sense], target_sense: Optional[Sense]
+) -> list[dict]:
+    """Return Example rows attached to the given (source_sense, target_sense)
+    pair, formatted as {source, target} dicts. If either sense is None, returns
+    [] — Phase 6b backfilled examples to point at sense pairs but a future
+    raw-SQL inserted Example without sense FKs would not match. Read paths
+    surface only sense-attached examples; legacy examples linked only by
+    translation_id surface through Phase 6c-incompatible read paths (none
+    exposed today) until 6d drops translation_id."""
+    if source_sense is None or target_sense is None:
+        return []
+    rows = (
+        Example.query
+        .filter_by(
+            source_sense_id=source_sense.sense_id,
+            target_sense_id=target_sense.sense_id,
+        )
+        .all()
+    )
+    return [
+        {"source": row.example_source, "target": row.example_target}
+        for row in rows
+    ]
 
 
 def log_missing_translation(db, text, source_lang, target_lang, user_agent):

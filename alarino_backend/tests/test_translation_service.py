@@ -123,16 +123,32 @@ def test_translate_returns_successful_translation_payload(db_app):
     )
 
     assert status == 200
-    assert response == {
-        "success": True,
-        "status": 200,
-        "message": "Translation successful.",
-        "data": {
-            "translation": ["bawo"],
-            "source_word": "hello",
-            "to_language": Language.YORUBA.value,
-        },
-    }
+    assert response["success"] is True
+    assert response["status"] == 200
+    assert response["message"] == "Translation successful."
+    assert response["data"]["translation"] == ["bawo"]
+    assert response["data"]["source_word"] == "hello"
+    assert response["data"]["to_language"] == Language.YORUBA.value
+    # Phase 6c: senses field is additive. The seeded Translation didn't go
+    # through create_translation so its sense FKs are NULL — expect a single
+    # default-bucket group with empty metadata.
+    assert response["data"]["senses"] == [
+        {
+            "label": None,
+            "definition": None,
+            "register": None,
+            "domain": None,
+            "part_of_speech": None,
+            "translations": [
+                {
+                    "word": "bawo",
+                    "note": None,
+                    "provenance": None,
+                    "examples": [],
+                }
+            ],
+        }
+    ]
 
 
 def test_translate_llm_returns_400_for_empty_text():
@@ -176,16 +192,14 @@ def test_translate_llm_returns_successful_translation_payload(monkeypatch):
     )
 
     assert status == 200
-    assert response == {
-        "success": True,
-        "status": 200,
-        "message": "Translation successful.",
-        "data": {
-            "translation": ["bawo"],
-            "source_word": "hello",
-            "to_language": Language.YORUBA.value,
-        },
-    }
+    # translate_llm doesn't query the DB; senses field defaults to empty.
+    assert response["success"] is True
+    assert response["status"] == 200
+    assert response["message"] == "Translation successful."
+    assert response["data"]["translation"] == ["bawo"]
+    assert response["data"]["source_word"] == "hello"
+    assert response["data"]["to_language"] == Language.YORUBA.value
+    assert response["data"]["senses"] == []
 
 
 def test_translate_llm_returns_404_when_no_translation_is_found(monkeypatch):

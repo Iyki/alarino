@@ -185,6 +185,130 @@ def test_create_translation_populates_sense_fks(db_app):
     assert t.target_sense.word_id == yo.w_id
 
 
+# ---- Phase 6c: sense-grouped response on /api/translate ----
+
+
+def test_translate_response_includes_senses_field_with_default_metadata(db_app):
+    import alarino_backend.translation_service as translation_service
+
+    en = add_word(language=Language.ENGLISH, word_text="hello")
+    yo = add_word(language=Language.YORUBA, word_text="bawo")
+    db.session.flush()
+    create_translation(en, yo)
+    db.session.commit()
+
+    response, status = translation_service.translate(
+        db, "hello", Language.ENGLISH, Language.YORUBA, "pytest-agent"
+    )
+    assert status == 200
+    senses = response["data"]["senses"]
+    assert len(senses) == 1
+    group = senses[0]
+    # Default sense from create_translation has no curated metadata.
+    assert group["label"] is None
+    assert group["definition"] is None
+    assert group["register"] is None
+    assert group["domain"] is None
+    assert group["translations"] == [
+        {"word": "bawo", "note": None, "provenance": None, "examples": []}
+    ]
+
+
+def test_translate_response_groups_polysemous_word_into_multiple_senses(db_app):
+    """The product story for the sense layer: a polysemous word like "bank"
+    surfaces multiple sense groups, each with its own translations."""
+    import alarino_backend.translation_service as translation_service
+    from alarino_backend.db_models import Sense, Translation
+
+    bank = add_word(language=Language.ENGLISH, word_text="bank")
+    ile_ifo = add_word(language=Language.YORUBA, word_text="ifowopamo")  # financial
+    bebe = add_word(language=Language.YORUBA, word_text="bebe")  # river
+    db.session.flush()
+
+    financial = Sense(
+        word_id=bank.w_id,
+        sense_label="financial",
+        definition="A financial institution",
+        part_of_speech="n",
+    )
+    river = Sense(
+        word_id=bank.w_id,
+        sense_label="river",
+        definition="Land alongside a river",
+        part_of_speech="n",
+    )
+    ife_sense = Sense(word_id=ile_ifo.w_id, sense_label="financial", part_of_speech="n")
+    bebe_sense = Sense(word_id=bebe.w_id, sense_label="river", part_of_speech="n")
+    db.session.add_all([financial, river, ife_sense, bebe_sense])
+    db.session.flush()
+
+    db.session.add_all([
+        Translation(
+            source_word_id=bank.w_id,
+            target_word_id=ile_ifo.w_id,
+            source_sense_id=financial.sense_id,
+            target_sense_id=ife_sense.sense_id,
+            note="financial sense",
+            provenance="curated",
+        ),
+        Translation(
+            source_word_id=bank.w_id,
+            target_word_id=bebe.w_id,
+            source_sense_id=river.sense_id,
+            target_sense_id=bebe_sense.sense_id,
+            note="river sense",
+            provenance="curated",
+        ),
+    ])
+    db.session.commit()
+
+    response, status = translation_service.translate(
+        db, "bank", Language.ENGLISH, Language.YORUBA, "pytest-agent"
+    )
+    assert status == 200
+    # Flat list still surfaces both translations (backward compat).
+    assert sorted(response["data"]["translation"]) == sorted(["ifowopamo", "bebe"])
+    # The new senses field separates them.
+    senses = response["data"]["senses"]
+    assert len(senses) == 2
+    by_label = {s["label"]: s for s in senses}
+    assert "financial" in by_label and "river" in by_label
+    assert by_label["financial"]["definition"] == "A financial institution"
+    assert by_label["financial"]["translations"][0]["word"] == "ifowopamo"
+    assert by_label["financial"]["translations"][0]["note"] == "financial sense"
+    assert by_label["river"]["translations"][0]["word"] == "bebe"
+    assert by_label["river"]["translations"][0]["note"] == "river sense"
+
+
+def test_translate_response_carries_examples_attached_to_sense_pair(db_app):
+    import alarino_backend.translation_service as translation_service
+    from alarino_backend.db_models import Example, Translation
+
+    en = add_word(language=Language.ENGLISH, word_text="hello")
+    yo = add_word(language=Language.YORUBA, word_text="bawo")
+    db.session.flush()
+    create_translation(en, yo)
+    db.session.commit()
+    t = Translation.query.one()
+    db.session.add(
+        Example(
+            translation_id=t.t_id,
+            source_sense_id=t.source_sense_id,
+            target_sense_id=t.target_sense_id,
+            example_source="Hello there",
+            example_target="Bawo nibe",
+        )
+    )
+    db.session.commit()
+
+    response, status = translation_service.translate(
+        db, "hello", Language.ENGLISH, Language.YORUBA, "pytest-agent"
+    )
+    assert status == 200
+    examples = response["data"]["senses"][0]["translations"][0]["examples"]
+    assert examples == [{"source": "Hello there", "target": "Bawo nibe"}]
+
+
 def test_create_translation_reuses_existing_default_sense(db_app):
     en = add_word(language=Language.ENGLISH, word_text="hello")
     yo = add_word(language=Language.YORUBA, word_text="bawo")
