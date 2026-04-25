@@ -222,6 +222,21 @@ class Example(db.Model):
 
     e_id = db.Column(db.Integer, primary_key=True)
     translation_id = db.Column(db.Integer, db.ForeignKey('translations.t_id', ondelete='CASCADE'), nullable=False)
+    # Phase 6b additions: examples are sense-scoped, not just translation-scoped
+    # (an example for "bank — financial institution" shouldn't appear under
+    # "bank — riverbank"). Nullable here in 6b so the backfill can run
+    # incrementally; tightened in 6d. translation_id is intentionally kept
+    # until 6d so the existing relationship and read path keep working.
+    source_sense_id = db.Column(
+        db.Integer,
+        db.ForeignKey('senses.sense_id', name='fk_examples_source_sense_id', ondelete='CASCADE'),
+        nullable=True,
+    )
+    target_sense_id = db.Column(
+        db.Integer,
+        db.ForeignKey('senses.sense_id', name='fk_examples_target_sense_id', ondelete='CASCADE'),
+        nullable=True,
+    )
     example_source = db.Column(db.Text, nullable=False)
     example_target = db.Column(db.Text, nullable=False)
     created_at = db.Column(
@@ -232,6 +247,8 @@ class Example(db.Model):
     )
 
     translation = db.relationship('Translation', backref='examples')
+    source_sense = db.relationship('Sense', foreign_keys=[source_sense_id])
+    target_sense = db.relationship('Sense', foreign_keys=[target_sense_id])
 
     __table_args__ = (
         db.UniqueConstraint(

@@ -1,16 +1,24 @@
-"""Tests for Phase 6a — additive sense-layer scaffolding.
+"""Tests for Phase 6a/6b — sense-layer scaffolding and write-path cutover.
 
-Phase 6a only adds: the senses table, four new columns on translations
-(source_sense_id, target_sense_id, note, confidence, provenance), and
-a backfill that creates one Sense per existing Word and links existing
-Translations to those senses. No reads or writes change behavior.
-Phases 6b/6c/6d build on this foundation."""
+Phase 6a (additive only) adds the senses table, sense FKs and metadata
+columns on translations, and backfills one Sense per Word.
+
+Phase 6b adds source_sense_id and target_sense_id columns to examples
+(backfilled from the parent Translation) and updates the create_translation
+write path so every new Translation has its sense FKs populated.
+
+Phases 6c (read cutover, API change) and 6d (drop legacy) build on these."""
 
 import pytest
 
 import alarino_backend.app as app_module
 from alarino_backend import db
-from alarino_backend.db_models import Sense, Translation, Word
+from alarino_backend.data.seed_data_utils import (
+    add_word,
+    create_translation,
+)
+from alarino_backend.db_models import Example, Sense, Translation, Word
+from alarino_backend.languages import Language
 
 
 @pytest.fixture
@@ -137,6 +145,63 @@ def test_translation_can_carry_metadata(db_app):
     assert t.note.startswith("informal greeting")
     assert t.confidence == 0.95
     assert t.provenance == "curated"
+
+
+# ---- Phase 6b: write-path cutover + Example sense columns ----
+
+
+def test_example_has_sense_fk_columns():
+    columns = {c.name for c in Example.__table__.columns}
+    assert "source_sense_id" in columns
+    assert "target_sense_id" in columns
+
+
+def test_example_translation_id_still_present_in_phase_6b():
+    # Phase 6b keeps translation_id on Example so the legacy relationship
+    # and read paths keep working through 6c. Phase 6d drops it.
+    assert "translation_id" in {c.name for c in Example.__table__.columns}
+
+
+def test_example_sense_columns_nullable_in_phase_6b():
+    # 6b adds the columns nullable so the backfill can run incrementally.
+    # 6d tightens to NOT NULL.
+    assert Example.__table__.c.source_sense_id.nullable is True
+    assert Example.__table__.c.target_sense_id.nullable is True
+
+
+def test_create_translation_populates_sense_fks(db_app):
+    en = add_word(language=Language.ENGLISH, word_text="hello")
+    yo = add_word(language=Language.YORUBA, word_text="bawo")
+    db.session.flush()
+
+    create_translation(en, yo)
+    db.session.commit()
+
+    t = Translation.query.one()
+    assert t.source_sense_id is not None
+    assert t.target_sense_id is not None
+    # The sense FKs point at senses owned by the source/target words.
+    assert t.source_sense.word_id == en.w_id
+    assert t.target_sense.word_id == yo.w_id
+
+
+def test_create_translation_reuses_existing_default_sense(db_app):
+    en = add_word(language=Language.ENGLISH, word_text="hello")
+    yo = add_word(language=Language.YORUBA, word_text="bawo")
+    db.session.flush()
+    # Pre-create a sense for the English word; create_translation must reuse it
+    # rather than creating a duplicate "default" sense.
+    pre_existing_en_sense = Sense(word_id=en.w_id, sense_label="greeting")
+    db.session.add(pre_existing_en_sense)
+    db.session.flush()
+
+    create_translation(en, yo)
+    db.session.commit()
+
+    t = Translation.query.one()
+    assert t.source_sense_id == pre_existing_en_sense.sense_id
+    # English word should have just the one sense, not a duplicate.
+    assert Sense.query.filter_by(word_id=en.w_id).count() == 1
 
 
 def test_sense_word_id_fk_uses_db_level_cascade(db_app):

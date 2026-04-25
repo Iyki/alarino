@@ -4,7 +4,7 @@ import unicodedata
 from pathlib import Path
 from typing import Callable
 
-from alarino_backend.db_models import Proverb, ProverbWord, db, Word, Translation
+from alarino_backend.db_models import Proverb, ProverbWord, Sense, db, Word, Translation
 from alarino_backend.languages import Language
 # normalize_word_text and normalize_text live in alarino_backend.normalization
 # so the TypeDecorators in db_models.py can use them without a circular import.
@@ -169,6 +169,34 @@ def is_valid_english_text(text: str) -> bool:
     pattern = r"^[a-z' .,?!;:-]+$"
     return bool(re.match(pattern, text, re.UNICODE))
 
+def _ensure_default_sense(word: Word) -> Sense:
+    """Return a sense for the word, creating a default one if none exist.
+
+    Phase 6b ensures every Translation has non-NULL source_sense_id and
+    target_sense_id. The bulk-upload write path doesn't carry sense-level
+    information today (the input format is just word→word pairs), so we
+    default to the first sense if one exists, otherwise create one carrying
+    the word's part_of_speech. Polysemy — multiple senses per word with
+    distinct labels/definitions — is supported by the schema and will be
+    populated by an explicit admin curation flow in a later feature.
+    """
+    word.w_id  # ensure attribute is loaded; flush if needed
+    if word.w_id is None:
+        db.session.flush()
+    existing = (
+        Sense.query
+        .filter_by(word_id=word.w_id)
+        .order_by(Sense.sense_id)
+        .first()
+    )
+    if existing is not None:
+        return existing
+    sense = Sense(word_id=word.w_id, part_of_speech=word.part_of_speech)
+    db.session.add(sense)
+    db.session.flush()
+    return sense
+
+
 def create_translation(source: Word, target: Word):
     existing = Translation.query.filter_by(
         source_word_id=source.w_id,
@@ -176,7 +204,14 @@ def create_translation(source: Word, target: Word):
     ).first()
     if existing:
         return
-    translation = Translation(source_word=source, target_word=target)
+    source_sense = _ensure_default_sense(source)
+    target_sense = _ensure_default_sense(target)
+    translation = Translation(
+        source_word=source,
+        target_word=target,
+        source_sense_id=source_sense.sense_id,
+        target_sense_id=target_sense.sense_id,
+    )
     db.session.add(translation)
 
 
