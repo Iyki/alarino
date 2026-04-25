@@ -163,52 +163,33 @@ Out of scope here (considered and rejected): live request-time LLM inspection (t
 
 Risk: very low. None of these touch production data or runtime code. Worst case is a noisy CI bot that reviewers ignore, which is recoverable by removing the action.
 
-## Phase 4 — Translation Directionality
+## Phase 4 — Bidirectional Translation Lookup
 
-Moved earlier in the plan. The Translation identity model is foundational: `DailyWord` (Phase 5), the sense layer (Phase 6), and several read paths all reference `translations.t_id`. Settling whether `(A,B)` and `(B,A)` are one row or two before downstream tables start pointing at translations avoids a cascading remap later.
+**Decision (recorded after design discussion):** keep `Translation` as a directed edge (one row per curated direction, no auto-mirror) and fix the *lookup* code to query both columns. This was chosen over the originally-considered alternatives (canonical undirected storage with consolidation; auto-creating the inverse on every insert) because it preserves curatorial intent — the schema honestly records what was added in which direction — while still giving users a "translations are symmetric" experience.
 
-One Alembic revision plus a service-layer change.
+The bug being fixed: today `translate()` filters only on `source_word_id`. A row `(en:hello → yo:bawo)` makes `translate("hello", en→yo)` work, but `translate("bawo", yo→en)` returns "translation not available" even though the data is right there. Verified end-to-end in the Phase 3a Docker validation (test G3): bulk-upload created the en→yo direction only, and the yo→en lookup failed.
 
-Pick one of two approaches based on what current data looks like (run the inspection query as the first step of the phase):
+No schema change. No migration. No new constraints. One service-layer change plus tests.
 
-- **Option A (preferred): undirected canonical ordering.** Replace `unique_translation_pair (source_word_id, target_word_id)` with `unique_translation_pair_canonical (LEAST(source_word_id, target_word_id), GREATEST(...))`. Update insert paths to canonicalize before write. Update `translate()` to query both directions. **Migration is data-destructive**: existing reverse-pair duplicates must be consolidated. The consolidation step must remap every dependent FK (today: `examples.translation_id`; in future phases: `daily_words.translation_id`, sense-layer additions) to point at the surviving row before the duplicate is dropped. Removed rows are logged to `_phase4_consolidated_translations`. Conflicts (where the two pair rows disagree on attached examples) are surfaced for manual resolution and block the migration.
-- **Option B: enforce inverse on insert.** Keep directed storage, but wrap `create_translation` so inserting `(A, B)` always also inserts `(B, A)` in the same transaction. Add a periodic consistency check that verifies every translation has its inverse. No deletes, no FK remap, fully reversible.
+**Implementation:**
 
-Decision criterion: run two preflight queries.
+1. In `translation_service.translate()`, change the Translation query from "source_word_id = X" to "source_word_id = X OR target_word_id = X". For each match, return the *other* word — `target_word` if the lookup matched the source side, `source_word` if it matched the target side. Filter the "other word" by the requested target language and dedupe by `w_id` so a pair curated in both directions doesn't return the same Yoruba word twice.
+2. Add a `direction` field on `TranslationResponseData` (or similar — final shape TBD) so the frontend can distinguish results from the curated direction vs the implicit reverse, if it ever wants to surface that. Default presentation is identical regardless.
+3. No write-path changes. `create_translation` keeps its current single-direction semantics. Contributors who want both directions explicitly can add both rows; nothing requires them to.
 
-1. Reverse-pair count:
-   ```sql
-   SELECT count(*)
-   FROM translations a
-   JOIN translations b
-     ON a.source_word_id = b.target_word_id
-    AND a.target_word_id = b.source_word_id
-   WHERE a.t_id < b.t_id;
-   ```
-2. Example-conflict landscape (lists every reverse pair with example counts on each side, so the operator can see which consolidations would require manual reconciliation):
-   ```sql
-   SELECT
-     a.t_id AS keep_t_id,
-     b.t_id AS drop_t_id,
-     (SELECT count(*) FROM examples WHERE translation_id = a.t_id) AS keep_examples,
-     (SELECT count(*) FROM examples WHERE translation_id = b.t_id) AS drop_examples
-   FROM translations a
-   JOIN translations b
-     ON a.source_word_id = b.target_word_id
-    AND a.target_word_id = b.source_word_id
-   WHERE a.t_id < b.t_id;
-   ```
-   Pairs where `drop_examples > 0` need their example rows remapped to `keep_t_id`. Pairs where both sides have non-empty, non-identical example sets must be reconciled manually before the migration runs.
+**Tests:**
 
-If the reverse-pair count is small and the example-conflict query returns no rows requiring manual reconciliation, go Option A. If either query reveals significant mess, go Option B and revisit later.
+- Property test: insert a single `(en:hello → yo:bawo)` row through the public API; `translate("hello", en→yo)` returns `["bawo"]`; `translate("bawo", yo→en)` returns `["hello"]`. Both directions resolve from the one curated row.
+- Dedup test: insert both `(en:hello → yo:bawo)` and `(yo:bawo → en:hello)`; lookup in either direction returns each translation exactly once.
+- Negative test: empty translations table → both directions return "translation not available."
 
-Risk: medium for Option A (irreversible deletes plus FK remap), low for Option B.
+Risk: very low. No schema change, no migration, no data destruction. The only behavioral change is that lookups that previously returned 404 because only the inverse was curated will now return 200. That's the intended fix.
 
 ## Phase 5 — Normalize `DailyWord` to Reference `Translation`
 
-One Alembic revision. Depends on Phase 4 having settled the Translation identity model — under Option A, the canonical row is unambiguous; under Option B, both directions exist and either can be referenced.
+One Alembic revision.
 
-If Phase 4 chose **Option B** (directed pairs with enforced inverses), `daily_words.translation_id` may point at either the Yoruba→English row or the English→Yoruba row, since both exist and are equally valid references. **Read paths must derive the Yoruba and English sides by joining `Word` and inspecting `Word.language`, not by assuming `source_word_id` is Yoruba and `target_word_id` is English.** The current `get_word_of_the_day` code makes that positional assumption today and must be updated as part of this phase. Under Option A this caveat is moot — there is one canonical row and the language of each side is still recovered by joining `Word`.
+Phase 4 settled on directed storage with bidirectional lookup (no auto-mirror). That means a `Translation` row may have its source and target columns in either language order — whichever direction the curator originally added. **Read paths must derive the Yoruba and English sides by joining `Word` and inspecting `Word.language`, not by assuming `source_word_id` is Yoruba and `target_word_id` is English.** The current `get_word_of_the_day` code makes that positional assumption today and must be updated as part of this phase.
 
 A daily word is conceptually a translation pair, but today `DailyWord` stores `word_id` and `en_word_id` as two independent FKs to `Word`. Nothing in the schema requires those two words to actually be a translation of each other. Replacing both columns with a single `translation_id` FK makes the relationship correct by construction.
 
@@ -285,8 +266,6 @@ Risk: low. Deferred to last so it doesn't entangle with sense-layer work.
 ## Testing Expectations
 
 - Every phase adds tests covering: the new constraint or column behavior, the backfill correctness on representative fixture data, and a regression test for any read path whose query changed.
-- Each migration is exercised both forward and back (`alembic upgrade head && alembic downgrade -1 && alembic upgrade head`) in CI. Phases with explicitly non-reversible steps (Phase 1 step 3, Phase 2 user_ip drop, Phase 4 Option A consolidation, Phase 6d) test forward-only and assert that downgrade fails cleanly with a clear message rather than silently leaving the schema half-migrated.
-- Phase 4 adds a property test matched to the chosen option:
-  - Option A: inserting `(A, B)` and `(B, A)` through the public service path produces exactly one row, and `translate()` returns the same translation regardless of query direction.
-  - Option B: inserting `(A, B)` produces both `(A, B)` and `(B, A)` in the same transaction; the consistency-check job finds zero orphans on a representative fixture.
+- Each migration is exercised both forward and back (`alembic upgrade head && alembic downgrade -1 && alembic upgrade head`) in CI. Phases with explicitly non-reversible steps (Phase 1 step 3, Phase 2 user_ip drop, Phase 3a duplicate consolidation, Phase 6d) test forward-only and assert that downgrade fails cleanly with a clear message rather than silently leaving the schema half-migrated. (Phase 4 has no migration.)
+- Phase 4 adds property tests for bidirectional lookup: a single curated `(en:hello → yo:bawo)` row makes `translate("hello", en→yo)` and `translate("bawo", yo→en)` both succeed; curating both directions returns each translation exactly once (dedup); empty translations table returns "translation not available" in both directions.
 - Phase 6 adds a property test: a polysemous word (e.g. "bank") with two senses and two distinct target translations returns two grouped result sets from `translate()`, each with its own examples — verifying the sense layer is actually load-bearing and not just structurally present.

@@ -49,18 +49,36 @@ def translate(db, text: str, source: Language, target: Language, user_agent: str
         log_missing_translation(db, text, source, target, user_agent)
         return APIResponse.error("Word not found.", 404).as_response()
 
+    # Bidirectional lookup. Translation is stored as a directed edge — the
+    # curator added it as source→target — but a user querying in either
+    # direction should find a match if either direction was curated. Match the
+    # source_word on EITHER column and return the opposite-side word, filtered
+    # by the requested target language and deduped by w_id so a pair that
+    # happens to be curated in both directions doesn't return duplicates.
     translations = (
         Translation.query
-        .filter_by(source_word_id=source_word.w_id)
-        .join(Word, Translation.target_word_id == Word.w_id)
-        .filter(Word.language == target)
+        .filter(
+            (Translation.source_word_id == source_word.w_id)
+            | (Translation.target_word_id == source_word.w_id)
+        )
         .all()
     )
-    if not translations:
+    seen_word_ids: set[int] = set()
+    translated_words: list[str] = []
+    for translation in translations:
+        other = (
+            translation.target_word
+            if translation.source_word_id == source_word.w_id
+            else translation.source_word
+        )
+        if other.language == target.value and other.w_id not in seen_word_ids:
+            seen_word_ids.add(other.w_id)
+            translated_words.append(other.word)
+
+    if not translated_words:
         log_missing_translation(db, text, source, target, user_agent)
         return APIResponse.error("Word found but translation not available.", 404).as_response()
 
-    translated_words = [t.target_word.word for t in translations]
     logger.info(f"[Translated '{text}' from {source} to {target}]")
 
     response_data = TranslationResponseData(

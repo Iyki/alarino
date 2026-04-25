@@ -89,80 +89,37 @@ def test_translate_logs_missing_word_when_source_word_does_not_exist(monkeypatch
     ]
 
 
-def test_translate_logs_missing_when_translation_is_unavailable(monkeypatch):
-    source_word = SimpleNamespace(w_id=7, word="hello")
-    word_query = QueryStub(first_result=source_word)
-    translation_query = QueryStub(all_result=[])
-    missing_logs = []
-    fake_db = SimpleNamespace()
-
-    monkeypatch.setattr(
-        translation_service,
-        "Word",
-        SimpleNamespace(query=word_query, language=object(), w_id=object()),
-    )
-    monkeypatch.setattr(
-        translation_service,
-        "Translation",
-        SimpleNamespace(query=translation_query, target_word_id=object()),
-    )
-    monkeypatch.setattr(
-        translation_service,
-        "log_missing_translation",
-        lambda *args: missing_logs.append(args),
-    )
+def test_translate_logs_missing_when_translation_is_unavailable(db_app):
+    # Word exists but no Translation row in either direction.
+    db.session.add(Word(language="en", word="hello"))
+    db.session.commit()
 
     response, status = translation_service.translate(
-        db=fake_db,
-        text="hello",
-        source=Language.ENGLISH,
-        target=Language.YORUBA,
-        user_agent="pytest-agent",
+        db, "hello", Language.ENGLISH, Language.YORUBA, "pytest-agent"
     )
 
     assert status == 404
     assert response["message"] == "Word found but translation not available."
-    assert translation_query.filter_by_calls == [{"source_word_id": 7}]
-    assert missing_logs == [
-        (
-            fake_db,
-            "hello",
-            Language.ENGLISH,
-            Language.YORUBA,
-            "pytest-agent",
-        )
-    ]
+
+    rows = MissingTranslation.query.all()
+    assert len(rows) == 1
+    assert rows[0].text == "hello"
+    assert rows[0].source_language == Language.ENGLISH.value
+    assert rows[0].target_language == Language.YORUBA.value
 
 
-def test_translate_returns_successful_translation_payload(monkeypatch):
-    source_word = SimpleNamespace(w_id=7, word="hello")
-    translated_word = SimpleNamespace(word="bawo")
-    translation = SimpleNamespace(target_word=translated_word)
-    word_query = QueryStub(first_result=source_word)
-    translation_query = QueryStub(all_result=[translation])
+def test_translate_returns_successful_translation_payload(db_app):
+    from alarino_backend.db_models import Translation
 
-    monkeypatch.setattr(
-        translation_service,
-        "Word",
-        SimpleNamespace(query=word_query, language=object(), w_id=object()),
-    )
-    monkeypatch.setattr(
-        translation_service,
-        "Translation",
-        SimpleNamespace(query=translation_query, target_word_id=object()),
-    )
-    monkeypatch.setattr(
-        translation_service,
-        "log_missing_translation",
-        lambda *args: (_ for _ in ()).throw(AssertionError("should not log missing translation")),
-    )
+    hello = Word(language="en", word="hello")
+    bawo = Word(language="yo", word="bawo")
+    db.session.add_all([hello, bawo])
+    db.session.flush()
+    db.session.add(Translation(source_word_id=hello.w_id, target_word_id=bawo.w_id))
+    db.session.commit()
 
     response, status = translation_service.translate(
-        db=SimpleNamespace(),
-        text=" Hello ",
-        source=Language.ENGLISH,
-        target=Language.YORUBA,
-        user_agent="pytest-agent",
+        db, " Hello ", Language.ENGLISH, Language.YORUBA, "pytest-agent"
     )
 
     assert status == 200
@@ -336,3 +293,104 @@ def test_log_missing_translation_distinct_tuples_create_separate_rows(db_app):
     rows = MissingTranslation.query.order_by(MissingTranslation.text).all()
     assert len(rows) == 2
     assert {row.text: row.hit_count for row in rows} == {"house": 1, "ile": 2}
+
+
+# ---- Phase 4: bidirectional lookup ----
+# A Translation row is stored as a directed edge (curator added it as
+# source→target). Lookups in *either* direction must succeed if either
+# direction is curated.
+
+
+def _seed_one_directional_pair(en_text: str, yo_text: str):
+    """Seed a single curated en→yo Translation. Returns (en_word, yo_word)."""
+    from alarino_backend.db_models import Translation
+
+    en = Word(language="en", word=en_text)
+    yo = Word(language="yo", word=yo_text)
+    db.session.add_all([en, yo])
+    db.session.flush()
+    db.session.add(Translation(source_word_id=en.w_id, target_word_id=yo.w_id))
+    db.session.commit()
+    return en, yo
+
+
+def test_translate_finds_curated_forward_direction(db_app):
+    _seed_one_directional_pair("hello", "bawo")
+
+    response, status = translation_service.translate(
+        db, "hello", Language.ENGLISH, Language.YORUBA, "pytest-agent"
+    )
+    assert status == 200
+    assert response["data"]["translation"] == ["bawo"]
+
+
+def test_translate_finds_reverse_direction_via_bidirectional_lookup(db_app):
+    # Only the en→yo direction was curated, but yo→en lookup should succeed.
+    _seed_one_directional_pair("hello", "bawo")
+
+    response, status = translation_service.translate(
+        db, "bawo", Language.YORUBA, Language.ENGLISH, "pytest-agent"
+    )
+    assert status == 200
+    assert response["data"]["translation"] == ["hello"]
+
+
+def test_translate_dedupes_when_both_directions_curated(db_app):
+    # Curating both directions must not return duplicate results — the bidirectional
+    # lookup deduplicates by w_id of the opposite-side word.
+    from alarino_backend.db_models import Translation
+
+    en, yo = _seed_one_directional_pair("hello", "bawo")
+    db.session.add(Translation(source_word_id=yo.w_id, target_word_id=en.w_id))
+    db.session.commit()
+
+    forward, status_f = translation_service.translate(
+        db, "hello", Language.ENGLISH, Language.YORUBA, "pytest-agent"
+    )
+    reverse, status_r = translation_service.translate(
+        db, "bawo", Language.YORUBA, Language.ENGLISH, "pytest-agent"
+    )
+    assert status_f == 200 and forward["data"]["translation"] == ["bawo"]
+    assert status_r == 200 and reverse["data"]["translation"] == ["hello"]
+
+
+def test_translate_returns_all_target_language_translations_in_either_direction(db_app):
+    # Multiple Yoruba synonyms for "child", each curated en→yo. yo→en lookup of
+    # any one must return ["child"]; en→yo lookup of "child" must return all
+    # Yoruba synonyms.
+    from alarino_backend.db_models import Translation
+
+    child = Word(language="en", word="child")
+    omo = Word(language="yo", word="ọmọ")
+    egbon = Word(language="yo", word="ẹgbọn")
+    db.session.add_all([child, omo, egbon])
+    db.session.flush()
+    db.session.add_all([
+        Translation(source_word_id=child.w_id, target_word_id=omo.w_id),
+        Translation(source_word_id=child.w_id, target_word_id=egbon.w_id),
+    ])
+    db.session.commit()
+
+    response, status = translation_service.translate(
+        db, "child", Language.ENGLISH, Language.YORUBA, "pytest-agent"
+    )
+    assert status == 200
+    assert sorted(response["data"]["translation"]) == sorted(["ọmọ", "ẹgbọn"])
+
+    response_yo, status_yo = translation_service.translate(
+        db, "ọmọ", Language.YORUBA, Language.ENGLISH, "pytest-agent"
+    )
+    assert status_yo == 200
+    assert response_yo["data"]["translation"] == ["child"]
+
+
+def test_translate_returns_404_when_no_curated_translation_in_either_direction(db_app):
+    # Word exists in source language but no Translation row at all.
+    db.session.add(Word(language="en", word="lonely"))
+    db.session.commit()
+
+    response, status = translation_service.translate(
+        db, "lonely", Language.ENGLISH, Language.YORUBA, "pytest-agent"
+    )
+    assert status == 404
+    assert response["message"] == "Word found but translation not available."
