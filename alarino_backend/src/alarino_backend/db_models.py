@@ -5,6 +5,14 @@ from sqlalchemy.types import TypeDecorator
 
 from alarino_backend.flask_extensions import db
 from alarino_backend.normalization import normalize_text, normalize_word_text
+from alarino_backend.parts_of_speech import ALLOWED_POS_VALUES
+
+
+_POS_CHECK_CLAUSE = (
+    "part_of_speech IS NULL OR part_of_speech IN ("
+    + ", ".join(f"'{v}'" for v in ALLOWED_POS_VALUES)
+    + ")"
+)
 
 
 class NFCWord(TypeDecorator):
@@ -56,6 +64,10 @@ class Word(db.Model):
         db.CheckConstraint(
             "language IN ('en', 'yo')",
             name='ck_words_language_valid',
+        ),
+        db.CheckConstraint(
+            _POS_CHECK_CLAUSE,
+            name='ck_words_part_of_speech_valid',
         ),
     )
 
@@ -138,6 +150,10 @@ class Sense(db.Model):
 
     __table_args__ = (
         Index('idx_senses_word_id', 'word_id'),
+        db.CheckConstraint(
+            _POS_CHECK_CLAUSE,
+            name='ck_senses_part_of_speech_valid',
+        ),
     )
 
     def __repr__(self):
