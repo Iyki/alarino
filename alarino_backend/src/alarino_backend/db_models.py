@@ -112,9 +112,17 @@ class Translation(db.Model):
     target_sense = db.relationship('Sense', foreign_keys=[target_sense_id])
 
     __table_args__ = (
-        db.UniqueConstraint('source_word_id', 'target_word_id', name='unique_translation_pair'),
-        # target_word_id index supports reverse-direction joins; source_word_id
-        # is already covered by the unique_translation_pair constraint prefix.
+        # Uniqueness is on the SENSE pair, not the WORD pair, so polysemy can
+        # express two distinct (source_sense, target_sense) translations even
+        # when they happen to involve the same surface words. See Phase 7
+        # bug-fix migration f0e8d3a4c612 for the rationale.
+        db.UniqueConstraint(
+            'source_sense_id', 'target_sense_id',
+            name='unique_translation_sense_pair',
+        ),
+        # Both word_id columns are indexed for the bidirectional translate()
+        # join; without an index on source_word_id, that side scans.
+        Index('idx_translations_source_word_id', 'source_word_id'),
         Index('idx_translations_target_word_id', 'target_word_id'),
     )
 
@@ -173,7 +181,12 @@ class DailyWord(db.Model):
         db.Integer,
         db.ForeignKey('translations.t_id', ondelete='CASCADE'),
         nullable=False,
-        unique=True,
+        # NOT unique — a translation can legitimately recur as the daily word
+        # on different dates. The original Phase 5 design had unique=True but
+        # that conflicted with find_random_unused_translation's default
+        # can_reuse=True path, causing 500s when an already-seen translation
+        # was picked. Date uniqueness (one daily word per date) is enforced
+        # via the date column. See Phase 7 bug-fix migration f0e8d3a4c612.
     )
     date = db.Column(db.Date, default=date.today, unique=True)
     created_at = db.Column(

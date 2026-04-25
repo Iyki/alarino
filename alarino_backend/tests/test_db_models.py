@@ -61,16 +61,17 @@ def test_example_has_unique_constraint():
 def test_redundant_indexes_are_not_declared_on_models():
     # These indexes were redundant with their unique constraints (or unused
     # in the planner); Phase 1 dropped them and the model definitions must
-    # not redeclare them.
+    # not redeclare them. Note: idx_translations_source_word_id was dropped
+    # in Phase 1 (covered by unique_translation_pair prefix), then re-added
+    # in the Phase 7 bug-fix when uniqueness moved to the sense pair — it
+    # is no longer redundant.
     declared_indexes = (
         {idx.name for idx in Word.__table__.indexes}
-        | {idx.name for idx in Translation.__table__.indexes}
         | {idx.name for idx in MissingTranslation.__table__.indexes}
     )
     assert "idx_words_language_word" not in declared_indexes
     assert "idx_words_language" not in declared_indexes
     assert "idx_missing_text_source_target" not in declared_indexes
-    assert "idx_translations_source_word_id" not in declared_indexes
 
 
 def test_inserting_word_without_created_at_uses_server_default(db_app):

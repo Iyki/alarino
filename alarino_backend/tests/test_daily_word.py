@@ -49,10 +49,15 @@ def test_daily_word_no_longer_has_word_id_or_en_word_id_columns():
     assert "translation_id" in columns
 
 
-def test_daily_word_translation_id_is_unique():
+def test_daily_word_translation_id_is_not_unique():
+    # Originally Phase 5 made translation_id UNIQUE, but that broke
+    # find_random_unused_translation's default can_reuse=True path (a
+    # past daily word being re-picked would crash on the constraint).
+    # Phase 7 bug-fix relaxed it. Date uniqueness still ensures one
+    # daily word per date.
     column = DailyWord.__table__.c.translation_id
     assert column.nullable is False
-    assert column.unique is True
+    assert column.unique is not True
 
 
 def test_get_word_of_the_day_picks_unused_translation_when_db_empty(db_app):
@@ -119,14 +124,40 @@ def test_find_random_unused_translation_skips_multiword_yoruba_phrases(db_app):
     assert selected is None
 
 
-def test_translation_id_unique_constraint_rejects_duplicate_daily_words(db_app):
-    from sqlalchemy.exc import IntegrityError
+def test_same_translation_can_be_daily_word_on_different_dates(db_app):
+    # P1a regression test: previously a UNIQUE on translation_id rejected
+    # the second insert and made get_word_of_the_day 500 on its second-ever
+    # call against a fresh DB. After the Phase 7 bug-fix, the same
+    # translation can be the daily word on different dates.
+    t = _seed_translation("hello", "bawo")
+    db.session.add(DailyWord(translation_id=t.t_id, date=date(2024, 1, 1)))
+    db.session.add(DailyWord(translation_id=t.t_id, date=date(2024, 1, 2)))
+    db.session.commit()
 
+    assert DailyWord.query.count() == 2
+
+
+def test_get_word_of_the_day_succeeds_when_only_translation_was_already_used(db_app):
+    # Exact P1a repro from the review: seed one old DailyWord, then call
+    # get_word_of_the_day. The picker defaults to can_reuse=True so it can
+    # legitimately return the same translation. The endpoint must not 500.
     t = _seed_translation("hello", "bawo")
     db.session.add(DailyWord(translation_id=t.t_id, date=date(2024, 1, 1)))
     db.session.commit()
+    cache = {}
 
+    response, status = translation_service.get_word_of_the_day(db, cache)
+    assert status == 200
+    assert response["data"]["yoruba_word"] == "bawo"
+    # Two rows: the seeded historical one, plus today's.
+    assert DailyWord.query.count() == 2
+
+
+def test_translation_id_uniqueness_is_not_enforced_at_db_level(db_app):
+    # Belt-and-suspenders against re-introducing the unique constraint:
+    # inserting two daily_words pointing at the same translation_id must
+    # not raise even at the DB level.
+    t = _seed_translation("hello", "bawo")
+    db.session.add(DailyWord(translation_id=t.t_id, date=date(2024, 1, 1)))
     db.session.add(DailyWord(translation_id=t.t_id, date=date(2024, 1, 2)))
-    with pytest.raises(IntegrityError):
-        db.session.commit()
-    db.session.rollback()
+    db.session.commit()  # must not raise IntegrityError

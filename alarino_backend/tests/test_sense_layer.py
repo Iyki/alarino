@@ -323,6 +323,127 @@ def test_create_translation_reuses_existing_default_sense(db_app):
     assert Sense.query.filter_by(word_id=en.w_id).count() == 1
 
 
+# ---- Phase 7 bug-fix: polysemy + ambiguous-sense regression tests ----
+
+
+def test_translation_uniqueness_is_on_sense_pair_not_word_pair(db_app):
+    # P1b regression test: the original Phase 6 cutover left
+    # unique_translation_pair on (source_word_id, target_word_id), which
+    # blocked exactly the polysemy use case the sense layer is supposed to
+    # unlock. After the Phase 7 bug-fix, two translations for the same
+    # word pair but different sense pairs must coexist.
+    from alarino_backend.db_models import Translation
+
+    bank = add_word(language=Language.ENGLISH, word_text="bank")
+    edge = add_word(language=Language.YORUBA, word_text="eti")
+    db.session.flush()
+
+    fin = Sense(word_id=bank.w_id, sense_label="financial")
+    riv = Sense(word_id=bank.w_id, sense_label="river")
+    edge_fin = Sense(word_id=edge.w_id, sense_label="financial-edge")
+    edge_riv = Sense(word_id=edge.w_id, sense_label="river-edge")
+    db.session.add_all([fin, riv, edge_fin, edge_riv])
+    db.session.flush()
+
+    db.session.add_all([
+        Translation(
+            source_word_id=bank.w_id, target_word_id=edge.w_id,
+            source_sense_id=fin.sense_id, target_sense_id=edge_fin.sense_id,
+        ),
+        Translation(
+            source_word_id=bank.w_id, target_word_id=edge.w_id,
+            source_sense_id=riv.sense_id, target_sense_id=edge_riv.sense_id,
+        ),
+    ])
+    db.session.commit()  # must not raise
+
+    assert Translation.query.count() == 2
+
+
+def test_translation_sense_pair_uniqueness_still_rejects_duplicate_pair(db_app):
+    from sqlalchemy.exc import IntegrityError
+    from alarino_backend.db_models import Translation
+
+    en = add_word(language=Language.ENGLISH, word_text="hello")
+    yo = add_word(language=Language.YORUBA, word_text="bawo")
+    db.session.flush()
+    en_sense = Sense(word_id=en.w_id)
+    yo_sense = Sense(word_id=yo.w_id)
+    db.session.add_all([en_sense, yo_sense])
+    db.session.flush()
+
+    db.session.add(Translation(
+        source_word_id=en.w_id, target_word_id=yo.w_id,
+        source_sense_id=en_sense.sense_id, target_sense_id=yo_sense.sense_id,
+    ))
+    db.session.commit()
+
+    db.session.add(Translation(
+        source_word_id=en.w_id, target_word_id=yo.w_id,
+        source_sense_id=en_sense.sense_id, target_sense_id=yo_sense.sense_id,
+    ))
+    with pytest.raises(IntegrityError):
+        db.session.commit()
+    db.session.rollback()
+
+
+def test_create_translation_raises_on_multi_sense_source_word(db_app):
+    # P2 regression test: previously create_translation silently bound a
+    # new translation to whichever sense had the lowest sense_id when the
+    # word had multiple curated senses. After the Phase 7 bug-fix, this
+    # must raise AmbiguousSenseError so callers either pick a sense
+    # explicitly or surface the ambiguity.
+    from alarino_backend.data.seed_data_utils import AmbiguousSenseError
+
+    bank = add_word(language=Language.ENGLISH, word_text="bank")
+    yo_word = add_word(language=Language.YORUBA, word_text="ifowopamo")
+    db.session.flush()
+    db.session.add_all([
+        Sense(word_id=bank.w_id, sense_label="financial"),
+        Sense(word_id=bank.w_id, sense_label="river"),
+    ])
+    db.session.commit()
+
+    with pytest.raises(AmbiguousSenseError) as excinfo:
+        create_translation(bank, yo_word)
+    # The message must name the ambiguous word so the operator can find it.
+    assert "bank" in str(excinfo.value)
+    assert "2 senses" in str(excinfo.value)
+
+
+def test_create_translation_raises_on_multi_sense_target_word(db_app):
+    # Symmetry: the source-side check above also applies to the target side.
+    from alarino_backend.data.seed_data_utils import AmbiguousSenseError
+
+    en_word = add_word(language=Language.ENGLISH, word_text="bank")
+    polysemous_yo = add_word(language=Language.YORUBA, word_text="bebe")
+    db.session.flush()
+    db.session.add_all([
+        Sense(word_id=polysemous_yo.w_id, sense_label="edge"),
+        Sense(word_id=polysemous_yo.w_id, sense_label="boundary"),
+    ])
+    db.session.commit()
+
+    with pytest.raises(AmbiguousSenseError):
+        create_translation(en_word, polysemous_yo)
+
+
+def test_create_translation_is_idempotent_on_sense_pair(db_app):
+    # Existence check moved from word-pair to sense-pair in the Phase 7
+    # bug-fix. Calling create_translation twice with the same words (and
+    # therefore the same default senses) must remain a no-op.
+    en = add_word(language=Language.ENGLISH, word_text="hello")
+    yo = add_word(language=Language.YORUBA, word_text="bawo")
+    db.session.flush()
+
+    create_translation(en, yo)
+    db.session.commit()
+    create_translation(en, yo)
+    db.session.commit()
+
+    assert Translation.query.count() == 1
+
+
 def test_sense_word_id_fk_uses_db_level_cascade(db_app):
     # The model declares ondelete='CASCADE' on senses.word_id. Verify the
     # constraint is wired at the DB level via a raw SQL DELETE (bypassing
