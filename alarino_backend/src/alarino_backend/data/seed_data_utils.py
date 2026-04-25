@@ -6,6 +6,10 @@ from typing import Callable
 
 from alarino_backend.db_models import Proverb, ProverbWord, db, Word, Translation
 from alarino_backend.languages import Language
+# normalize_word_text and normalize_text live in alarino_backend.normalization
+# so the TypeDecorators in db_models.py can use them without a circular import.
+# Re-exported here for callers that import them from this module.
+from alarino_backend.normalization import normalize_text, normalize_word_text  # noqa: F401
 from alarino_backend.runtime import logger
 
 # Define valid Yoruba character sets
@@ -13,22 +17,6 @@ _YORUBA_CONSONANTS = "bdfghjklmnprstwygbṣ"  # Standard consonants (excluding c
 _YORUBA_VOWELS = "aàáeèéẹẹ̀ẹ́iìíoòóọọ̀ọ́uùú"  # Standard vowels with tone marks
 _YORUBA_NASAL_VOWELS = "mḿm̀nńǹ"  # Nasal vowels with tone marks
 _YORUBA_CHARACTER_SET = _YORUBA_CONSONANTS + _YORUBA_VOWELS + _YORUBA_NASAL_VOWELS
-
-
-def normalize_word_text(text: str) -> str:
-    """Canonical normalization for word lookups: strip surrounding whitespace
-    and punctuation, lowercase, then NFC. Storage and read paths must both go
-    through this so canonically-equivalent inputs (e.g., precomposed vs.
-    decomposed Yoruba diacritics) collapse to the same key."""
-    cleaned = text.strip().strip(" ,.?!()").lower()
-    return unicodedata.normalize("NFC", cleaned)
-
-
-def normalize_text(text: str) -> str:
-    """Canonical normalization for sentence/proverb-level text: strip leading
-    and trailing whitespace, then NFC. Case is preserved (proverbs may carry
-    intentional capitalization) and inner punctuation is preserved."""
-    return unicodedata.normalize("NFC", text.strip())
 
 
 def add_word(language: Language, word_text: str, part_of_speech: str = None):

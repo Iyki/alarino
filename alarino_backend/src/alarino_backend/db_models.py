@@ -1,15 +1,48 @@
 from datetime import date, datetime
-from sqlalchemy import Index, func
+from sqlalchemy import Index, String, Text, func
 from sqlalchemy import text as sql_text
+from sqlalchemy.types import TypeDecorator
 
 from alarino_backend.flask_extensions import db
+from alarino_backend.normalization import normalize_text, normalize_word_text
+
+
+class NFCWord(TypeDecorator):
+    """Word-level canonical text column. Mirrors normalize_word_text():
+    strip outer whitespace + punctuation, lowercase, then NFC. Applied at
+    SQLAlchemy bind time so every ORM write *and* every parameterized query
+    against this column normalizes the value, regardless of whether the
+    call site remembered to. Defense against a class of drift bugs we
+    repeatedly hit during the schema evolution work."""
+
+    impl = String
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return normalize_word_text(value)
+
+
+class NFCText(TypeDecorator):
+    """Sentence/proverb-level canonical text column. Mirrors normalize_text():
+    strip leading and trailing whitespace then NFC. Case and inner punctuation
+    preserved. Same bind-time normalization guarantee as NFCWord."""
+
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return normalize_text(value)
 
 class Word(db.Model):
     __tablename__ = 'words'
 
     w_id = db.Column(db.Integer, primary_key=True)
     language = db.Column(db.String(3), nullable=False)
-    word = db.Column(db.String(200), nullable=False)  ##todo: rename to text
+    word = db.Column(NFCWord(200), nullable=False)  ##todo: rename to text
     part_of_speech = db.Column(db.String(20))
     created_at = db.Column(
         db.DateTime,
@@ -87,7 +120,7 @@ class MissingTranslation(db.Model):
     __tablename__ = 'missing_translations'
 
     m_id = db.Column(db.Integer, primary_key=True)
-    text = db.Column(db.String(200), nullable=False)
+    text = db.Column(NFCWord(200), nullable=False)
     source_language = db.Column(db.String(3), nullable=False)
     target_language = db.Column(db.String(3), nullable=False)
     user_agent = db.Column(db.Text)
@@ -155,8 +188,8 @@ class Proverb(db.Model):
     __tablename__ = 'proverbs'
 
     p_id = db.Column(db.Integer, primary_key=True)
-    yoruba_text = db.Column(db.Text, nullable=False)
-    english_text = db.Column(db.Text, nullable=False)
+    yoruba_text = db.Column(NFCText, nullable=False)
+    english_text = db.Column(NFCText, nullable=False)
     created_at = db.Column(
         db.DateTime,
         nullable=False,
