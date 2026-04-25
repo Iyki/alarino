@@ -72,24 +72,32 @@ def translate(db, text: str, source: Language, target: Language, addr: str, user
 
 
 def log_missing_translation(db, text, source_lang, target_lang, addr, user_agent):
-    existing = MissingTranslation.query.filter_by(
+    # Atomic upsert: on first hit insert with addr/user_agent and hit_count=1; on
+    # subsequent hits increment hit_count without overwriting addr/user_agent. The
+    # previous read-modify-write pattern lost concurrent increments under load.
+    dialect_name = db.session.get_bind().dialect.name
+    if dialect_name == "postgresql":
+        from sqlalchemy.dialects.postgresql import insert
+    elif dialect_name == "sqlite":
+        from sqlalchemy.dialects.sqlite import insert
+    else:
+        raise NotImplementedError(
+            f"log_missing_translation upsert not implemented for dialect {dialect_name!r}"
+        )
+
+    table = MissingTranslation.__table__
+    stmt = insert(table).values(
         text=text,
         source_language=source_lang,
-        target_language=target_lang
-    ).first()
-
-    if existing:
-        existing.hit_count += 1
-    else:
-        missing = MissingTranslation(
-            text=text,
-            source_language=source_lang,
-            target_language=target_lang,
-            user_ip=addr,
-            user_agent=user_agent
-        )
-        db.session.add(missing)
-
+        target_language=target_lang,
+        user_ip=addr,
+        user_agent=user_agent,
+    )
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["text", "source_language", "target_language"],
+        set_={"hit_count": table.c.hit_count + 1},
+    )
+    db.session.execute(stmt)
     db.session.commit()
 
 

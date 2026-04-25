@@ -1,6 +1,11 @@
 from types import SimpleNamespace
 
+import pytest
+
+import alarino_backend.app as app_module
 import alarino_backend.translation_service as translation_service
+from alarino_backend import db
+from alarino_backend.db_models import MissingTranslation, Word
 from alarino_backend.languages import Language
 
 
@@ -264,3 +269,78 @@ def test_translate_llm_returns_500_when_service_raises(monkeypatch):
 
     assert status == 500
     assert response["message"] == "An error occurred during translation."
+
+
+def test_word_created_at_default_is_callable():
+    # Regression: default was previously datetime.now() (called once at import),
+    # so every Word row received the same timestamp. Must be a callable.
+    default = Word.__table__.c.created_at.default
+    assert default is not None
+    assert callable(default.arg), (
+        f"Word.created_at default must be a callable, got {default.arg!r}"
+    )
+
+
+@pytest.fixture
+def db_app():
+    app = app_module.create_app()
+    app.config["TESTING"] = True
+    with app.app_context():
+        db.create_all()
+        try:
+            yield app
+        finally:
+            db.session.remove()
+            db.drop_all()
+
+
+def test_log_missing_translation_inserts_on_first_call(db_app):
+    translation_service.log_missing_translation(
+        db, "ile", Language.YORUBA, Language.ENGLISH, "203.0.113.10", "pytest-agent"
+    )
+
+    rows = MissingTranslation.query.all()
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.text == "ile"
+    assert row.source_language == Language.YORUBA.value
+    assert row.target_language == Language.ENGLISH.value
+    assert row.user_ip == "203.0.113.10"
+    assert row.user_agent == "pytest-agent"
+    assert row.hit_count == 1
+
+
+def test_log_missing_translation_increments_hit_count_on_conflict(db_app):
+    translation_service.log_missing_translation(
+        db, "ile", Language.YORUBA, Language.ENGLISH, "203.0.113.10", "first-agent"
+    )
+    translation_service.log_missing_translation(
+        db, "ile", Language.YORUBA, Language.ENGLISH, "198.51.100.20", "second-agent"
+    )
+    translation_service.log_missing_translation(
+        db, "ile", Language.YORUBA, Language.ENGLISH, "198.51.100.21", "third-agent"
+    )
+
+    rows = MissingTranslation.query.all()
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.hit_count == 3
+    # First reporter's identity is preserved; subsequent IPs/agents do not overwrite.
+    assert row.user_ip == "203.0.113.10"
+    assert row.user_agent == "first-agent"
+
+
+def test_log_missing_translation_distinct_tuples_create_separate_rows(db_app):
+    translation_service.log_missing_translation(
+        db, "ile", Language.YORUBA, Language.ENGLISH, "203.0.113.10", "pytest-agent"
+    )
+    translation_service.log_missing_translation(
+        db, "house", Language.ENGLISH, Language.YORUBA, "203.0.113.10", "pytest-agent"
+    )
+    translation_service.log_missing_translation(
+        db, "ile", Language.YORUBA, Language.ENGLISH, "203.0.113.10", "pytest-agent"
+    )
+
+    rows = MissingTranslation.query.order_by(MissingTranslation.text).all()
+    assert len(rows) == 2
+    assert {row.text: row.hit_count for row in rows} == {"house": 1, "ile": 2}

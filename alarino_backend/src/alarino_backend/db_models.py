@@ -10,7 +10,7 @@ class Word(db.Model):
     language = db.Column(db.String(3), nullable=False)
     word = db.Column(db.String(200), nullable=False)  ##todo: rename to text
     part_of_speech = db.Column(db.String(20))
-    created_at = db.Column(db.DateTime, default=datetime.now())
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     __table_args__ = (
         db.UniqueConstraint('language', 'word', name='unique_language_word'),
