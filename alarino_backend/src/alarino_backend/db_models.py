@@ -94,8 +94,17 @@ class DailyWord(db.Model):
     __tablename__ = "daily_words"
 
     dw_id = db.Column(db.Integer, primary_key=True)
-    word_id = db.Column(db.Integer, db.ForeignKey("words.w_id"), nullable=False)
-    en_word_id = db.Column(db.Integer, db.ForeignKey("words.w_id"), nullable=False)
+    # Phase 5: replaces word_id + en_word_id with a single FK to the translation
+    # pair. Makes "daily word is a translation pair" a structural fact instead
+    # of a conventional pairing of two unrelated word_id columns. Read paths
+    # derive the Yoruba and English sides by joining Word and inspecting
+    # Word.language — never by assuming a column position.
+    translation_id = db.Column(
+        db.Integer,
+        db.ForeignKey('translations.t_id', ondelete='CASCADE'),
+        nullable=False,
+        unique=True,
+    )
     date = db.Column(db.Date, default=date.today, unique=True)
     created_at = db.Column(
         db.DateTime,
@@ -104,8 +113,7 @@ class DailyWord(db.Model):
         server_default=func.now(),
     )
 
-    word = db.relationship("Word", foreign_keys=[word_id])
-    en_word = db.relationship("Word", foreign_keys=[en_word_id])
+    translation = db.relationship("Translation")
 
     __table_args__ = (
         # Add index on date for faster lookups of daily words
@@ -113,7 +121,7 @@ class DailyWord(db.Model):
     )
 
     def __repr__(self):
-        return f"<DailyWord {self.word.word} for {self.date}>"
+        return f"<DailyWord translation_id={self.translation_id} for {self.date}>"
 
 
 class MissingTranslation(db.Model):

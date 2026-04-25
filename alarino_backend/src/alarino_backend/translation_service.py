@@ -118,43 +118,46 @@ def log_missing_translation(db, text, source_lang, target_lang, user_agent):
     db.session.commit()
 
 
-def find_single_word_with_translation(db, can_reuse=True) -> Optional[Tuple[Word, Word]]:
-    """
-    Find a random Yoruba word that has an English translation.
-    Returns a tuple of (yoruba_word, english_word) or None if no suitable word is found.
-    """
-    # Get list of previously used word IDs to avoid repetition
-    used_word_ids = db.session.query(DailyWord.word_id).all()
-    used_ids_set = set() if can_reuse else set(word_id for (word_id,) in used_word_ids)
+def _derive_yoruba_english(translation: Translation) -> Tuple[Word, Word]:
+    """Return (yoruba_word, english_word) for a translation, regardless of
+    which column each language sits in. Translation rows are directed (Phase 4
+    keeps them that way), so the Yoruba/English assignment cannot be derived
+    from source/target position — only from Word.language."""
+    sw, tw = translation.source_word, translation.target_word
+    if sw.language == Language.YORUBA.value:
+        return sw, tw
+    return tw, sw
 
-    # Filter Yoruba words that are single-word and not used before
-    selected_word = (
-        Word.query
-        .filter(Word.language == Language.YORUBA)
-        .filter(~Word.word.contains(" "))
-        .filter(~Word.w_id.in_(used_ids_set))
-        .order_by(db.func.random())
-        .first()
-    )
 
-    if not selected_word:
-        return None
+def find_random_unused_translation(db, can_reuse: bool = True) -> Optional[Translation]:
+    """Pick a random Translation that hasn't been used as a daily word, with
+    the Yoruba side restricted to single-word entries (the daily-word feature
+    spotlights individual Yoruba words, not phrases). With can_reuse=True the
+    used-set filter is skipped — same semantic as the previous version.
 
-    # Find the English translations
-    translations = (
-        Translation.query
-        .filter_by(target_word_id=selected_word.w_id)
-        .join(Word, Translation.source_word_id == Word.w_id)
-        .filter(Word.language == Language.ENGLISH)
-        .all()
-    )
+    Phase 4 keeps Translation as a directed edge, so the Yoruba side may sit
+    on either source_word or target_word. The single-word filter is applied
+    in Python rather than SQL because the "yoruba side is on one of two
+    columns" condition is awkward to express portably; alarino's translations
+    table is small enough that loading the candidate set is negligible."""
+    query = Translation.query
+    if not can_reuse:
+        used_set = {
+            t_id for (t_id,) in db.session.query(DailyWord.translation_id).all()
+        }
+        if used_set:
+            query = query.filter(~Translation.t_id.in_(used_set))
 
-    if not translations:
-        return None
-
-    # Get the first English translation
-    english_word = translations[0].source_word
-    return selected_word, english_word
+    yoruba = Language.YORUBA.value
+    for translation in query.order_by(db.func.random()).all():
+        yo_word = (
+            translation.source_word
+            if translation.source_word.language == yoruba
+            else translation.target_word
+        )
+        if " " not in yo_word.word:
+            return translation
+    return None
 
 
 def get_word_of_the_day(db, daily_word_cache: Dict[date, Tuple[str, str]]) -> Tuple[Dict, int]:
@@ -176,42 +179,32 @@ def get_word_of_the_day(db, daily_word_cache: Dict[date, Tuple[str, str]]) -> Tu
         # Check if already selected today in the DB
         existing = DailyWord.query.filter_by(date=today).first()
         if existing:
-            yoruba_word = existing.word.word
-            # Use the direct en_word relationship if available
-            if existing.en_word:
-                english_word = existing.en_word.word
-                daily_word_cache[today] = (yoruba_word, english_word)
+            yoruba_word_obj, english_word_obj = _derive_yoruba_english(existing.translation)
+            yoruba_word = yoruba_word_obj.word
+            english_word = english_word_obj.word
+            daily_word_cache[today] = (yoruba_word, english_word)
 
-                response_data = WordOfTheDayResponseData(yoruba_word=yoruba_word, english_word=english_word)
-                return APIResponse.success("Word of the day fetched from database.", response_data).as_response()
-            else:
-                # If no English word is associated, this is an error condition
-                return APIResponse.error("Daily word has no English translation", 500).as_response()
+            response_data = WordOfTheDayResponseData(yoruba_word=yoruba_word, english_word=english_word)
+            return APIResponse.success("Word of the day fetched from database.", response_data).as_response()
 
-        # Maximum attempts to find a word with translation
-        max_attempts = 5
-        for _ in range(max_attempts):
-            word_pair = find_single_word_with_translation(db)
-            if not word_pair:
-                continue
-            yoruba_word, english_word = word_pair
+        # Pick a fresh translation for today.
+        translation = find_random_unused_translation(db)
+        if translation is None:
+            return APIResponse.error(
+                "Could not find a translation suitable for the daily word.",
+                500,
+            ).as_response()
 
-            # Save to daily_words with the English word reference
-            daily = DailyWord(
-                word=yoruba_word,
-                en_word=english_word
-            )
-            db.session.add(daily)
-            db.session.commit()
-            # Cache it
-            daily_word_cache[today] = (yoruba_word.word, english_word.word)
+        yoruba_word_obj, english_word_obj = _derive_yoruba_english(translation)
+        daily = DailyWord(translation=translation)
+        db.session.add(daily)
+        db.session.commit()
+        daily_word_cache[today] = (yoruba_word_obj.word, english_word_obj.word)
 
-            response_data = WordOfTheDayResponseData(yoruba_word=yoruba_word.word, english_word=english_word.word)
-            return APIResponse.success("Word of the day fetched successfully.", response_data).as_response()
-
-        # If we've exhausted our attempts and still haven't found a word with translation
-        return APIResponse.error("Could not find a word with an English translation after multiple attempts",
-                                 500).as_response()
+        response_data = WordOfTheDayResponseData(
+            yoruba_word=yoruba_word_obj.word, english_word=english_word_obj.word
+        )
+        return APIResponse.success("Word of the day fetched successfully.", response_data).as_response()
 
     except Exception as e:
         return APIResponse.error(str(e), 500).as_response()
