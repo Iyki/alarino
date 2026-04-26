@@ -102,16 +102,17 @@ def upgrade():
             "that would launder the corruption into accepted curated data."
         )
 
-    # ---- Step 3: tighten translation_id, add unique constraint, drop old columns ----
+    # ---- Step 3: tighten translation_id and drop old columns ----
+    # Note: an earlier draft also added UNIQUE on translation_id here, but
+    # that conflicted with find_random_unused_translation's default
+    # can_reuse=True path AND with prod data that already had repeat
+    # translation_ids across dates. The Phase 7 bug-fix migration's
+    # rationale applies retroactively; we never add the constraint at all.
     with op.batch_alter_table("daily_words", schema=None) as batch_op:
         batch_op.alter_column(
             "translation_id",
             existing_type=sa.Integer(),
             nullable=False,
-        )
-        batch_op.create_unique_constraint(
-            "unique_daily_words_translation_id",
-            ["translation_id"],
         )
         batch_op.drop_column("en_word_id")
         batch_op.drop_column("word_id")
