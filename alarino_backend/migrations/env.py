@@ -97,6 +97,14 @@ def run_migrations_online():
     connectable = get_engine()
 
     with connectable.connect() as connection:
+        # Set a short lock_timeout on Postgres so a migration that can't
+        # immediately acquire AccessExclusive on a live table aborts cleanly
+        # (no deadlock; transaction rolls back) and can be retried, instead
+        # of blocking indefinitely or being chosen as the deadlock victim.
+        # SQLite has no equivalent and ignores this.
+        if connection.dialect.name == 'postgresql':
+            connection.exec_driver_sql("SET lock_timeout = '5s'")
+
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
@@ -105,6 +113,18 @@ def run_migrations_online():
 
         with context.begin_transaction():
             context.run_migrations()
+
+        # SQLAlchemy 2.x + Flask-SQLAlchemy 3.x: connection.connect() returns
+        # a connection in autobegin mode and alembic's begin_transaction does
+        # not commit at the connection level under that configuration. Without
+        # this explicit commit the migration writes (including the
+        # alembic_version update) appear in the same connection but get
+        # rolled back when the connection is returned to the pool. Manifested
+        # as "flask db upgrade exits 0 silently with no schema change"
+        # against a Neon Postgres backend; verified the same pattern hits
+        # the local Postgres path too.
+        if connection.in_transaction():
+            connection.commit()
 
 
 if context.is_offline_mode():

@@ -101,7 +101,19 @@ jobs:
             docker image prune -f || true
             docker container prune -f || true
 
-            echo "Rebuilding and restarting caddy + frontend + backend..."
+            echo "Building backend image (so the new alembic revisions are available)..."
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml build backend
+
+            echo "Running database migrations against the live DB using the new image..."
+            # One-shot container using the freshly-built backend image. If a
+            # migration aborts (any preflight fires on real prod data), this
+            # exits non-zero and the script halts under set -e — the OLD
+            # backend container keeps serving traffic against the OLD schema
+            # until the data issue is resolved and the deploy is re-run.
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm backend \
+              python -m flask --app alarino_backend.app:create_app db upgrade head
+
+            echo "Rebuilding (no-op cache hit) and restarting caddy + frontend + backend..."
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d backend frontend caddy
 
             echo "Deployment complete."

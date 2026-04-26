@@ -60,24 +60,14 @@ def upgrade():
             unique=False,
         )
 
-    # ---- DailyWord: drop uniqueness on translation_id ----
-    # SQLite stored the unique=True column as a constraint named
-    # "daily_words_translation_id_key" or similar via SQLAlchemy. To handle
-    # both the SQLAlchemy-default name and the Postgres-default name
-    # portably, drop via batch_alter_table.alter_column with unique=False.
-    with op.batch_alter_table("daily_words", schema=None) as batch_op:
-        batch_op.drop_constraint(
-            "unique_daily_words_translation_id", type_="unique"
-        )
+    # NOTE: an earlier draft of this migration also dropped a UNIQUE
+    # constraint on daily_words.translation_id. That constraint was
+    # originally added by Phase 5, but Phase 5 has since been amended to
+    # never add it (it conflicted with prod data that already had repeat
+    # translation_ids across dates). Nothing to drop here.
 
 
 def downgrade():
-    with op.batch_alter_table("daily_words", schema=None) as batch_op:
-        batch_op.create_unique_constraint(
-            "unique_daily_words_translation_id",
-            ["translation_id"],
-        )
-
     with op.batch_alter_table("translations", schema=None) as batch_op:
         batch_op.drop_index("idx_translations_source_word_id")
         batch_op.drop_constraint(
