@@ -17,10 +17,11 @@ const EN_ROWS: KeyRows = [
   ["z", "x", "c", "v", "b", "n", "m"],
 ];
 
-// 11 letter columns; the two mod keys are 1.5× a letter. 30px == 10 gaps
-// of the 1px flex gap between 11 cells, kept out of the basis math.
-const LETTER_STYLE = { flex: "0 0 calc((100% - 30px) / 11)", minWidth: 0 } as const;
-const MOD_STYLE = { flex: "0 0 calc(1.5 * (100% - 30px) / 11)", minWidth: 0 } as const;
+// 11 letter columns; the two mod keys are 1.5× a letter. 60px == the 10
+// 6px row gaps on the widest row (11 cells), kept out of the basis math
+// so the fixed-width letters never overflow the keyboard tray.
+const LETTER_STYLE = { flex: "0 0 calc((100% - 60px) / 11)", minWidth: 0 } as const;
+const MOD_STYLE = { flex: "0 0 calc(1.5 * (100% - 60px) / 11)", minWidth: 0 } as const;
 
 export function DesignTileModeToggleInlineB() {
   return (

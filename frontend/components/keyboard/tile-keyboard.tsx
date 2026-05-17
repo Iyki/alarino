@@ -22,6 +22,50 @@ function applyShift(text: string, shiftOn: boolean): string {
   return shiftOn ? text.toUpperCase() : text;
 }
 
+const ICON = "h-[22px] w-[22px]";
+
+function ShiftIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className={ICON} fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
+      <path d="M12 3 4 11h4v7h8v-7h4z" />
+    </svg>
+  );
+}
+
+function BackspaceIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className={ICON} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 5h11v14H9L3 12z" />
+      <path d="m12 9 5 6m0-6-5 6" />
+    </svg>
+  );
+}
+
+function ReturnIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className={ICON} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6v5a3 3 0 0 1-3 3H5" />
+      <path d="m9 10-4 4 4 4" />
+    </svg>
+  );
+}
+
+function GlobeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className={ICON} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18" />
+    </svg>
+  );
+}
+
+const KEY_BASE =
+  "relative flex select-none items-center justify-center rounded-[6px] text-[20px] leading-none transition-colors";
+const LETTER_KEY =
+  "h-[44px] w-full bg-white text-black shadow-[0_1px_0_rgba(0,0,0,0.28)] active:bg-[#e7e8eb]";
+const MOD_KEY =
+  "h-[44px] bg-[#aab0bb] text-[15px] font-medium text-black shadow-[0_1px_0_rgba(0,0,0,0.28)] active:bg-[#9197a3]";
+
 interface TileKeyProps {
   base: string;
   rowIndex: number;
@@ -71,18 +115,18 @@ function TileKey({
         onPointerUp={handleUp}
         onPointerLeave={cancel}
         onPointerCancel={cancel}
-        className="relative flex h-12 w-full select-none items-center justify-center rounded-lg border border-brand-brown/15 bg-brand-cream text-base font-semibold text-brand-ink transition active:scale-95 active:bg-brand-gold-light"
+        className={`${KEY_BASE} ${LETTER_KEY} ${open ? "bg-[#e7e8eb]" : ""}`}
       >
         {display}
         {toneable ? (
-          <span className="absolute right-1 top-1 h-1 w-1 rounded-full bg-brand-gold" />
+          <span className="absolute right-[5px] top-[5px] h-[3px] w-[3px] rounded-full bg-black/30" />
         ) : null}
       </button>
       {open && variants ? (
         <div
           ref={clamp.ref}
           style={clamp.style}
-          className={`absolute -top-14 z-10 flex gap-1 whitespace-nowrap rounded-xl border border-brand-brown/15 bg-white px-1.5 py-1 shadow-card-hover ${popoverAlignClass(align)}`}
+          className={`absolute -top-[58px] z-20 flex gap-1 whitespace-nowrap rounded-2xl bg-white p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.28)] ${popoverAlignClass(align)}`}
         >
           {variants.map((v) => {
             const out = applyShift(v, shiftOn);
@@ -95,7 +139,7 @@ function TileKey({
                   onInsert(out);
                   setOpenId(null);
                 }}
-                className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-cream text-lg font-semibold text-brand-ink transition hover:bg-brand-gold-light"
+                className="flex h-11 w-11 items-center justify-center rounded-xl text-[24px] text-black transition-colors hover:bg-[#3478f6] hover:text-white active:bg-[#3478f6] active:text-white"
               >
                 {out}
               </button>
@@ -122,113 +166,142 @@ export function ModeToggleKeyboard({
 
   const rows = lang === "yo" ? yoRows : enRows;
 
-  const langPill = (target: Lang, label: string, activeClass: string) => (
-    <button
-      type="button"
-      onClick={() => {
-        setLang(target);
-        setOpenId(null);
-      }}
-      className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-        lang === target ? activeClass : "bg-brand-beige text-brand-brown/70"
-      }`}
-    >
-      {label}
-    </button>
-  );
+  const switchLang = (target: Lang) => {
+    setLang(target);
+    setOpenId(null);
+  };
 
   return (
-    <div className="mx-auto max-w-md">
-      <div className="mb-3 flex gap-2">
-        {langPill("yo", "Yorùbá", "bg-brand-forest text-white")}
-        {langPill("en", "English", "bg-brand-indigo text-white")}
-      </div>
-
-      <textarea
-        ref={ref}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        rows={3}
-        placeholder={lang === "yo" ? "Kọ ní èdè Yorùbá…" : "Type here…"}
-        className="w-full resize-none rounded-xl border border-brand-brown/15 bg-brand-cream p-3 text-base text-brand-ink outline-none focus:border-brand-forest"
-      />
-
-      <div
-        data-clip
-        className="mt-3 space-y-1.5 overflow-hidden rounded-xl bg-brand-beige/60 p-2"
-      >
-        {[rows[0], rows[1]].map((row, rIdx) => (
-          <div key={`r${rIdx}`} className="flex gap-1">
-            {row.map((base, i) => (
-              <TileKey
-                key={`${base}-${i}`}
-                base={base}
-                rowIndex={i}
-                rowLength={row.length}
-                lang={lang}
-                shiftOn={shiftOn}
-                openId={openId}
-                setOpenId={setOpenId}
-                onInsert={insert}
-                letterStyle={letterStyle}
-              />
-            ))}
+    <div className="mx-auto w-full max-w-[400px]">
+      {/* Phone frame */}
+      <div className="overflow-hidden rounded-[40px] border-[10px] border-black bg-black shadow-card-hover">
+        {/* Screen */}
+        <div className="flex h-[150px] flex-col bg-white">
+          <div className="relative flex justify-center pt-2">
+            <span className="h-1.5 w-20 rounded-full bg-black/15" />
           </div>
-        ))}
-
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={() => setShiftOn((s) => !s)}
-            style={modStyle}
-            className={`flex h-12 select-none items-center justify-center rounded-lg border text-sm font-semibold transition ${
-              shiftOn
-                ? "border-brand-forest bg-brand-forest text-white"
-                : "border-brand-brown/15 bg-brand-cream text-brand-ink"
-            }`}
-          >
-            ⇧
-          </button>
-          {rows[2].map((base, i) => (
-            <TileKey
-              key={`${base}-${i}`}
-              base={base}
-              rowIndex={i + 1}
-              rowLength={rows[2].length + 2}
-              lang={lang}
-              shiftOn={shiftOn}
-              openId={openId}
-              setOpenId={setOpenId}
-              onInsert={insert}
-              letterStyle={letterStyle}
+          <div className="flex flex-1 items-end px-3 pb-3">
+            <textarea
+              ref={ref}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              rows={2}
+              placeholder={lang === "yo" ? "Kọ ọ̀rọ̀ Yorùbá…" : "Type a message…"}
+              className="max-h-[90px] w-full resize-none rounded-[20px] border border-black/10 bg-[#f1f2f4] px-4 py-2.5 text-[15px] text-black outline-none placeholder:text-black/35 focus:border-black/20"
             />
-          ))}
-          <button
-            type="button"
-            onClick={backspace}
-            style={modStyle}
-            className="flex h-12 select-none items-center justify-center rounded-lg border border-brand-brown/15 bg-brand-cream text-sm font-semibold text-brand-ink transition active:scale-95"
-          >
-            ⌫
-          </button>
+          </div>
         </div>
 
-        <div className="flex gap-1 pt-0.5">
-          <button
-            type="button"
-            onClick={() => insert(" ")}
-            className="h-12 flex-1 select-none rounded-lg border border-brand-brown/15 bg-brand-cream text-sm font-semibold text-brand-brown/70 transition active:scale-95"
-          >
-            {lang === "yo" ? "àlàfo" : "space"}
-          </button>
-          <button
-            type="button"
-            onClick={() => insert("\n")}
-            style={modStyle}
-            className="flex h-12 select-none items-center justify-center rounded-lg border border-brand-brown/15 bg-brand-cream text-sm font-semibold text-brand-ink transition active:scale-95"
-          >
-            ↵
-          </button>
+        {/* Keyboard tray */}
+        <div data-clip className="overflow-hidden bg-[#d1d4db] px-[3px] pb-[6px] pt-[8px]">
+          {/* Predictive strip == language mode toggle */}
+          <div className="mb-[8px] flex h-9 items-center overflow-hidden rounded-lg bg-white/55 text-[13px] font-semibold">
+            {(["yo", "en"] as Lang[]).map((l, idx) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => switchLang(l)}
+                className={`flex h-full flex-1 items-center justify-center transition-colors ${
+                  idx === 0 ? "border-r border-black/10" : ""
+                } ${
+                  lang === l
+                    ? l === "yo"
+                      ? "bg-brand-forest text-white"
+                      : "bg-brand-indigo text-white"
+                    : "text-black/55"
+                }`}
+              >
+                {l === "yo" ? "Yorùbá" : "English"}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-[10px]">
+            {[rows[0], rows[1]].map((row, rIdx) => (
+              <div key={`r${rIdx}`} className="flex gap-[6px] px-[2px]">
+                {row.map((base, i) => (
+                  <TileKey
+                    key={`${base}-${i}`}
+                    base={base}
+                    rowIndex={i}
+                    rowLength={row.length}
+                    lang={lang}
+                    shiftOn={shiftOn}
+                    openId={openId}
+                    setOpenId={setOpenId}
+                    onInsert={insert}
+                    letterStyle={letterStyle}
+                  />
+                ))}
+              </div>
+            ))}
+
+            <div className="flex gap-[6px] px-[2px]">
+              <button
+                type="button"
+                onClick={() => setShiftOn((s) => !s)}
+                style={modStyle}
+                className={`${KEY_BASE} ${MOD_KEY} ${
+                  shiftOn ? "!bg-white !text-black" : ""
+                }`}
+                aria-label="Shift"
+              >
+                <ShiftIcon filled={shiftOn} />
+              </button>
+              {rows[2].map((base, i) => (
+                <TileKey
+                  key={`${base}-${i}`}
+                  base={base}
+                  rowIndex={i + 1}
+                  rowLength={rows[2].length + 2}
+                  lang={lang}
+                  shiftOn={shiftOn}
+                  openId={openId}
+                  setOpenId={setOpenId}
+                  onInsert={insert}
+                  letterStyle={letterStyle}
+                />
+              ))}
+              <button
+                type="button"
+                onClick={backspace}
+                style={modStyle}
+                className={`${KEY_BASE} ${MOD_KEY} ml-auto`}
+                aria-label="Backspace"
+              >
+                <BackspaceIcon />
+              </button>
+            </div>
+
+            <div className="flex gap-[6px] px-[2px]">
+              <button
+                type="button"
+                onClick={() => switchLang(lang === "yo" ? "en" : "yo")}
+                style={modStyle}
+                className={`${KEY_BASE} ${MOD_KEY}`}
+                aria-label="Switch language"
+              >
+                <GlobeIcon />
+              </button>
+              <button
+                type="button"
+                onClick={() => insert(" ")}
+                style={{ flex: "5 5 0%", minWidth: 0 }}
+                className={`${KEY_BASE} ${LETTER_KEY} text-[14px] font-medium text-black/50`}
+              >
+                {lang === "yo" ? "àlàfo" : "space"}
+              </button>
+              <button
+                type="button"
+                onClick={() => insert("\n")}
+                style={modStyle}
+                className={`${KEY_BASE} ${MOD_KEY} gap-1.5 text-[14px]`}
+                aria-label="Return"
+              >
+                <ReturnIcon />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
