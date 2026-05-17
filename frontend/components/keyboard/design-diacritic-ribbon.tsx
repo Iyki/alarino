@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { CopyClearBar, useKeyboardText } from "./keyboard-chrome";
 import { pickAlign, popoverAlignClass, type PopoverAlign } from "./popover-align";
 import { hasTones, toneVariants } from "./tones";
+import { useHoldAccents } from "./use-hold-accents";
 import { useDismissOnOutsidePointer, useEdgeClamp, useLongPress } from "./use-long-press";
 
 // Desktop "ribbon": a compact strip of just the Yoruba-specific glyphs
@@ -98,7 +99,11 @@ export function DesignDiacriticRibbon() {
   const [shiftOn, setShiftOn] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
 
+  const { accent, choose, close } = useHoldAccents(ref, value, setValue);
+  const accentClamp = useEdgeClamp(accent !== null);
+
   useDismissOnOutsidePointer(openId !== null, () => setOpenId(null));
+  useDismissOnOutsidePointer(accent !== null, close);
 
   const group = (keys: string[], accent: string) =>
     keys.map((base, i) => (
@@ -116,14 +121,42 @@ export function DesignDiacriticRibbon() {
 
   return (
     <div>
-      <textarea
-        ref={ref}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        rows={4}
-        placeholder="Type with your hardware keyboard; tap the ribbon for Yoruba glyphs and hold a dotted key for tones."
-        className="w-full resize-none rounded-xl border border-brand-brown/15 bg-brand-cream p-4 text-base text-brand-ink outline-none focus:border-brand-forest"
-      />
+      <div className="relative" data-clip>
+        <textarea
+          ref={ref}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          rows={4}
+          placeholder="Type with your hardware keyboard. Hold a vowel for its Yoruba forms, or tap the ribbon for special glyphs."
+          className="w-full resize-none rounded-xl border border-brand-brown/15 bg-brand-cream p-4 text-base text-brand-ink outline-none focus:border-brand-forest"
+        />
+        {accent ? (
+          <div
+            ref={accentClamp.ref}
+            data-picker-root=""
+            style={{ left: accent.left, top: accent.top, ...accentClamp.style }}
+            className="absolute z-20 flex gap-1 whitespace-nowrap rounded-xl border border-brand-brown/15 bg-white px-1.5 py-1 shadow-card-hover"
+          >
+            {accent.options.map((opt, i) => (
+              <button
+                key={opt}
+                type="button"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  choose(opt);
+                }}
+                className="flex h-10 w-10 flex-col items-center justify-center rounded-lg bg-brand-cream text-lg font-semibold text-brand-ink transition hover:bg-brand-forest hover:text-white"
+              >
+                <span className="leading-none">{opt}</span>
+                <span className="mt-0.5 text-[9px] font-medium opacity-50">
+                  {i + 1}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       <div
         data-clip

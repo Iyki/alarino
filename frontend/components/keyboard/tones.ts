@@ -15,6 +15,22 @@ export const TONES: Record<string, [string, string, string]> = {
   n: ["ǹ", "n", "ń"],
 };
 
+// Press-and-hold options for the desktop hardware keyboard. Holding a
+// vowel offers every Yoruba form of it: bare, both tones, and (for e/o)
+// the sub-dot vowel with its own tones. First entry is the plain base so
+// the hold can resolve back to what was already typed.
+export const VOWEL_ACCENTS: Record<string, string[]> = {
+  a: ["a", "à", "á"],
+  e: ["e", "è", "é", "ẹ", "ẹ̀", "ẹ́"],
+  i: ["i", "ì", "í"],
+  o: ["o", "ò", "ó", "ọ", "ọ̀", "ọ́"],
+  u: ["u", "ù", "ú"],
+};
+
+export function vowelAccents(base: string): string[] | null {
+  return VOWEL_ACCENTS[base] ?? null;
+}
+
 export function hasTones(base: string): boolean {
   return base in TONES;
 }
