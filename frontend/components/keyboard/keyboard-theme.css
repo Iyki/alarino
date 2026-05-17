@@ -1,0 +1,110 @@
+/* Alarino brand skin for react-simple-keyboard.
+   Selectors are prefixed with .simple-keyboard.alarino-kbd so they outrank
+   the library's own .hg-theme-default rules (which we keep, for base
+   layout). Letter keys share one fixed flex-basis so every key is the
+   same size; rows are centered so short rows (e.g. Row 3) sit centered
+   instead of stretching or left-packing. The basis subtracts the 11
+   widest-row key margins (11 * 2 * 3px) so an 11-key row fills exactly. */
+.simple-keyboard.alarino-kbd {
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+}
+
+.simple-keyboard.alarino-kbd .hg-row {
+  justify-content: center;
+}
+
+.simple-keyboard.alarino-kbd .hg-row + .hg-row {
+  margin-top: 6px;
+}
+
+.simple-keyboard.alarino-kbd .hg-button {
+  flex: 0 0 calc((100% - 78px) / 11);
+  max-width: calc((100% - 78px) / 11);
+  height: 44px;
+  margin: 0 3px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(74, 53, 32, 0.15);
+  border-bottom-color: rgba(74, 53, 32, 0.22);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--brand-ink);
+  font-size: 17px;
+  box-shadow: 0 1px 0 rgba(26, 18, 7, 0.05);
+  transition: transform 0.06s ease, background-color 0.12s ease;
+}
+
+.simple-keyboard.alarino-kbd .hg-button:active {
+  transform: scale(0.95);
+  background: var(--brand-gold-light);
+}
+
+.simple-keyboard.alarino-kbd .hg-button.kbd-special {
+  background: var(--brand-forest-light);
+  border-color: rgba(26, 92, 50, 0.25);
+  color: var(--brand-forest);
+}
+
+.simple-keyboard.alarino-kbd .hg-button.kbd-special:active {
+  background: rgba(26, 92, 50, 0.16);
+}
+
+.simple-keyboard.alarino-kbd .hg-button.kbd-tone {
+  position: relative;
+}
+
+.simple-keyboard.alarino-kbd .hg-button.kbd-tone::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 3px;
+  height: 3px;
+  border-radius: 9999px;
+  background: var(--brand-gold);
+}
+
+.simple-keyboard.alarino-kbd .hg-button.kbd-mod {
+  flex: 0 0 calc(1.6 * (100% - 78px) / 11);
+  max-width: calc(1.6 * (100% - 78px) / 11);
+  background: var(--brand-beige);
+  border-color: rgba(74, 53, 32, 0.15);
+  color: rgba(74, 53, 32, 0.7);
+  font-size: 15px;
+}
+
+.simple-keyboard.alarino-kbd .hg-button.kbd-mod:active {
+  background: rgba(74, 53, 32, 0.1);
+}
+
+.simple-keyboard.alarino-kbd .hg-button.kbd-shift-on {
+  background: var(--brand-forest);
+  border-color: var(--brand-forest);
+  color: #ffffff;
+}
+
+.simple-keyboard.alarino-kbd .hg-button.kbd-enter {
+  flex: 0 0 calc(1.6 * (100% - 78px) / 11);
+  max-width: calc(1.6 * (100% - 78px) / 11);
+  background: var(--brand-forest);
+  border-color: var(--brand-forest);
+  color: #ffffff;
+}
+
+.simple-keyboard.alarino-kbd .hg-button.kbd-enter:active {
+  background: rgba(26, 92, 50, 0.82);
+}
+
+.simple-keyboard.alarino-kbd .hg-button.hg-button-space {
+  flex: 0 0 calc(5 * (100% - 78px) / 11);
+  max-width: calc(5 * (100% - 78px) / 11);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(74, 53, 32, 0.5);
+}

@@ -16,13 +16,14 @@
     "next": "^15.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "react-simple-keyboard": "^3.8.206"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.15",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",
-    "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",

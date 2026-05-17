@@ -1,35 +1,40 @@
 "use client";
 
-import { ModeToggleKeyboard, type KeyRows } from "./tile-keyboard";
+import { MobileKeyboard, type LayoutPair } from "./mobile-keyboard";
 
-// QWERTY-inspired ordering filtered to the Yoruba alphabet so muscle
-// memory carries over. The digraph "gb" lives on Row 3 alongside the
-// short b/n/m cluster, keeping Rows 1–2 evenly spaced.
-const YO_ROWS: KeyRows = [
-  ["w", "e", "ẹ", "r", "t", "y", "u", "i", "o", "ọ", "p"],
-  ["a", "s", "ṣ", "d", "f", "g", "h", "j", "k", "l"],
-  ["gb", "b", "n", "m"],
-];
+// QWERTY-familiar order filtered to the Yoruba alphabet so muscle memory
+// carries over. The gb digraph sits on Row 3 with the b/n/m cluster;
+// uniform key sizing + centered rows keep the short row balanced.
+const YO: LayoutPair = {
+  default: [
+    "w e ẹ r t y u i o ọ p",
+    "a s ṣ d f g h j k l",
+    "{shift} gb b n m {bksp}",
+    "{num} {space} {enter}",
+  ],
+  shift: [
+    "W E Ẹ R T Y U I O Ọ P",
+    "A S Ṣ D F G H J K L",
+    "{shift} GB B N M {bksp}",
+    "{num} {space} {enter}",
+  ],
+};
 
-const EN_ROWS: KeyRows = [
-  ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
-  ["a", "s", "d", "f", "g", "h", "j", "k", "l"],
-  ["z", "x", "c", "v", "b", "n", "m"],
-];
-
-// 11 letter columns; the two mod keys are 1.5× a letter. 40px == the 10
-// 4px row gaps on the widest row (11 cells), kept out of the basis math
-// so the fixed-width letters never overflow the keyboard tray.
-const LETTER_STYLE = { flex: "0 0 calc((100% - 40px) / 11)", minWidth: 0 } as const;
-const MOD_STYLE = { flex: "0 0 calc(1.5 * (100% - 40px) / 11)", minWidth: 0 } as const;
+const EN: LayoutPair = {
+  default: [
+    "q w e r t y u i o p",
+    "a s d f g h j k l",
+    "{shift} z x c v b n m {bksp}",
+    "{num} {space} {enter}",
+  ],
+  shift: [
+    "Q W E R T Y U I O P",
+    "A S D F G H J K L",
+    "{shift} Z X C V B N M {bksp}",
+    "{num} {space} {enter}",
+  ],
+};
 
 export function DesignTileModeToggleInlineB() {
-  return (
-    <ModeToggleKeyboard
-      yoRows={YO_ROWS}
-      enRows={EN_ROWS}
-      letterStyle={LETTER_STYLE}
-      modStyle={MOD_STYLE}
-    />
-  );
+  return <MobileKeyboard yo={YO} en={EN} />;
 }
