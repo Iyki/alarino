@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 import { CopyClearBar, useKeyboardText } from "./keyboard-chrome";
 import { pickAlign, popoverAlignClass, type PopoverAlign } from "./popover-align";
 import { hasTones, toneVariants } from "./tones";
-import { useDismissOnOutsidePointer, useLongPress } from "./use-long-press";
+import { useDismissOnOutsidePointer, useEdgeClamp, useLongPress } from "./use-long-press";
 
 // Desktop "ribbon": a compact strip of just the Yoruba-specific glyphs
 // for someone already typing on a physical QWERTY keyboard. Groups are
@@ -38,6 +38,7 @@ function RibbonKey({
   const variants = toneable ? toneVariants(base) : null;
   const open = openId === id;
   const display = shiftOn ? base.toUpperCase() : base;
+  const clamp = useEdgeClamp(open);
 
   const { start, cancel, wasTriggered } = useLongPress(() => {
     if (toneable) setOpenId(id);
@@ -65,6 +66,8 @@ function RibbonKey({
       </button>
       {open && variants ? (
         <div
+          ref={clamp.ref}
+          style={clamp.style}
           className={`absolute -top-14 z-10 flex gap-1 whitespace-nowrap rounded-xl border border-brand-brown/15 bg-white px-1.5 py-1 shadow-card-hover ${popoverAlignClass(align)}`}
         >
           {variants.map((v) => {
@@ -122,7 +125,10 @@ export function DesignDiacriticRibbon() {
         className="w-full resize-none rounded-xl border border-brand-brown/15 bg-brand-cream p-4 text-base text-brand-ink outline-none focus:border-brand-forest"
       />
 
-      <div className="mt-4 flex flex-wrap items-center gap-3 overflow-hidden rounded-2xl bg-brand-beige/60 p-3">
+      <div
+        data-clip
+        className="mt-4 flex flex-wrap items-center gap-3 overflow-hidden rounded-2xl bg-brand-beige/60 p-3"
+      >
         <button
           type="button"
           onClick={() => setShiftOn((s) => !s)}

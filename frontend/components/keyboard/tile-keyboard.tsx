@@ -5,7 +5,7 @@ import { useCallback, useState, type CSSProperties } from "react";
 import { CopyClearBar, useKeyboardText } from "./keyboard-chrome";
 import { pickAlign, popoverAlignClass } from "./popover-align";
 import { hasTones, toneVariants } from "./tones";
-import { useDismissOnOutsidePointer, useLongPress } from "./use-long-press";
+import { useDismissOnOutsidePointer, useEdgeClamp, useLongPress } from "./use-long-press";
 
 export type KeyRows = [string[], string[], string[]];
 
@@ -56,6 +56,7 @@ function TileKey({
 
   const display = applyShift(base, shiftOn);
   const align = pickAlign(rowIndex, rowLength);
+  const clamp = useEdgeClamp(open);
 
   const handleUp = useCallback(() => {
     if (!wasTriggered()) onInsert(applyShift(base, shiftOn));
@@ -79,6 +80,8 @@ function TileKey({
       </button>
       {open && variants ? (
         <div
+          ref={clamp.ref}
+          style={clamp.style}
           className={`absolute -top-14 z-10 flex gap-1 whitespace-nowrap rounded-xl border border-brand-brown/15 bg-white px-1.5 py-1 shadow-card-hover ${popoverAlignClass(align)}`}
         >
           {variants.map((v) => {
@@ -150,7 +153,10 @@ export function ModeToggleKeyboard({
         className="w-full resize-none rounded-xl border border-brand-brown/15 bg-brand-cream p-3 text-base text-brand-ink outline-none focus:border-brand-forest"
       />
 
-      <div className="mt-3 space-y-1.5 overflow-hidden rounded-xl bg-brand-beige/60 p-2">
+      <div
+        data-clip
+        className="mt-3 space-y-1.5 overflow-hidden rounded-xl bg-brand-beige/60 p-2"
+      >
         {[rows[0], rows[1]].map((row, rIdx) => (
           <div key={`r${rIdx}`} className="flex gap-1">
             {row.map((base, i) => (

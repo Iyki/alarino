@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 interface LongPressHandlers {
   start: () => void;
@@ -34,6 +34,47 @@ export function useLongPress(onLongPress: () => void, delayMs = 400): LongPressH
   useEffect(() => clear, [clear]);
 
   return { start, cancel: clear, wasTriggered: () => triggered.current };
+}
+
+// pickAlign is a cheap, SSR-stable first guess from key index, but short
+// or left-packed rows (e.g. a 4-key Row 3) break the "index predicts
+// position" assumption. After the popover paints, measure it against the
+// nearest [data-clip] ancestor and return a marginLeft nudge that pulls
+// any overflow back inside. marginLeft is used (not transform) so it
+// stacks cleanly on top of Tailwind's translate-based alignment classes.
+export function useEdgeClamp(open: boolean): {
+  ref: (node: HTMLElement | null) => void;
+  style: { marginLeft: number } | undefined;
+} {
+  const nodeRef = useRef<HTMLElement | null>(null);
+  const [dx, setDx] = useState(0);
+
+  const ref = useCallback((node: HTMLElement | null) => {
+    nodeRef.current = node;
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setDx(0);
+      return;
+    }
+    const el = nodeRef.current;
+    if (!el) return;
+    const clip = el.closest("[data-clip]");
+    if (!clip) return;
+    const id = requestAnimationFrame(() => {
+      const e = el.getBoundingClientRect();
+      const c = clip.getBoundingClientRect();
+      const pad = 4;
+      let d = 0;
+      if (e.left < c.left + pad) d = c.left + pad - e.left;
+      else if (e.right > c.right - pad) d = c.right - pad - e.right;
+      setDx(Math.round(d));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open]);
+
+  return { ref, style: dx !== 0 ? { marginLeft: dx } : undefined };
 }
 
 // Closes a picker when a pointer goes down anywhere outside the nearest
