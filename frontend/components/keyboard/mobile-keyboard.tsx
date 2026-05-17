@@ -71,7 +71,7 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
       "{shift}": "⇧",
       "{bksp}": "⌫",
       "{enter}": "↵",
-      "{space}": lang === "yo" ? "àlàfo" : "space",
+      "{space}": lang === "yo" ? "àyè" : "space",
       "{num}": "123",
       "{abc}": "ABC",
     }),
