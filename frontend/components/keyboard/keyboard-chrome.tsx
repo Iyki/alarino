@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState } from "react";
 
 // Shared textarea state + insert-at-cursor. Keeps the caret stable so
 // successive key/tone presses build a continuous string.
@@ -44,28 +44,6 @@ export function useKeyboardText() {
   }, [value]);
 
   return { ref, value, setValue, insert, backspace };
-}
-
-interface DesignSectionProps {
-  title: string;
-  badge: string;
-  blurb: string;
-  children: ReactNode;
-}
-
-export function DesignSection({ title, badge, blurb, children }: DesignSectionProps) {
-  return (
-    <section className="mb-7 rounded-3xl border border-brand-brown/10 bg-white p-6 shadow-card md:p-8">
-      <div className="mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h2 className="font-heading text-2xl font-extrabold text-brand-ink">{title}</h2>
-        <span className="rounded-full bg-brand-forest-light px-2.5 py-0.5 text-xs font-semibold text-brand-forest">
-          {badge}
-        </span>
-      </div>
-      <p className="mb-5 max-w-2xl text-sm leading-relaxed text-brand-brown/80">{blurb}</p>
-      {children}
-    </section>
-  );
 }
 
 interface CopyClearBarProps {
