@@ -183,6 +183,8 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
     <button
       type="button"
       onClick={() => switchLang(target)}
+      aria-pressed={lang === target}
+      aria-label={`${label} keyboard`}
       className={`rounded-full px-4 py-1 text-[13px] font-semibold transition ${
         lang === target
           ? "bg-brand-forest text-white shadow-card"
@@ -202,6 +204,7 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         rows={2}
+        aria-label="Yoruba keyboard text input"
         placeholder={lang === "yo" ? "Bẹ̀rẹ̀ sí kọ…" : "Start typing…"}
         className="w-full resize-none rounded-xl border border-brand-brown/15 bg-white p-3 text-[15px] text-brand-ink outline-none placeholder:text-brand-brown/40 focus:border-brand-forest"
       />
@@ -215,7 +218,7 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
         ref={wrapRef}
         data-clip
         onContextMenu={(e) => e.preventDefault()}
-        className="relative mt-3 select-none overflow-hidden rounded-2xl border border-brand-brown/10 bg-brand-beige/50 px-3 py-3"
+        className="relative mt-3 touch-manipulation select-none overflow-hidden rounded-2xl border border-brand-brown/10 bg-brand-beige/50 px-3 py-3"
       >
         <Keyboard
           theme="hg-theme-default alarino-kbd"
@@ -237,6 +240,8 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
               transform: "translateX(-50%)",
               ...clamp.style,
             }}
+            role="menu"
+            aria-label="Tone options"
             className="absolute z-20 flex gap-1 whitespace-nowrap rounded-xl border border-brand-brown/15 bg-white px-1.5 py-1 shadow-card-hover"
           >
             {variants.map((v) => {
@@ -245,6 +250,8 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
                 <button
                   key={v}
                   type="button"
+                  role="menuitem"
+                  aria-label={`Insert ${out}`}
                   onPointerDown={(e) => {
                     e.stopPropagation();
                     insert(out);

@@ -58,17 +58,25 @@ function RibbonKey({
         onPointerUp={handleUp}
         onPointerLeave={cancel}
         onPointerCancel={cancel}
+        aria-label={
+          toneable ? `${display}, hold for tones` : `Insert ${display}`
+        }
         className={`relative flex h-12 w-12 select-none items-center justify-center rounded-lg border bg-white text-lg font-semibold text-brand-ink transition hover:-translate-y-0.5 hover:shadow-card active:translate-y-0 ${accent}`}
       >
         {display}
         {toneable ? (
-          <span className="absolute right-1.5 top-1.5 h-1 w-1 rounded-full bg-current opacity-50" />
+          <span
+            aria-hidden
+            className="absolute right-1.5 top-1.5 h-1 w-1 rounded-full bg-current opacity-50"
+          />
         ) : null}
       </button>
       {open && variants ? (
         <div
           ref={clamp.ref}
           style={clamp.style}
+          role="menu"
+          aria-label="Tone options"
           className={`absolute -top-14 z-10 flex gap-1 whitespace-nowrap rounded-xl border border-brand-brown/15 bg-white px-1.5 py-1 shadow-card-hover ${popoverAlignClass(align)}`}
         >
           {variants.map((v) => {
@@ -77,6 +85,8 @@ function RibbonKey({
               <button
                 key={v}
                 type="button"
+                role="menuitem"
+                aria-label={`Insert ${out}`}
                 onPointerDown={(e) => {
                   e.stopPropagation();
                   onInsert(out);
@@ -127,6 +137,7 @@ export function DesignDiacriticRibbon() {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           rows={4}
+          aria-label="Yoruba keyboard text input"
           placeholder="Type with your hardware keyboard. Hold a vowel for its Yoruba forms, or tap the ribbon for special glyphs."
           className="w-full resize-none rounded-xl border border-brand-brown/15 bg-brand-cream p-4 text-base text-brand-ink outline-none focus:border-brand-forest"
         />
@@ -134,6 +145,8 @@ export function DesignDiacriticRibbon() {
           <div
             ref={accentClamp.ref}
             data-picker-root=""
+            role="menu"
+            aria-label={`Yoruba forms of ${accent.base}`}
             style={{ left: accent.left, top: accent.top, ...accentClamp.style }}
             className="absolute z-20 flex gap-1 whitespace-nowrap rounded-xl border border-brand-brown/15 bg-white px-1.5 py-1 shadow-card-hover"
           >
@@ -141,6 +154,8 @@ export function DesignDiacriticRibbon() {
               <button
                 key={opt}
                 type="button"
+                role="menuitem"
+                aria-label={`Insert ${opt} (press ${i + 1})`}
                 onPointerDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -165,6 +180,8 @@ export function DesignDiacriticRibbon() {
         <button
           type="button"
           onClick={() => setShiftOn((s) => !s)}
+          aria-pressed={shiftOn}
+          aria-label="Toggle uppercase"
           className={`flex h-12 items-center justify-center rounded-lg border px-4 text-sm font-semibold transition ${
             shiftOn
               ? "border-brand-forest bg-brand-forest text-white"

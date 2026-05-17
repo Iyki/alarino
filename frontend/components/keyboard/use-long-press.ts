@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 interface LongPressHandlers {
   start: () => void;
@@ -14,6 +21,11 @@ interface LongPressHandlers {
 export function useLongPress(onLongPress: () => void, delayMs = 400): LongPressHandlers {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggered = useRef(false);
+  // Keep the latest callback in a ref so `start` stays referentially
+  // stable — callers attach it in effects, and an unstable handler would
+  // rebind their listeners on every render.
+  const cb = useRef(onLongPress);
+  cb.current = onLongPress;
 
   const clear = useCallback(() => {
     if (timer.current !== null) {
@@ -27,13 +39,18 @@ export function useLongPress(onLongPress: () => void, delayMs = 400): LongPressH
     triggered.current = false;
     timer.current = setTimeout(() => {
       triggered.current = true;
-      onLongPress();
+      cb.current();
     }, delayMs);
-  }, [clear, delayMs, onLongPress]);
+  }, [clear, delayMs]);
+
+  const wasTriggered = useCallback(() => triggered.current, []);
 
   useEffect(() => clear, [clear]);
 
-  return { start, cancel: clear, wasTriggered: () => triggered.current };
+  return useMemo(
+    () => ({ start, cancel: clear, wasTriggered }),
+    [start, clear, wasTriggered],
+  );
 }
 
 // pickAlign is a cheap, SSR-stable first guess from key index, but short

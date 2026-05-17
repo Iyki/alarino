@@ -3,6 +3,8 @@ import { KeyboardDesigns } from "@/components/keyboard/keyboard-designs";
 
 export const metadata = {
   title: "Yoruba Keyboard",
+  description:
+    "Type Yorùbá with correct tone marks and special characters (ẹ ọ ṣ gb) — an on-screen keyboard for mobile and a diacritic ribbon for desktop hardware keyboards.",
 };
 
 export default function KeyboardPage() {

@@ -152,6 +152,7 @@ export function useHoldAccents(
     return () => {
       el.removeEventListener("keydown", onKeyDown);
       el.removeEventListener("keyup", onKeyUp);
+      if (pending.current?.timer) clearTimeout(pending.current.timer);
     };
   }, [commit, textareaRef]);
 

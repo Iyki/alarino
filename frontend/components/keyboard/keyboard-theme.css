@@ -36,6 +36,10 @@
   font-size: 17px;
   box-shadow: 0 1px 0 rgba(26, 18, 7, 0.05);
   transition: transform 0.06s ease, background-color 0.12s ease;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .simple-keyboard.alarino-kbd .hg-button:active {
