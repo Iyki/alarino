@@ -225,6 +225,66 @@ describe("useHoldAccents (desktop ribbon)", () => {
 
     await waitFor(() => expect(ta).toHaveValue("e"));
   });
+
+  it("commits a tone via numeric shortcut while the accent menu is open", async () => {
+    vi.useFakeTimers();
+    try {
+      render(<DesignDiacriticRibbon />);
+      const ta = screen.getByLabelText(
+        "Yoruba keyboard text input",
+      ) as HTMLTextAreaElement;
+      ta.setSelectionRange(0, 0);
+
+      fireEvent.keyDown(ta, { key: "a" }); // arms the hold
+      act(() => {
+        vi.advanceTimersByTime(350); // HOLD_MS (300) elapses → panel opens
+      });
+      expect(
+        screen.getByRole("menu", { name: "Yoruba forms of a" }),
+      ).toBeInTheDocument();
+
+      fireEvent.keyDown(ta, { key: "3" }); // options = [a, à, á] → "á"
+      act(() => {
+        vi.advanceTimersByTime(20);
+      });
+      expect(ta).toHaveValue("á");
+      expect(
+        screen.queryByRole("menu", { name: "Yoruba forms of a" }),
+      ).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("Escape dismisses the accent menu and falls back to the plain vowel", async () => {
+    vi.useFakeTimers();
+    try {
+      render(<DesignDiacriticRibbon />);
+      const ta = screen.getByLabelText(
+        "Yoruba keyboard text input",
+      ) as HTMLTextAreaElement;
+      ta.setSelectionRange(0, 0);
+
+      fireEvent.keyDown(ta, { key: "o" });
+      act(() => {
+        vi.advanceTimersByTime(350);
+      });
+      expect(
+        screen.getByRole("menu", { name: "Yoruba forms of o" }),
+      ).toBeInTheDocument();
+
+      fireEvent.keyDown(ta, { key: "Escape" });
+      act(() => {
+        vi.advanceTimersByTime(20);
+      });
+      expect(ta).toHaveValue("o"); // fallback emits the bare vowel
+      expect(
+        screen.queryByRole("menu", { name: "Yoruba forms of o" }),
+      ).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("ribbon keyboard accessibility", () => {
