@@ -1,6 +1,4 @@
-"use client";
-
-import { MobileKeyboard, type LayoutPair } from "./mobile-keyboard";
+import type { KeyboardLayoutSet, LayoutPair } from "./mobile-keyboard";
 
 // Dvorak-style ordering: high-frequency vowels on the home row, the
 // Yoruba specials placed where the layout has slack. Uniform key sizing
@@ -35,6 +33,4 @@ const EN: LayoutPair = {
   ],
 };
 
-export function DesignTileModeToggleDvorak() {
-  return <MobileKeyboard yo={YO} en={EN} />;
-}
+export const DVORAK_LAYOUT: KeyboardLayoutSet = { yo: YO, en: EN };

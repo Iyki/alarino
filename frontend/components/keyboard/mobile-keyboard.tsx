@@ -15,10 +15,12 @@ export interface LayoutPair {
   shift: string[];
 }
 
-export interface MobileKeyboardProps {
+export interface KeyboardLayoutSet {
   yo: LayoutPair;
   en: LayoutPair;
 }
+
+export type MobileKeyboardProps = KeyboardLayoutSet;
 
 type Lang = "yo" | "en";
 type Mode = "abc" | "num";

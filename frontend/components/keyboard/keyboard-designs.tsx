@@ -3,8 +3,9 @@
 import { useState } from "react";
 
 import { DesignDiacriticRibbon } from "./design-diacritic-ribbon";
-import { DesignTileModeToggleDvorak } from "./design-tile-mode-toggle-dvorak";
-import { DesignTileModeToggleInlineB } from "./design-tile-mode-toggle-inline-b";
+import { DVORAK_LAYOUT } from "./design-tile-mode-toggle-dvorak";
+import { QWERTY_LAYOUT } from "./design-tile-mode-toggle-inline-b";
+import { MobileKeyboard } from "./mobile-keyboard";
 import { useMediaQuery } from "./use-media-query";
 
 type MobileLayout = "qwerty" | "dvorak";
@@ -34,6 +35,8 @@ export function KeyboardDesigns() {
     return <DesignDiacriticRibbon />;
   }
 
+  const set = layout === "dvorak" ? DVORAK_LAYOUT : QWERTY_LAYOUT;
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-end gap-2">
@@ -61,11 +64,10 @@ export function KeyboardDesigns() {
         </div>
       </div>
 
-      {layout === "dvorak" ? (
-        <DesignTileModeToggleDvorak />
-      ) : (
-        <DesignTileModeToggleInlineB />
-      )}
+      {/* A single MobileKeyboard stays mounted across the toggle so the
+          typed text (its internal state) survives a layout switch — only
+          the layout props change. */}
+      <MobileKeyboard yo={set.yo} en={set.en} />
     </div>
   );
 }

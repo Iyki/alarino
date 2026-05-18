@@ -15,7 +15,8 @@ export interface AccentState {
 interface Pending {
   base: string; // lowercase vowel
   typed: string; // what a plain tap should insert (respects shift)
-  anchor: number; // caret index where text is inserted
+  start: number; // selection start at press time
+  end: number; // selection end — a non-empty range is replaced, like native typing
   timer: ReturnType<typeof setTimeout> | null;
   opened: boolean;
 }
@@ -59,10 +60,9 @@ export function useHoldAccents(
         reset();
         return;
       }
-      const a = p.anchor;
       const v = valueRef.current;
-      setValue(v.slice(0, a) + text + v.slice(a));
-      const caret = a + text.length;
+      setValue(v.slice(0, p.start) + text + v.slice(p.end));
+      const caret = p.start + text.length;
       requestAnimationFrame(() => {
         el.focus();
         el.setSelectionRange(caret, caret);
@@ -87,7 +87,7 @@ export function useHoldAccents(
     const openPanel = () => {
       const p = pending.current;
       if (!p) return;
-      const c = getCaretCoordinates(el, p.anchor);
+      const c = getCaretCoordinates(el, p.start);
       const opts = vowelAccents(p.base) ?? [p.base];
       const upper = p.typed !== p.base;
       p.opened = true;
@@ -130,11 +130,14 @@ export function useHoldAccents(
       e.preventDefault();
       if (p) return; // already holding this/another vowel
 
-      const anchor = el.selectionStart ?? valueRef.current.length;
+      const len = valueRef.current.length;
+      const start = el.selectionStart ?? len;
+      const end = el.selectionEnd ?? start;
       const next: Pending = {
         base,
         typed: e.key,
-        anchor,
+        start,
+        end,
         opened: false,
         timer: null,
       };

@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { DesignDiacriticRibbon } from "./design-diacritic-ribbon";
 import { KeyboardDesigns } from "./keyboard-designs";
 import { pickAlign, popoverAlignClass } from "./popover-align";
 import { hasTones, toneVariants, vowelAccents } from "./tones";
@@ -93,5 +94,41 @@ describe("KeyboardDesigns (responsive)", () => {
     await userEvent.click(dvorak);
     expect(dvorak).toHaveAttribute("aria-pressed", "true");
     expect(qwerty).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("preserves typed text when switching mobile layouts", async () => {
+    mockViewport(false);
+    render(<KeyboardDesigns />);
+
+    const input = (await screen.findByLabelText(
+      "Yoruba keyboard text input",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(input, { target: { value: "kọ" } });
+    expect(input).toHaveValue("kọ");
+
+    await userEvent.click(screen.getByRole("button", { name: "Dvorak" }));
+
+    // Same textarea instance must survive the layout swap.
+    expect(
+      screen.getByLabelText("Yoruba keyboard text input"),
+    ).toHaveValue("kọ");
+  });
+});
+
+describe("useHoldAccents (desktop ribbon)", () => {
+  it("replaces the selected range instead of inserting before it", async () => {
+    render(<DesignDiacriticRibbon />);
+    const ta = screen.getByLabelText(
+      "Yoruba keyboard text input",
+    ) as HTMLTextAreaElement;
+
+    fireEvent.change(ta, { target: { value: "abcd" } });
+    ta.setSelectionRange(0, 4); // select the whole field
+
+    // Quick tap of a vowel: keydown captures the range, keyup commits.
+    fireEvent.keyDown(ta, { key: "e" });
+    fireEvent.keyUp(ta, { key: "e" });
+
+    await waitFor(() => expect(ta).toHaveValue("e"));
   });
 });

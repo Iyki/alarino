@@ -1,6 +1,4 @@
-"use client";
-
-import { MobileKeyboard, type LayoutPair } from "./mobile-keyboard";
+import type { KeyboardLayoutSet, LayoutPair } from "./mobile-keyboard";
 
 // QWERTY-familiar order filtered to the Yoruba alphabet so muscle memory
 // carries over. The gb digraph sits on Row 3 with the b/n/m cluster;
@@ -35,6 +33,4 @@ const EN: LayoutPair = {
   ],
 };
 
-export function DesignTileModeToggleInlineB() {
-  return <MobileKeyboard yo={YO} en={EN} />;
-}
+export const QWERTY_LAYOUT: KeyboardLayoutSet = { yo: YO, en: EN };
