@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -130,5 +130,43 @@ describe("useHoldAccents (desktop ribbon)", () => {
     fireEvent.keyUp(ta, { key: "e" });
 
     await waitFor(() => expect(ta).toHaveValue("e"));
+  });
+});
+
+describe("ribbon keyboard accessibility", () => {
+  it("inserts a glyph via click (Enter/Space activation, not just pointer)", async () => {
+    render(<DesignDiacriticRibbon />);
+    const ta = screen.getByLabelText(
+      "Yoruba keyboard text input",
+    ) as HTMLTextAreaElement;
+
+    // Native keyboard activation of a <button> dispatches click only.
+    fireEvent.click(screen.getByRole("button", { name: "Insert gb" }));
+    await waitFor(() => expect(ta).toHaveValue("gb"));
+  });
+
+  it("opens the tone menu on long-press and inserts the chosen tone via click", async () => {
+    vi.useFakeTimers();
+    try {
+      render(<DesignDiacriticRibbon />);
+      const ta = screen.getByLabelText(
+        "Yoruba keyboard text input",
+      ) as HTMLTextAreaElement;
+      const aKey = screen.getByRole("button", { name: "a, hold for tones" });
+
+      fireEvent.pointerDown(aKey);
+      act(() => {
+        vi.advanceTimersByTime(450); // long-press timer fires
+      });
+
+      const high = screen.getByRole("menuitem", { name: "Insert á" });
+      fireEvent.click(high);
+      act(() => {
+        vi.advanceTimersByTime(0);
+      });
+      expect(ta).toHaveValue("á");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

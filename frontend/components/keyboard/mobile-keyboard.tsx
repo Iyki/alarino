@@ -142,10 +142,16 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
     const k = el.getBoundingClientRect();
     const w = wrap.getBoundingClientRect();
     suppress.current = token;
+    // Default above the key; for the top row that would clip past the
+    // overflow-hidden tray, so flip below it instead. Either way the
+    // popover stays inside the (tall) keyboard tray and visible.
+    const relTop = k.top - w.top;
+    const above = relTop - 56;
+    const below = relTop + k.height + 8;
     setTone({
       base,
       left: k.left - w.left + k.width / 2,
-      top: k.top - w.top - 56,
+      top: above < 4 ? below : above,
     });
   });
 
@@ -236,6 +242,7 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
         {tone && variants ? (
           <div
             ref={clamp.ref}
+            data-picker-root=""
             style={{
               left: tone.left,
               top: tone.top,
@@ -254,8 +261,7 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
                   type="button"
                   role="menuitem"
                   aria-label={`Insert ${out}`}
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
+                  onClick={() => {
                     insert(out);
                     setTone(null);
                   }}
@@ -272,7 +278,7 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
       <p className="mt-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-brown/45">
         {lang === "yo"
           ? "Yorùbá mode · long-press a dotted key for tones"
-          : "English mode · standard QWERTY"}
+          : "English mode"}
       </p>
 
       <CopyClearBar value={value} onClear={() => setValue("")} />

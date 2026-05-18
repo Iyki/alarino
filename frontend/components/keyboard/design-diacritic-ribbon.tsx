@@ -45,19 +45,23 @@ function RibbonKey({
     if (toneable) setOpenId(id);
   });
 
-  const handleUp = useCallback(() => {
+  // Insert on click so keyboard activation (Enter/Space, which fire click
+  // but no pointer events) works for switch/keyboard users. Pointer
+  // handlers only arm/cancel the long-press timer; if a long press already
+  // opened the tone menu, wasTriggered() suppresses the click insert.
+  const handleClick = useCallback(() => {
     if (!wasTriggered()) onInsert(shiftOn ? base.toUpperCase() : base);
-    cancel();
-  }, [wasTriggered, onInsert, base, shiftOn, cancel]);
+  }, [wasTriggered, onInsert, base, shiftOn]);
 
   return (
     <div className="relative" data-picker-root={open ? "" : undefined}>
       <button
         type="button"
         onPointerDown={start}
-        onPointerUp={handleUp}
+        onPointerUp={cancel}
         onPointerLeave={cancel}
         onPointerCancel={cancel}
+        onClick={handleClick}
         aria-label={
           toneable ? `${display}, hold for tones` : `Insert ${display}`
         }
@@ -77,7 +81,7 @@ function RibbonKey({
           style={clamp.style}
           role="menu"
           aria-label="Tone options"
-          className={`absolute -top-14 z-10 flex gap-1 whitespace-nowrap rounded-xl border border-brand-brown/15 bg-white px-1.5 py-1 shadow-card-hover ${popoverAlignClass(align)}`}
+          className={`absolute top-full z-10 mt-2 flex gap-1 whitespace-nowrap rounded-xl border border-brand-brown/15 bg-white px-1.5 py-1 shadow-card-hover ${popoverAlignClass(align)}`}
         >
           {variants.map((v) => {
             const out = shiftOn ? v.toUpperCase() : v;
@@ -87,8 +91,7 @@ function RibbonKey({
                 type="button"
                 role="menuitem"
                 aria-label={`Insert ${out}`}
-                onPointerDown={(e) => {
-                  e.stopPropagation();
+                onClick={() => {
                   onInsert(out);
                   setOpenId(null);
                 }}
@@ -175,7 +178,7 @@ export function DesignDiacriticRibbon() {
 
       <div
         data-clip
-        className="mt-4 flex flex-wrap items-center gap-3 overflow-hidden rounded-2xl bg-brand-beige/60 p-3"
+        className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-brand-beige/60 p-3"
       >
         <button
           type="button"
