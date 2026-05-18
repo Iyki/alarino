@@ -50,9 +50,48 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const suppress = useRef<string | null>(null);
+  const insertRef = useRef(insert);
+  insertRef.current = insert;
+  // The exact (case-correct) character the long-pressed key would type,
+  // re-emitted if the gesture ends without picking a tone.
+  const holdBase = useRef<string | null>(null);
 
   const clamp = useEdgeClamp(tone !== null);
   useDismissOnOutsidePointer(tone !== null, () => setTone(null));
+
+  // The tone menu is opened by a long-press whose pointer is still down.
+  // Resolve the option under the pointer on release so the natural
+  // press → slide → lift gesture works (a plain onClick can't, since the
+  // pointer went down on the key, not the option). Capture-phase + the
+  // hit-test also stops the release from tapping through to the key
+  // beneath. Discrete taps land here too; onClick stays only for
+  // keyboard activation (no pointer events).
+  useEffect(() => {
+    if (tone === null) return;
+    const onUp = (e: PointerEvent) => {
+      const hit = document.elementFromPoint(e.clientX, e.clientY);
+      const item = hit?.closest<HTMLElement>("[data-tone-value]");
+      if (item) {
+        // Picked a tone (slide-release or discrete tap).
+        e.preventDefault();
+        e.stopPropagation();
+        insertRef.current(item.dataset.toneValue ?? "");
+      } else if (
+        holdBase.current &&
+        hit &&
+        wrapRef.current?.contains(hit)
+      ) {
+        // Released on the keyboard without choosing → emit the plain
+        // letter (iOS behaviour) so the keystroke is not lost.
+        insertRef.current(holdBase.current);
+      }
+      // Released off the keyboard entirely → cancel, insert nothing.
+      holdBase.current = null;
+      setTone(null);
+    };
+    window.addEventListener("pointerup", onUp, true);
+    return () => window.removeEventListener("pointerup", onUp, true);
+  }, [tone]);
 
   const layout = useMemo(
     () => ({
@@ -142,6 +181,7 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
     const k = el.getBoundingClientRect();
     const w = wrap.getBoundingClientRect();
     suppress.current = token;
+    holdBase.current = token;
     // Default above the key; for the top row that would clip past the
     // overflow-hidden tray, so flip below it instead. Either way the
     // popover stays inside the (tall) keyboard tray and visible.
@@ -261,6 +301,7 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
                   type="button"
                   role="menuitem"
                   aria-label={`Insert ${out}`}
+                  data-tone-value={out}
                   onClick={() => {
                     insert(out);
                     setTone(null);

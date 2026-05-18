@@ -115,6 +115,100 @@ describe("KeyboardDesigns (responsive)", () => {
   });
 });
 
+describe("mobile tone menu", () => {
+  const wait = (ms: number) =>
+    act(async () => {
+      await new Promise((r) => setTimeout(r, ms));
+    });
+
+  // jsdom has no real layout, so it omits document.elementFromPoint.
+  // Stub it to drive the release hit-test deterministically.
+  function stubElementFromPoint(el: Element | null) {
+    const d = document as unknown as {
+      elementFromPoint?: (x: number, y: number) => Element | null;
+    };
+    d.elementFromPoint = () => el;
+    return () => {
+      d.elementFromPoint = undefined;
+    };
+  }
+
+  async function openToneMenu() {
+    mockViewport(false);
+    render(<KeyboardDesigns />);
+    const ta = (await screen.findByLabelText(
+      "Yoruba keyboard text input",
+    )) as HTMLTextAreaElement;
+    const eKey = document.querySelector(
+      '.hg-button[data-skbtn="e"]',
+    ) as HTMLElement;
+    expect(eKey).toBeTruthy();
+    fireEvent.pointerDown(eKey, { clientX: 0, clientY: 0 });
+    await wait(470); // long-press timer (400ms) fires
+    const menu = screen.getByRole("menu", { name: "Tone options" });
+    return { ta, eKey, menu };
+  }
+
+  it("opens on long-press, is not clipped above (non-negative top), and labels options", async () => {
+    const { menu } = await openToneMenu();
+    const top = Number.parseFloat((menu as HTMLElement).style.top);
+    expect(Number.isNaN(top)).toBe(false);
+    expect(top).toBeGreaterThanOrEqual(0); // would be negative if clipped above
+    const values = Array.from(menu.querySelectorAll("[data-tone-value]")).map(
+      (b) => b.getAttribute("data-tone-value"),
+    );
+    expect(values).toEqual(["è", "e", "é"]);
+  });
+
+  it("inserts the tone via click (keyboard activation) and closes", async () => {
+    const { ta, menu } = await openToneMenu();
+    fireEvent.click(
+      Array.from(menu.querySelectorAll("button")).find(
+        (b) => b.getAttribute("data-tone-value") === "é",
+      ) as HTMLElement,
+    );
+    await waitFor(() => expect(ta).toHaveValue("é"));
+    expect(
+      screen.queryByRole("menu", { name: "Tone options" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("commits the option under the pointer on release (slide gesture)", async () => {
+    const { ta, menu } = await openToneMenu();
+    const high = Array.from(menu.querySelectorAll("button")).find(
+      (b) => b.getAttribute("data-tone-value") === "é",
+    ) as HTMLElement;
+    const restore = stubElementFromPoint(high);
+    fireEvent.pointerUp(window, { clientX: 1, clientY: 1 });
+    await waitFor(() => expect(ta).toHaveValue("é"));
+    expect(
+      screen.queryByRole("menu", { name: "Tone options" }),
+    ).not.toBeInTheDocument();
+    restore();
+  });
+
+  it("emits the plain letter when released on the keyboard without choosing", async () => {
+    const { ta, eKey } = await openToneMenu();
+    const restore = stubElementFromPoint(eKey);
+    fireEvent.pointerUp(window, { clientX: 1, clientY: 1 });
+    await waitFor(() => expect(ta).toHaveValue("e"));
+    restore();
+  });
+
+  it("inserts nothing when released off the keyboard (cancel)", async () => {
+    const { ta } = await openToneMenu();
+    const restore = stubElementFromPoint(document.body);
+    fireEvent.pointerUp(window, { clientX: 1, clientY: 1 });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("menu", { name: "Tone options" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(ta).toHaveValue("");
+    restore();
+  });
+});
+
 describe("useHoldAccents (desktop ribbon)", () => {
   it("replaces the selected range instead of inserting before it", async () => {
     render(<DesignDiacriticRibbon />);
