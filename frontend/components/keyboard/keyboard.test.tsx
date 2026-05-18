@@ -263,4 +263,31 @@ describe("ribbon keyboard accessibility", () => {
       vi.useRealTimers();
     }
   });
+
+  it("renders the tone popover below the key with no clipping ancestor", async () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(<DesignDiacriticRibbon />);
+      const aKey = screen.getByRole("button", { name: "a, hold for tones" });
+      fireEvent.pointerDown(aKey);
+      act(() => {
+        vi.advanceTimersByTime(450);
+      });
+
+      const menu = screen.getByRole("menu", { name: "Tone options" });
+      // Positioned below the key, not above where the strip would clip it.
+      expect(menu.className).toContain("top-full");
+      expect(menu.className).not.toContain("-top-14");
+
+      // No overflow-hidden ancestor between the popover and the ribbon root
+      // (the strip used to clip it).
+      let el: HTMLElement | null = menu.parentElement;
+      while (el && el !== container) {
+        expect(el.className).not.toContain("overflow-hidden");
+        el = el.parentElement;
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
