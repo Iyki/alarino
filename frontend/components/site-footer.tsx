@@ -18,6 +18,13 @@ export function SiteFooter() {
           About
         </Link>
         <span className="h-[3px] w-[3px] rounded-full bg-[rgba(250,246,239,0.2)]" aria-hidden="true" />
+        <Link
+          href="/keyboard"
+          className="text-brand-gold transition-colors md:text-[rgba(250,246,239,0.65)] md:hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+        >
+          Keyboard
+        </Link>
+        <span className="h-[3px] w-[3px] rounded-full bg-[rgba(250,246,239,0.2)]" aria-hidden="true" />
         <a
           href="https://github.com/Iyki/alarino"
           target="_blank"
