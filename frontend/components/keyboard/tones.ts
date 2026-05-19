@@ -31,6 +31,31 @@ export function vowelAccents(base: string): string[] | null {
   return VOWEL_ACCENTS[base] ?? null;
 }
 
+// Every tone form (precomposed à/á, combining ẹ̀/ọ̀/m̀, and the bare mid
+// base itself) mapped back to its base, so a just-typed vowel can be
+// re-toned in place regardless of which form is already there.
+const FORM_TO_BASE: Record<string, string> = {};
+for (const [base, forms] of Object.entries(TONES)) {
+  for (const form of forms) FORM_TO_BASE[form] = base;
+}
+
+// The tone-bearing character ending `before` (the text up to the caret),
+// if any. Combining forms (ẹ̀ = ẹ + U+0300) are two code units, so the
+// 2-char suffix is tried before the 1-char one.
+export function retoneSuffix(
+  before: string,
+): { base: string; len: number } | null {
+  const two = before.slice(-2);
+  if (two.length === 2 && two in FORM_TO_BASE) {
+    return { base: FORM_TO_BASE[two], len: 2 };
+  }
+  const one = before.slice(-1);
+  if (one && one in FORM_TO_BASE) {
+    return { base: FORM_TO_BASE[one], len: 1 };
+  }
+  return null;
+}
+
 export function hasTones(base: string): boolean {
   return base in TONES;
 }

@@ -3,9 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DesignDiacriticRibbon } from "./design-diacritic-ribbon";
+import { DVORAK_LAYOUT } from "./design-tile-mode-toggle-dvorak";
+import { QWERTY_LAYOUT } from "./design-tile-mode-toggle-inline-b";
+import { countCharacters, toNFC } from "./keyboard-chrome";
 import { KeyboardDesigns } from "./keyboard-designs";
 import { pickAlign, popoverAlignClass } from "./popover-align";
-import { hasTones, toneVariants, vowelAccents } from "./tones";
+import { hasTones, retoneSuffix, toneVariants, vowelAccents } from "./tones";
 
 describe("tones", () => {
   it("covers the seven vowels plus syllabic nasals", () => {
@@ -349,5 +352,166 @@ describe("ribbon keyboard accessibility", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("retoneSuffix (post-vowel tone target)", () => {
+  it("matches a bare base vowel/nasal at the caret", () => {
+    expect(retoneSuffix("ka")).toEqual({ base: "a", len: 1 });
+    expect(retoneSuffix("se")).toEqual({ base: "e", len: 1 });
+    expect(retoneSuffix("gbẹ")).toEqual({ base: "ẹ", len: 1 });
+    // m and n are tone-bearing syllabic nasals
+    expect(retoneSuffix("km")).toEqual({ base: "m", len: 1 });
+  });
+
+  it("matches an already-toned precomposed form (1 code unit)", () => {
+    expect(retoneSuffix("kò")).toEqual({ base: "o", len: 1 });
+    expect(retoneSuffix("ká")).toEqual({ base: "a", len: 1 });
+    expect(retoneSuffix("ḿ")).toEqual({ base: "m", len: 1 }); // U+1E3F
+    expect(retoneSuffix("ǹ")).toEqual({ base: "n", len: 1 });
+  });
+
+  it("matches a combining-mark form (2 code units) before the 1-char form", () => {
+    expect(retoneSuffix("ẹ̀")).toEqual({ base: "ẹ", len: 2 });
+    expect(retoneSuffix("ọ́")).toEqual({ base: "ọ", len: 2 });
+    expect(retoneSuffix("m̀")).toEqual({ base: "m", len: 2 });
+  });
+
+  it("returns null when the char before the caret can't carry tone", () => {
+    expect(retoneSuffix("")).toBeNull();
+    expect(retoneSuffix("k")).toBeNull();
+    expect(retoneSuffix("gb")).toBeNull();
+    expect(retoneSuffix("ka ")).toBeNull(); // trailing space
+  });
+});
+
+describe("countCharacters / NFC (a tone mark is not a character)", () => {
+  it("counts user-perceived characters, not code units", () => {
+    expect(countCharacters("")).toBe(0);
+    expect(countCharacters("abc")).toBe(3);
+    // ẹ̀ / ọ́ are base + combining (2 code units) but ONE character each
+    expect("ẹ̀".length).toBe(2);
+    expect(countCharacters("ẹ̀")).toBe(1);
+    expect(countCharacters("ọ́sé")).toBe(3);
+    expect(countCharacters("kòsí")).toBe(4);
+  });
+
+  it("normalises to NFC and counts a decomposed sequence as one", () => {
+    const decomposed = "é"; // e + combining acute = 2 code units
+    expect(decomposed.length).toBe(2);
+    expect(toNFC(decomposed)).toBe("é"); // precomposed é, 1 unit
+    expect(toNFC(decomposed).length).toBe(1);
+    expect(countCharacters(decomposed)).toBe(1);
+  });
+});
+
+describe("layout geometry (muscle memory)", () => {
+  const tokens = (rows: string[]) => rows.join(" ").split(/\s+/);
+
+  it("Yorùbá QWERTY is a 10-slot top row: a blank in the q slot, no q", () => {
+    expect(QWERTY_LAYOUT.yo.default[0]).toBe("{blank} w e r t y u i o p");
+    expect(QWERTY_LAYOUT.yo.shift[0]).toBe("{blank} W E R T Y U I O P");
+    expect(tokens(QWERTY_LAYOUT.yo.default)).not.toContain("q");
+  });
+
+  it("Yorùbá specials replace the unused z/x/c/v slots on row 3", () => {
+    expect(QWERTY_LAYOUT.yo.default[2]).toBe("{shift} ẹ ọ ṣ gb b n m {bksp}");
+    for (const dead of ["q", "c", "v", "x", "z"]) {
+      expect(tokens(QWERTY_LAYOUT.yo.default)).not.toContain(dead);
+    }
+    for (const special of ["ẹ", "ọ", "ṣ", "gb"]) {
+      expect(tokens(QWERTY_LAYOUT.yo.default)).toContain(special);
+    }
+  });
+
+  it("English QWERTY keeps the standard q row (no blank)", () => {
+    expect(QWERTY_LAYOUT.en.default[0]).toBe("q w e r t y u i o p");
+    expect(tokens(QWERTY_LAYOUT.en.default)).not.toContain("{blank}");
+  });
+
+  it("Dvorak Yorùbá preserves the Dvorak home row and drops q", () => {
+    expect(DVORAK_LAYOUT.yo.default[1]).toBe("a o e u i d h t n s");
+    expect(tokens(DVORAK_LAYOUT.yo.default)).not.toContain("q");
+    for (const special of ["ẹ", "ọ", "ṣ", "gb"]) {
+      expect(tokens(DVORAK_LAYOUT.yo.default)).toContain(special);
+    }
+  });
+});
+
+describe("mobile keyboard — text field, blank key & tone strip", () => {
+  const originalMatchMedia = window.matchMedia;
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
+
+  async function renderMobile() {
+    mockViewport(false);
+    render(<KeyboardDesigns />);
+    const ta = (await screen.findByLabelText(
+      "Yoruba keyboard text input",
+    )) as HTMLTextAreaElement;
+    return ta;
+  }
+
+  // Type into the field at a real caret position (the on-screen keyboard
+  // and tone strip both read selectionStart), without raising a real
+  // device keyboard.
+  function seed(ta: HTMLTextAreaElement, text: string) {
+    fireEvent.change(ta, { target: { value: text } });
+    ta.setSelectionRange(text.length, text.length);
+  }
+
+  const toneButton = (name: RegExp) =>
+    screen.getByRole("button", { name });
+
+  it("suppresses the device keyboard and is focused for a caret", async () => {
+    const ta = await renderMobile();
+    expect(ta).toHaveAttribute("inputmode", "none");
+    await waitFor(() => expect(ta).toHaveFocus());
+  });
+
+  it("keeps a non-interactive blank placeholder in the q slot", async () => {
+    await renderMobile();
+    const blank = document.querySelector(
+      '.hg-button[data-skbtn="{blank}"]',
+    ) as HTMLElement;
+    expect(blank).toBeTruthy();
+    expect(blank.className).toContain("kbd-blank");
+    // zero-width space, never the literal word "blank"
+    expect(blank.textContent).not.toMatch(/blank/i);
+  });
+
+  it("retones the vowel before the caret and replaces (never stacks)", async () => {
+    const ta = await renderMobile();
+    seed(ta, "ko");
+
+    fireEvent.click(toneButton(/high tone/i));
+    await waitFor(() => expect(ta).toHaveValue("kó"));
+
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    fireEvent.click(toneButton(/low tone/i));
+    await waitFor(() => expect(ta).toHaveValue("kò"));
+
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    fireEvent.click(toneButton(/mid tone/i));
+    await waitFor(() => expect(ta).toHaveValue("ko"));
+  });
+
+  it("retones a sub-dot vowel using its combining form", async () => {
+    const ta = await renderMobile();
+    seed(ta, "ẹ");
+
+    fireEvent.click(toneButton(/high tone/i));
+    await waitFor(() => expect(ta).toHaveValue("ẹ́"));
+    expect(ta.value.length).toBe(2); // ẹ + U+0301
+    expect(countCharacters(ta.value)).toBe(1); // still one character
+  });
+
+  it("is a no-op when the caret isn't after a tone-bearing letter", async () => {
+    const ta = await renderMobile();
+    seed(ta, "k");
+    fireEvent.click(toneButton(/high tone/i));
+    await Promise.resolve();
+    expect(ta).toHaveValue("k");
   });
 });
