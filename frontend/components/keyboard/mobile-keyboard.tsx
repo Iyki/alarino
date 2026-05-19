@@ -315,7 +315,7 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
         <textarea
           ref={ref}
           value={value}
-          onChange={(e) => setValue(e.target.value.normalize("NFC"))}
+          onChange={(e) => setValue(e.target.value)}
           rows={2}
           // inputMode="none" keeps the caret, focus and selection but
           // tells the browser not to raise the device's own keyboard —

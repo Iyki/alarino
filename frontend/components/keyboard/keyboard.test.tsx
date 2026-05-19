@@ -5,7 +5,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DesignDiacriticRibbon } from "./design-diacritic-ribbon";
 import { DVORAK_LAYOUT } from "./design-tile-mode-toggle-dvorak";
 import { QWERTY_LAYOUT } from "./design-tile-mode-toggle-inline-b";
-import { countCharacters, toNFC } from "./keyboard-chrome";
+import {
+  countCharacters,
+  lastGraphemeLength,
+  toNFC,
+  useKeyboardText,
+} from "./keyboard-chrome";
 import { KeyboardDesigns } from "./keyboard-designs";
 import { pickAlign, popoverAlignClass } from "./popover-align";
 import { hasTones, retoneSuffix, toneVariants, vowelAccents } from "./tones";
@@ -513,5 +518,79 @@ describe("mobile keyboard — text field, blank key & tone strip", () => {
     fireEvent.click(toneButton(/high tone/i));
     await Promise.resolve();
     expect(ta).toHaveValue("k");
+  });
+});
+
+describe("lastGraphemeLength (grapheme-aware delete)", () => {
+  it("counts a base + combining mark as one deletable unit", () => {
+    expect(lastGraphemeLength("kẹ̀")).toBe(2); // kẹ̀
+    expect(lastGraphemeLength("kọ́")).toBe(2); // kọ́
+    expect(lastGraphemeLength("m̀")).toBe(2); // m̀
+    expect(lastGraphemeLength("é")).toBe(2); // decomposed é
+  });
+
+  it("is one unit for precomposed forms and plain letters", () => {
+    expect(lastGraphemeLength("kò")).toBe(1); // precomposed ò
+    expect(lastGraphemeLength("ḿ")).toBe(1); // ḿ
+    expect(lastGraphemeLength("a")).toBe(1);
+    expect(lastGraphemeLength("gb")).toBe(1); // last letter only
+  });
+
+  it("is zero for empty input", () => {
+    expect(lastGraphemeLength("")).toBe(0);
+  });
+});
+
+describe("backspace deletes a whole character", () => {
+  // Minimal harness so backspace() is exercised directly (the {bksp}
+  // key just calls it) without depending on library key event quirks.
+  function Harness() {
+    const { ref, value, setValue, backspace } = useKeyboardText();
+    return (
+      <div>
+        <textarea
+          ref={ref}
+          value={value}
+          aria-label="t"
+          onChange={(e) => setValue(e.target.value)}
+        />
+        <button type="button" onClick={backspace}>
+          del
+        </button>
+      </div>
+    );
+  }
+
+  it("removes ẹ̀ in one press instead of leaving the base behind", async () => {
+    render(<Harness />);
+    const ta = screen.getByLabelText("t") as HTMLTextAreaElement;
+
+    fireEvent.change(ta, { target: { value: "kẹ̀" } });
+    expect(countCharacters(ta.value)).toBe(2);
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+
+    fireEvent.click(screen.getByRole("button", { name: "del" }));
+    await waitFor(() => expect(ta).toHaveValue("k"));
+
+    // And a normal precomposed letter still deletes in one press.
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    fireEvent.click(screen.getByRole("button", { name: "del" }));
+    await waitFor(() => expect(ta).toHaveValue(""));
+  });
+});
+
+describe("desktop ribbon enforces the NFC invariant", () => {
+  it("normalises decomposed text typed/pasted into the ribbon field", async () => {
+    render(<DesignDiacriticRibbon />);
+    const ta = screen.getByLabelText(
+      "Yoruba keyboard text input",
+    ) as HTMLTextAreaElement;
+
+    // e + combining acute (decomposed, 2 code units)
+    fireEvent.change(ta, { target: { value: "sé" } });
+
+    await waitFor(() => expect(ta).toHaveValue("sé")); // composed
+    expect(ta.value.length).toBe(2);
+    expect(countCharacters(ta.value)).toBe(2);
   });
 });
