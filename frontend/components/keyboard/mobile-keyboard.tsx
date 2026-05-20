@@ -164,6 +164,22 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
     return Math.ceil(max);
   }, [layout, layoutName]);
 
+  // The {blank} placeholder exists only to preserve the QWERTY top-row
+  // offset; it must not be focusable or announced as an empty button.
+  // react-simple-keyboard doesn't accept per-key a11y props, so we set
+  // them on the rendered node after each layout change.
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const blank = wrap.querySelector<HTMLElement>(
+      '.hg-button[data-skbtn="{blank}"]',
+    );
+    if (blank) {
+      blank.setAttribute("tabindex", "-1");
+      blank.setAttribute("aria-hidden", "true");
+    }
+  }, [layoutName]);
+
   const display = useMemo(
     () => ({
       "{shift}": "⇧",
@@ -319,9 +335,12 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
           rows={2}
           // inputMode="none" keeps the caret, focus and selection but
           // tells the browser not to raise the device's own keyboard —
-          // this on-screen keyboard is the only input method.
+          // this on-screen keyboard is the only input method. Initial
+          // focus is handled by the effect below (which uses
+          // preventScroll); we deliberately avoid the autoFocus
+          // attribute since it doesn't accept that option and can scroll
+          // the page on mount on some mobile browsers.
           inputMode="none"
-          autoFocus
           aria-label="Yoruba keyboard text input"
           placeholder={lang === "yo" ? "Bẹ̀rẹ̀ sí kọ…" : "Start typing…"}
           className="w-full resize-none rounded-xl border border-brand-brown/15 bg-white p-3 text-[15px] text-brand-ink caret-brand-forest outline-none placeholder:text-brand-brown/40 focus:border-brand-forest"
@@ -355,6 +374,11 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
                 key={t.aria}
                 type="button"
                 aria-label={t.aria}
+                // Don't let the tap steal focus from the textarea —
+                // retoneLast reads selectionStart, and the caret needs
+                // to stay visible. Mirrors react-simple-keyboard's
+                // preventMouseDownDefault on the main key grid.
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   tick();
                   retoneLast(t.index);

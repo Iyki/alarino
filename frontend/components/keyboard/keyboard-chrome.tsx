@@ -57,7 +57,11 @@ export function useKeyboardText() {
   // The single place the NFC invariant is enforced: every entry path
   // (both textareas' onChange, on-screen keys, hold-accents, tone strip,
   // clear) goes through this, so the buffer is never a mix of composed
-  // and decomposed forms regardless of where text came from.
+  // and decomposed forms regardless of where text came from. Caveat:
+  // pasting raw decomposed text shortens the controlled value by the
+  // composition delta, so the browser caret can land off by that many
+  // code units — rare in practice (our keys and copy emit NFC already)
+  // and acceptable in exchange for the guarantee.
   const setValue = useCallback(
     (next: string | ((prev: string) => string)) =>
       setValueRaw((prev) =>

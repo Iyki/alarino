@@ -484,6 +484,11 @@ describe("mobile keyboard — text field, blank key & tone strip", () => {
     expect(blank.className).toContain("kbd-blank");
     // zero-width space, never the literal word "blank"
     expect(blank.textContent).not.toMatch(/blank/i);
+    // unreachable by keyboard / screen reader — purely a spacer
+    await waitFor(() => {
+      expect(blank.getAttribute("tabindex")).toBe("-1");
+      expect(blank.getAttribute("aria-hidden")).toBe("true");
+    });
   });
 
   it("retones the vowel before the caret and replaces (never stacks)", async () => {
