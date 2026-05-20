@@ -3,3 +3,6 @@ node_modules
 coverage
 .env.local
 tsconfig.tsbuildinfo
+
+# Local prod build dir for LAN testing (NEXT_DISTDIR)
+.next-prod

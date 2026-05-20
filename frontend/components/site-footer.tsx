@@ -3,7 +3,7 @@ import Link from "next/link";
 export function SiteFooter() {
   return (
     <footer className="bg-brand-brown">
-      <div className="mx-auto flex max-w-[80rem] items-center justify-center gap-6 px-6 py-6 text-sm">
+      <div className="mx-auto flex max-w-[80rem] flex-wrap items-center justify-center gap-x-5 gap-y-2 px-4 py-5 text-sm sm:gap-6 sm:px-6 sm:py-6">
         <Link
           href="/"
           className="text-brand-gold transition-colors md:text-[rgba(250,246,239,0.65)] md:hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"

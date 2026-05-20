@@ -1,19 +1,23 @@
 import type { KeyboardLayoutSet, LayoutPair } from "./mobile-keyboard";
 
-// QWERTY-familiar order filtered to the Yoruba alphabet so muscle memory
-// carries over. The gb digraph sits on Row 3 with the b/n/m cluster;
-// uniform key sizing + centered rows keep the short row balanced.
+// Yoruba uses no c/q/v/x/z. The row-3 slots z x c v are relabelled to
+// the Yoruba specials ẹ ọ ṣ gb. Yoruba has no q either, but the q slot
+// keeps a non-interactive {blank} placeholder so the top row stays the
+// standard 10 wide: that preserves the native half-key offset of the
+// 9-key home row beneath it, which is the spatial anchor QWERTY muscle
+// memory depends on. Every letter sits exactly where a touch-typist
+// expects. Long-press ẹ/ọ for their tone marks (see tones.ts).
 const YO: LayoutPair = {
   default: [
-    "w e ẹ r t y u i o ọ p",
-    "a s ṣ d f g h j k l",
-    "{shift} gb b n m {bksp}",
+    "{blank} w e r t y u i o p",
+    "a s d f g h j k l",
+    "{shift} ẹ ọ ṣ gb b n m {bksp}",
     "{num} {space} {enter}",
   ],
   shift: [
-    "W E Ẹ R T Y U I O Ọ P",
-    "A S Ṣ D F G H J K L",
-    "{shift} GB B N M {bksp}",
+    "{blank} W E R T Y U I O P",
+    "A S D F G H J K L",
+    "{shift} Ẹ Ọ Ṣ GB B N M {bksp}",
     "{num} {space} {enter}",
   ],
 };

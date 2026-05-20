@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Keyboard from "react-simple-keyboard";
 
 import "react-simple-keyboard/build/css/index.css";
 import "./keyboard-theme.css";
 
-import { CopyClearBar, useKeyboardText } from "./keyboard-chrome";
+import { CopyClearBar, type ToneIndex, useKeyboardText } from "./keyboard-chrome";
 import { hasTones, toneVariants } from "./tones";
 import { useDismissOnOutsidePointer, useEdgeClamp, useLongPress } from "./use-long-press";
 
@@ -35,14 +35,35 @@ const NUM_LAYOUT: string[] = [
 const TONE_BUTTONS = "a e ẹ i o ọ u m n A E Ẹ I O Ọ U M N";
 const SPECIAL_BUTTONS = "ẹ ọ ṣ gb Ẹ Ọ Ṣ GB";
 
+// Post-vowel tone entry: tap a vowel, then a tone. Yorùbá is ~50%
+// vowels and tone is obligatory, so this keystroke-after-vowel model
+// (no 400ms hold) is on the critical path for half of all typing. The
+// glyphs are a dotted circle (U+25CC) carrying the combining mark so
+// the diacritic shows in isolation. Long-press stays as a fallback.
+const TONE_KEYS: { label: string; aria: string; index: ToneIndex }[] = [
+  { label: "◌̀", aria: "Low tone (grave) on the last vowel", index: 0 },
+  { label: "◌", aria: "Mid tone (no mark) on the last vowel", index: 1 },
+  { label: "◌́", aria: "High tone (acute) on the last vowel", index: 2 },
+];
+
 interface TonePopover {
   base: string;
   left: number;
   top: number;
 }
 
+// A short tactile tick on each keystroke — the single biggest perceived
+// improvement to on-screen typing feel. Silently absent where the
+// Vibration API is unsupported (iOS Safari, desktop).
+function tick() {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    navigator.vibrate(8);
+  }
+}
+
 export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
-  const { ref, value, setValue, insert, backspace } = useKeyboardText();
+  const { ref, value, setValue, insert, backspace, retoneLast } =
+    useKeyboardText();
   const [lang, setLang] = useState<Lang>("yo");
   const [mode, setMode] = useState<Mode>("abc");
   const [shiftOn, setShiftOn] = useState(false);
@@ -55,6 +76,13 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
   // The exact (case-correct) character the long-pressed key would type,
   // re-emitted if the gesture ends without picking a tone.
   const holdBase = useRef<string | null>(null);
+
+  // Focus the field on mount so the caret is visible immediately and the
+  // first key press lands at a real cursor position. inputMode="none"
+  // means this does not raise the device keyboard.
+  useEffect(() => {
+    ref.current?.focus({ preventScroll: true });
+  }, [ref]);
 
   const clamp = useEdgeClamp(tone !== null);
   useDismissOnOutsidePointer(tone !== null, () => setTone(null));
@@ -75,6 +103,7 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
         // Picked a tone (slide-release or discrete tap).
         e.preventDefault();
         e.stopPropagation();
+        tick();
         insertRef.current(item.dataset.toneValue ?? "");
       } else if (
         holdBase.current &&
@@ -107,6 +136,50 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
   const layoutName =
     mode === "num" ? "num" : `${lang}-${shiftOn ? "shift" : "default"}`;
 
+  // Column width unit, sized so the active layout's widest row fills
+  // edge-to-edge. A letter (and the {blank} placeholder) is 1 column;
+  // shift/backspace/123/enter are 1.5 (native ratio); {space} grows and
+  // contributes nothing. So a 10-slot top row sets a 10-column grid and
+  // the 9-key home row beneath it gets the native half-key offset, while
+  // every letter keeps a stable x across shift/layout states.
+  const cols = useMemo(() => {
+    const weight = (token: string) => {
+      if (token === "{space}") return 0;
+      if (["{shift}", "{bksp}", "{enter}", "{num}", "{abc}"].includes(token)) {
+        return 1.5;
+      }
+      return 1;
+    };
+    const rows = layout[layoutName as keyof typeof layout] ?? [];
+    const max = Math.max(
+      1,
+      ...rows.map((r) =>
+        r
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+          .reduce((sum, t) => sum + weight(t), 0),
+      ),
+    );
+    return Math.ceil(max);
+  }, [layout, layoutName]);
+
+  // The {blank} placeholder exists only to preserve the QWERTY top-row
+  // offset; it must not be focusable or announced as an empty button.
+  // react-simple-keyboard doesn't accept per-key a11y props, so we set
+  // them on the rendered node after each layout change.
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const blank = wrap.querySelector<HTMLElement>(
+      '.hg-button[data-skbtn="{blank}"]',
+    );
+    if (blank) {
+      blank.setAttribute("tabindex", "-1");
+      blank.setAttribute("aria-hidden", "true");
+    }
+  }, [layoutName]);
+
   const display = useMemo(
     () => ({
       "{shift}": "⇧",
@@ -115,6 +188,9 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
       "{space}": lang === "yo" ? "àyè" : "space",
       "{num}": "123",
       "{abc}": "ABC",
+      // Zero-width space, not "" — react-simple-keyboard treats an empty
+      // display string as "no override" and would print "blank".
+      "{blank}": "​",
     }),
     [lang],
   );
@@ -123,6 +199,7 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
     const themes: { class: string; buttons: string }[] = [
       { class: "kbd-mod", buttons: "{shift} {bksp} {num} {abc}" },
       { class: "kbd-enter", buttons: "{enter}" },
+      { class: "kbd-blank", buttons: "{blank}" },
     ];
     if (shiftOn) themes.push({ class: "kbd-shift-on", buttons: "{shift}" });
     if (lang === "yo" && mode === "abc") {
@@ -134,6 +211,7 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
 
   const onKeyReleased = useCallback(
     (button: string) => {
+      tick();
       switch (button) {
         case "{shift}":
           setShiftOn((s) => !s);
@@ -152,6 +230,8 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
           return;
         case "{abc}":
           setMode("abc");
+          return;
+        case "{blank}":
           return;
         default:
           if (suppress.current === button) {
@@ -246,83 +326,128 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
   const variants = tone ? toneVariants(tone.base) : null;
 
   return (
-    <div className="mx-auto w-full max-w-[420px]">
-      <textarea
-        ref={ref}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        rows={2}
-        aria-label="Yoruba keyboard text input"
-        placeholder={lang === "yo" ? "Bẹ̀rẹ̀ sí kọ…" : "Start typing…"}
-        className="w-full resize-none rounded-xl border border-brand-brown/15 bg-white p-3 text-[15px] text-brand-ink outline-none placeholder:text-brand-brown/40 focus:border-brand-forest"
-      />
-
-      <div className="mt-3 flex justify-center gap-2">
-        {langPill("yo", "Yorùbá")}
-        {langPill("en", "English")}
-      </div>
-
-      <div
-        ref={wrapRef}
-        data-clip
-        onContextMenu={(e) => e.preventDefault()}
-        className="relative mt-3 touch-manipulation select-none overflow-hidden rounded-2xl border border-brand-brown/10 bg-brand-beige/50 px-3 py-3"
-      >
-        <Keyboard
-          theme="hg-theme-default alarino-kbd"
-          layoutName={layoutName}
-          layout={layout}
-          display={display}
-          buttonTheme={buttonTheme}
-          onKeyReleased={onKeyReleased}
-          disableButtonHold
-          useButtonTag
+    <>
+      <div className="mx-auto w-full max-w-[480px]">
+        <textarea
+          ref={ref}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          rows={2}
+          // inputMode="none" keeps the caret, focus and selection but
+          // tells the browser not to raise the device's own keyboard —
+          // this on-screen keyboard is the only input method. Initial
+          // focus is handled by the effect below (which uses
+          // preventScroll); we deliberately avoid the autoFocus
+          // attribute since it doesn't accept that option and can scroll
+          // the page on mount on some mobile browsers.
+          inputMode="none"
+          aria-label="Yoruba keyboard text input"
+          placeholder={lang === "yo" ? "Bẹ̀rẹ̀ sí kọ…" : "Start typing…"}
+          className="w-full resize-none rounded-xl border border-brand-brown/15 bg-white p-3 text-[15px] text-brand-ink caret-brand-forest outline-none placeholder:text-brand-brown/40 focus:border-brand-forest"
         />
 
-        {tone && variants ? (
-          <div
-            ref={clamp.ref}
-            data-picker-root=""
-            style={{
-              left: tone.left,
-              top: tone.top,
-              transform: "translateX(-50%)",
-              ...clamp.style,
-            }}
-            role="menu"
-            aria-label="Tone options"
-            className="absolute z-20 flex gap-1 whitespace-nowrap rounded-xl border border-brand-brown/15 bg-white px-1.5 py-1 shadow-card-hover"
-          >
-            {variants.map((v) => {
-              const out = shiftOn ? v.toUpperCase() : v;
-              return (
-                <button
-                  key={v}
-                  type="button"
-                  role="menuitem"
-                  aria-label={`Insert ${out}`}
-                  data-tone-value={out}
-                  onClick={() => {
-                    insert(out);
-                    setTone(null);
-                  }}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-cream text-lg font-semibold text-brand-ink transition hover:bg-brand-forest hover:text-white"
-                >
-                  {out}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
+        <div className="mt-3 flex justify-center gap-2">
+          {langPill("yo", "Yorùbá")}
+          {langPill("en", "English")}
+        </div>
+
+        <CopyClearBar value={value} onClear={() => setValue("")} />
       </div>
 
-      <p className="mt-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-brown/45">
-        {lang === "yo"
-          ? "Yorùbá mode · long-press a dotted key for tones"
-          : "English mode"}
-      </p>
+      {/* The keyboard is pinned to the bottom of the viewport while
+          typing (sticky, not a fixed overlay), but it lives in the page
+          flow so the site footer scrolls into view BELOW it at the end
+          of the page instead of being covered. The leading spacer keeps
+          its natural position past the fold so it stays pinned even when
+          the page content above is short. */}
+      <div aria-hidden className="min-h-[22vh]" />
 
-      <CopyClearBar value={value} onClear={() => setValue("")} />
-    </div>
+      <div className="sticky bottom-0 z-30 mx-[calc(50%-50vw)] w-screen border-t border-brand-brown/10 bg-brand-beige/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(26,18,7,0.06)] backdrop-blur-sm">
+        {lang === "yo" && mode === "abc" ? (
+          <div
+            role="group"
+            aria-label="Tone marks"
+            className="mx-auto grid w-full max-w-[480px] grid-cols-3 gap-1.5 px-2 pt-2"
+          >
+            {TONE_KEYS.map((t) => (
+              <button
+                key={t.aria}
+                type="button"
+                aria-label={t.aria}
+                // Don't let the tap steal focus from the textarea —
+                // retoneLast reads selectionStart, and the caret needs
+                // to stay visible. Mirrors react-simple-keyboard's
+                // preventMouseDownDefault on the main key grid.
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  tick();
+                  retoneLast(t.index);
+                }}
+                className="flex h-9 items-center justify-center rounded-lg border border-brand-brown/15 bg-white text-[19px] text-brand-ink transition active:scale-[0.97] active:bg-brand-gold-light"
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        <div
+          ref={wrapRef}
+          data-clip
+          onContextMenu={(e) => e.preventDefault()}
+          style={{ "--kbd-cols": cols } as CSSProperties}
+          className="relative mx-auto w-full max-w-[480px] touch-manipulation select-none overflow-hidden px-1.5 py-3"
+        >
+          <Keyboard
+            theme="hg-theme-default alarino-kbd"
+            layoutName={layoutName}
+            layout={layout}
+            display={display}
+            buttonTheme={buttonTheme}
+            onKeyReleased={onKeyReleased}
+            disableButtonHold
+            useButtonTag
+            preventMouseDownDefault
+          />
+
+          {tone && variants ? (
+            <div
+              ref={clamp.ref}
+              data-picker-root=""
+              style={{
+                left: tone.left,
+                top: tone.top,
+                transform: "translateX(-50%)",
+                ...clamp.style,
+              }}
+              role="menu"
+              aria-label="Tone options"
+              className="absolute z-20 flex gap-1 whitespace-nowrap rounded-xl border border-brand-brown/15 bg-white px-1.5 py-1 shadow-card-hover"
+            >
+              {variants.map((v) => {
+                const out = shiftOn ? v.toUpperCase() : v;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    role="menuitem"
+                    aria-label={`Insert ${out}`}
+                    data-tone-value={out}
+                    onClick={() => {
+                      tick();
+                      insert(out);
+                      setTone(null);
+                    }}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-cream text-lg font-semibold text-brand-ink transition hover:bg-brand-forest hover:text-white"
+                  >
+                    {out}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </>
   );
 }

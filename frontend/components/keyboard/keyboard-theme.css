@@ -1,10 +1,20 @@
 /* Alarino brand skin for react-simple-keyboard.
    Selectors are prefixed with .simple-keyboard.alarino-kbd so they outrank
    the library's own .hg-theme-default rules (which we keep, for base
-   layout). Letter keys share one fixed flex-basis so every key is the
-   same size; rows are centered so short rows (e.g. Row 3) sit centered
-   instead of stretching or left-packing. The basis subtracts the 11
-   widest-row key margins (11 * 2 * 3px) so an 11-key row fills exactly. */
+   layout). The layout is a standard 10-key QWERTY/Dvorak grid. The
+   library separates keys with a margin-right between siblings via its
+   .hg-row .hg-button:not(:last-child) rule (specificity 0,4,0, which
+   beats a plain prefixed rule) — we re-declare it below with matching
+   reach to set our own 4px gutter. A letter key is one column wide:
+   basis (100% − (cols−1)·4px) / cols, where --kbd-cols is set per
+   active layout to its widest row in column units. Shift / backspace /
+   123 / enter are 1.5 columns (the native ratio) so row 3's outer edges
+   align with the full-width top row. The Yorùbá top row carries a
+   non-interactive blank in the unused q slot, so it stays 10 wide and
+   the 9-key home row picks up the native half-key offset — the spatial
+   anchor QWERTY muscle memory relies on. Shorter rows centre (native
+   inset); {space} flex-grows to fill its row. Key height 48px, 4px
+   gutter, 8px row gap. */
 .simple-keyboard.alarino-kbd {
   background: transparent;
   padding: 0;
@@ -16,35 +26,44 @@
 }
 
 .simple-keyboard.alarino-kbd .hg-row + .hg-row {
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .simple-keyboard.alarino-kbd .hg-button {
-  flex: 0 0 calc((100% - 78px) / 11);
-  max-width: calc((100% - 78px) / 11);
-  height: 44px;
-  margin: 0 3px;
+  flex: 0 0 calc((100% - (var(--kbd-cols, 10) - 1) * 4px) / var(--kbd-cols, 10));
+  max-width: calc((100% - (var(--kbd-cols, 10) - 1) * 4px) / var(--kbd-cols, 10));
+  height: 48px;
+  margin: 0;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid rgba(74, 53, 32, 0.15);
   border-bottom-color: rgba(74, 53, 32, 0.22);
-  border-radius: 8px;
+  border-radius: 7px;
   background: #ffffff;
   color: var(--brand-ink);
-  font-size: 17px;
+  font-size: 21px;
   box-shadow: 0 1px 0 rgba(26, 18, 7, 0.05);
-  transition: transform 0.06s ease, background-color 0.12s ease;
+  transition: transform 0.05s ease, background-color 0.1s ease;
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
 
+/* Override the library's inter-key gutter (its rule is .hg-theme-default
+   .hg-row .hg-button:not(:last-child){margin-right:5px}, specificity
+   0,4,0). Matching that reach with our prefix gives 0,5,0 so this wins;
+   the flex-basis above subtracts (cols-1) of these per row. */
+.simple-keyboard.alarino-kbd .hg-row .hg-button:not(:last-child) {
+  margin-right: 4px;
+}
+
 .simple-keyboard.alarino-kbd .hg-button:active {
-  transform: scale(0.95);
-  background: var(--brand-gold-light);
+  transform: scale(0.97);
+  background: rgba(200, 149, 46, 0.18);
+  border-color: rgba(200, 149, 46, 0.45);
 }
 
 .simple-keyboard.alarino-kbd .hg-button.kbd-special {
@@ -72,13 +91,32 @@
   background: var(--brand-gold);
 }
 
+/* Shift / backspace / 123 are 1.5 columns wide — the native ratio that
+   lets row 3's outer edges line up with the full-width top row while the
+   7 letters stay on the interior column grid. */
 .simple-keyboard.alarino-kbd .hg-button.kbd-mod {
-  flex: 0 0 calc(1.6 * (100% - 78px) / 11);
-  max-width: calc(1.6 * (100% - 78px) / 11);
+  flex: 0 0 calc(1.5 * (100% - (var(--kbd-cols, 10) - 1) * 4px) / var(--kbd-cols, 10));
+  max-width: calc(1.5 * (100% - (var(--kbd-cols, 10) - 1) * 4px) / var(--kbd-cols, 10));
   background: var(--brand-beige);
   border-color: rgba(74, 53, 32, 0.15);
   color: rgba(74, 53, 32, 0.7);
   font-size: 15px;
+}
+
+/* A non-interactive placeholder occupying the unused top-left (Yorùbá
+   has no q) so the 10-slot top row keeps the standard QWERTY width and
+   the 9-key home row gets its native half-key offset — the spatial
+   anchor touch-typing muscle memory relies on. */
+.simple-keyboard.alarino-kbd .hg-button.kbd-blank {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.simple-keyboard.alarino-kbd .hg-button.kbd-blank:active {
+  transform: none;
+  background: transparent;
 }
 
 .simple-keyboard.alarino-kbd .hg-button.kbd-mod:active {
@@ -92,8 +130,8 @@
 }
 
 .simple-keyboard.alarino-kbd .hg-button.kbd-enter {
-  flex: 0 0 calc(1.6 * (100% - 78px) / 11);
-  max-width: calc(1.6 * (100% - 78px) / 11);
+  flex: 0 0 calc(1.5 * (100% - (var(--kbd-cols, 10) - 1) * 4px) / var(--kbd-cols, 10));
+  max-width: calc(1.5 * (100% - (var(--kbd-cols, 10) - 1) * 4px) / var(--kbd-cols, 10));
   background: var(--brand-forest);
   border-color: var(--brand-forest);
   color: #ffffff;
@@ -103,9 +141,11 @@
   background: rgba(26, 92, 50, 0.82);
 }
 
+/* Space grows to fill whatever its row has left, so the bottom row
+   spans the full width without space inflating the column count. */
 .simple-keyboard.alarino-kbd .hg-button.hg-button-space {
-  flex: 0 0 calc(5 * (100% - 78px) / 11);
-  max-width: calc(5 * (100% - 78px) / 11);
+  flex: 1 1 auto;
+  max-width: none;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.2em;
