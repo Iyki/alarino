@@ -12,6 +12,7 @@ import {
   useKeyboardText,
 } from "./keyboard-chrome";
 import { KeyboardDesigns } from "./keyboard-designs";
+import { NUM_LAYOUT } from "./mobile-keyboard";
 import { pickAlign, popoverAlignClass } from "./popover-align";
 import { hasTones, retoneSuffix, toneVariants, vowelAccents } from "./tones";
 
@@ -441,6 +442,13 @@ describe("layout geometry (muscle memory)", () => {
       expect(tokens(DVORAK_LAYOUT.yo.default)).toContain(special);
     }
   });
+
+  it("the numbers layout has exactly one ABC-return key", () => {
+    const abcRows = NUM_LAYOUT.filter((r) => r.split(/\s+/).includes("{abc}"));
+    expect(abcRows).toHaveLength(1);
+    // it lives on the bottom row, where every layout's return key sits
+    expect(NUM_LAYOUT[NUM_LAYOUT.length - 1]).toContain("{abc}");
+  });
 });
 
 describe("mobile keyboard — text field, blank key & tone strip", () => {
@@ -491,6 +499,18 @@ describe("mobile keyboard — text field, blank key & tone strip", () => {
     });
   });
 
+  it("offers only low and high tone keys (mid is the typed default)", async () => {
+    await renderMobile();
+    const strip = screen.getByRole("group", { name: "Tone marks" });
+    const buttons = strip.querySelectorAll("button");
+    expect(buttons).toHaveLength(2);
+    expect(toneButton(/low tone/i)).toBeInTheDocument();
+    expect(toneButton(/high tone/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /mid tone/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("retones the vowel before the caret and replaces (never stacks)", async () => {
     const ta = await renderMobile();
     seed(ta, "ko");
@@ -502,9 +522,10 @@ describe("mobile keyboard — text field, blank key & tone strip", () => {
     fireEvent.click(toneButton(/low tone/i));
     await waitFor(() => expect(ta).toHaveValue("kò"));
 
+    // switching back to high replaces the low mark rather than stacking
     ta.setSelectionRange(ta.value.length, ta.value.length);
-    fireEvent.click(toneButton(/mid tone/i));
-    await waitFor(() => expect(ta).toHaveValue("ko"));
+    fireEvent.click(toneButton(/high tone/i));
+    await waitFor(() => expect(ta).toHaveValue("kó"));
   });
 
   it("retones a sub-dot vowel using its combining form", async () => {
