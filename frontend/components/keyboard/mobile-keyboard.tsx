@@ -42,10 +42,12 @@ const SPECIAL_BUTTONS = "ẹ ọ ṣ gb Ẹ Ọ Ṣ GB";
 // (no 400ms hold) is on the critical path for half of all typing. The
 // glyphs are a dotted circle (U+25CC) carrying the combining mark so
 // the diacritic shows in isolation. Long-press stays as a fallback.
-// Only low and high are offered — mid is the unmarked default you get
-// by simply typing the vowel, so a dedicated mid key has nothing to do.
+// Mid is kept as a dedicated key: it's the only in-place way to clear
+// an accidental accent — typing the bare vowel only helps before a
+// tone has been applied, not to revert kó/kò back to ko.
 const TONE_KEYS: { label: string; aria: string; index: ToneIndex }[] = [
   { label: "◌̀", aria: "Low tone (grave) on the last vowel", index: 0 },
+  { label: "◌", aria: "Mid tone (clear the mark) on the last vowel", index: 1 },
   { label: "◌́", aria: "High tone (acute) on the last vowel", index: 2 },
 ];
 
@@ -370,7 +372,7 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
           <div
             role="group"
             aria-label="Tone marks"
-            className="mx-auto grid w-full max-w-[480px] grid-cols-2 gap-1.5 px-2 pt-2"
+            className="mx-auto grid w-full max-w-[480px] grid-cols-3 gap-1.5 px-2 pt-2"
           >
             {TONE_KEYS.map((t) => (
               <button

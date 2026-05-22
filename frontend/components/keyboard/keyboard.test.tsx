@@ -499,16 +499,13 @@ describe("mobile keyboard — text field, blank key & tone strip", () => {
     });
   });
 
-  it("offers only low and high tone keys (mid is the typed default)", async () => {
+  it("offers low, mid and high tone keys", async () => {
     await renderMobile();
     const strip = screen.getByRole("group", { name: "Tone marks" });
-    const buttons = strip.querySelectorAll("button");
-    expect(buttons).toHaveLength(2);
+    expect(strip.querySelectorAll("button")).toHaveLength(3);
     expect(toneButton(/low tone/i)).toBeInTheDocument();
+    expect(toneButton(/mid tone/i)).toBeInTheDocument();
     expect(toneButton(/high tone/i)).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /mid tone/i }),
-    ).not.toBeInTheDocument();
   });
 
   it("retones the vowel before the caret and replaces (never stacks)", async () => {
@@ -522,10 +519,10 @@ describe("mobile keyboard — text field, blank key & tone strip", () => {
     fireEvent.click(toneButton(/low tone/i));
     await waitFor(() => expect(ta).toHaveValue("kò"));
 
-    // switching back to high replaces the low mark rather than stacking
+    // mid clears the mark in place — the only way to revert an accent
     ta.setSelectionRange(ta.value.length, ta.value.length);
-    fireEvent.click(toneButton(/high tone/i));
-    await waitFor(() => expect(ta).toHaveValue("kó"));
+    fireEvent.click(toneButton(/mid tone/i));
+    await waitFor(() => expect(ta).toHaveValue("ko"));
   });
 
   it("retones a sub-dot vowel using its combining form", async () => {
