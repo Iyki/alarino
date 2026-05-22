@@ -25,10 +25,12 @@ export type MobileKeyboardProps = KeyboardLayoutSet;
 type Lang = "yo" | "en";
 type Mode = "abc" | "num";
 
-const NUM_LAYOUT: string[] = [
+// Exported for layout tests. Row 3 deliberately has no {abc}: the only
+// "letters" return key is on row 4, where it sits in every layout.
+export const NUM_LAYOUT: string[] = [
   "1 2 3 4 5 6 7 8 9 0",
   "- / : ; ( ) ₦ & @ \"",
-  "{abc} . , ? ! ' {bksp}",
+  ". , ? ! ' {bksp}",
   "{abc} {space} {enter}",
 ];
 
@@ -40,9 +42,12 @@ const SPECIAL_BUTTONS = "ẹ ọ ṣ gb Ẹ Ọ Ṣ GB";
 // (no 400ms hold) is on the critical path for half of all typing. The
 // glyphs are a dotted circle (U+25CC) carrying the combining mark so
 // the diacritic shows in isolation. Long-press stays as a fallback.
+// Mid is kept as a dedicated key: it's the only in-place way to clear
+// an accidental accent — typing the bare vowel only helps before a
+// tone has been applied, not to revert kó/kò back to ko.
 const TONE_KEYS: { label: string; aria: string; index: ToneIndex }[] = [
   { label: "◌̀", aria: "Low tone (grave) on the last vowel", index: 0 },
-  { label: "◌", aria: "Mid tone (no mark) on the last vowel", index: 1 },
+  { label: "◌", aria: "Mid tone (clear the mark) on the last vowel", index: 1 },
   { label: "◌́", aria: "High tone (acute) on the last vowel", index: 2 },
 ];
 
@@ -374,11 +379,11 @@ export function MobileKeyboard({ yo, en }: MobileKeyboardProps) {
                 key={t.aria}
                 type="button"
                 aria-label={t.aria}
-                // Don't let the tap steal focus from the textarea —
-                // retoneLast reads selectionStart, and the caret needs
-                // to stay visible. Mirrors react-simple-keyboard's
-                // preventMouseDownDefault on the main key grid.
-                onMouseDown={(e) => e.preventDefault()}
+                // Prevent the tap (mouse OR touch) from stealing focus
+                // from the textarea — onPointerDown covers touch, where
+                // onMouseDown fires too late. Keeps the caret visible
+                // and retoneLast's selectionStart read accurate.
+                onPointerDown={(e) => e.preventDefault()}
                 onClick={() => {
                   tick();
                   retoneLast(t.index);
