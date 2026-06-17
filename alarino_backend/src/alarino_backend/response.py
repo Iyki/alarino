@@ -72,6 +72,14 @@ class BulkUploadResponseData(BaseResponseData):
     dry_run: bool
 
 
+@dataclass
+class SitemapWordsResponseData(BaseResponseData):
+    """The list of English word strings that have a Yoruba translation,
+    used by the frontend to build /sitemap.xml."""
+
+    words: List[str]
+
+
 class APIResponse:
     def __init__(self, success: bool, status: int, message: str, data: Optional[BaseResponseData] = None):
         self.success = success
