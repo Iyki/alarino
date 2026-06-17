@@ -14,6 +14,7 @@ from alarino_backend.response import (
     BulkUploadResponseData,
     ProverbResponseData,
     SenseGroup,
+    SitemapWordsResponseData,
     TranslationInSenseGroup,
     TranslationResponseData,
     WordOfTheDayResponseData,
@@ -320,6 +321,31 @@ def get_random_proverb(db):
     except Exception as e:
         logger.error(f"Error fetching random proverb: {e}")
         return APIResponse.error("An error occurred while fetching a proverb.", 500).as_response()
+
+
+def get_sitemap_words(db) -> Tuple[Dict, int]:
+    """Return all English words that have at least one Yoruba translation.
+
+    Used by the frontend's /sitemap.xml route. Mirrors the query in
+    data/generate_sitemap.py, returning a sorted, de-duplicated list of the
+    normalized (lowercase, stripped) word strings.
+    """
+    try:
+        rows = (
+            db.session.query(Word.text)
+            .filter(Word.language == Language.ENGLISH.value)
+            .join(Translation, Word.w_id == Translation.source_word_id)
+            .distinct()
+            .all()
+        )
+        words = sorted(
+            {row[0].strip().lower() for row in rows if row[0] and row[0].strip()}
+        )
+        response_data = SitemapWordsResponseData(words=words)
+        return APIResponse.success("Sitemap words fetched successfully.", response_data).as_response()
+    except Exception as e:
+        logger.error(f"Error fetching sitemap words: {e}")
+        return APIResponse.error("An error occurred while fetching sitemap words.", 500).as_response()
 
 
 def _process_translation_pair(row: list, dry_run: bool, successful_pairs: list, failed_pairs: list):

@@ -406,3 +406,39 @@ def test_translate_returns_404_when_no_curated_translation_in_either_direction(d
     )
     assert status == 404
     assert response["message"] == "Word found but translation not available."
+
+
+# ---- Sitemap word listing ----
+
+
+def test_get_sitemap_words_returns_only_translated_english_words(db_app):
+    # Two curated en→yo pairs, plus an English word with no translation
+    # (must be excluded) and a Yoruba-only word (must be excluded).
+    _seed_one_directional_pair("love", "ife")
+    _seed_one_directional_pair("water", "omi")
+    db.session.add(Word(language="en", text="lonely"))  # no translation
+    db.session.commit()
+
+    response, status = translation_service.get_sitemap_words(db)
+
+    assert status == 200
+    assert response["message"] == "Sitemap words fetched successfully."
+    assert response["data"]["words"] == ["love", "water"]
+
+
+def test_get_sitemap_words_dedupes_words_with_multiple_translations(db_app):
+    child = Word(language="en", text="child")
+    omo = Word(language="yo", text="ọmọ")
+    egbon = Word(language="yo", text="ẹgbọn")
+    db.session.add_all([child, omo, egbon])
+    db.session.flush()
+    from alarino_backend.data.seed_data_utils import create_translation
+
+    create_translation(child, omo)
+    create_translation(child, egbon)
+    db.session.commit()
+
+    response, status = translation_service.get_sitemap_words(db)
+
+    assert status == 200
+    assert response["data"]["words"] == ["child"]

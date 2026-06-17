@@ -13,6 +13,7 @@ from alarino_backend.runtime import _daily_word_cache, get_allowed_origins, logg
 from alarino_backend.translation_service import (
     bulk_upload_words,
     get_random_proverb,
+    get_sitemap_words,
     get_word_of_the_day,
     translate,
     translate_llm,
@@ -116,6 +117,13 @@ def admin_bulk_upload():
     dry_run = data.get("dry_run", True)
 
     response, status = bulk_upload_words(db, text_input, dry_run)
+    return jsonify(response), status
+
+
+@api_bp.route("/api/words", methods=["GET"])
+def list_sitemap_words():
+    logger.info("Sitemap words request received")
+    response, status = get_sitemap_words(db)
     return jsonify(response), status
 
 

@@ -45,6 +45,7 @@ def test_expected_routes_are_registered(app):
         "/api/daily-word",
         "/api/proverb",
         "/api/admin/bulk-upload",
+        "/api/words",
         "/api/health",
     }.issubset(rules)
 
@@ -294,6 +295,28 @@ def test_admin_bulk_upload_returns_service_response(client, monkeypatch):
         "text_input": "apple,apulo",
         "dry_run": True,
     }
+
+
+def test_words_returns_service_response(client, monkeypatch):
+    payload = {
+        "success": True,
+        "status": 200,
+        "message": "Sitemap words fetched successfully.",
+        "data": {"words": ["abandon", "love"]},
+    }
+    captured = {}
+
+    def fake_get_sitemap_words(db_arg):
+        captured["db_arg"] = db_arg
+        return payload, 200
+
+    monkeypatch.setattr(app_module, "get_sitemap_words", fake_get_sitemap_words)
+
+    response = client.get("/api/words")
+
+    assert response.status_code == 200
+    assert response.get_json() == payload
+    assert captured == {"db_arg": db}
 
 
 def test_health_endpoint_contract(client):
