@@ -4,10 +4,13 @@ import { getBackendInternalUrl, getFrontendSiteUrl } from "@/lib/env";
 
 const SITE_URL = getFrontendSiteUrl();
 
-// Regenerate the sitemap at most once a day so newly added words show up
-// without a redeploy. If the backend is unreachable (e.g. during the build)
-// we still emit the static routes below rather than failing.
-export const revalidate = 86400;
+// Render at request time, never at build. The frontend image runs
+// `next build` (frontend/Dockerfile) before the compose backend is
+// reachable, so a prerendered or ISR sitemap would bake in the
+// empty-backend fallback and keep serving a wordless sitemap until the
+// revalidate window elapsed — re-baked wordless on every deploy.
+// force-dynamic makes each request query the live backend instead.
+export const dynamic = "force-dynamic";
 
 const STATIC_ROUTES: MetadataRoute.Sitemap = [
   { url: `${SITE_URL}/`, changeFrequency: "daily", priority: 1 },
@@ -18,7 +21,7 @@ const STATIC_ROUTES: MetadataRoute.Sitemap = [
 async function fetchTranslatableWords(): Promise<string[]> {
   try {
     const res = await fetch(`${getBackendInternalUrl()}/api/words`, {
-      next: { revalidate }
+      cache: "no-store"
     });
     if (!res.ok) {
       return [];
