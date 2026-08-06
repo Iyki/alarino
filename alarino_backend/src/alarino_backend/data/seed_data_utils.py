@@ -1,22 +1,23 @@
 import json
 import re
-import unicodedata
 from pathlib import Path
 from typing import Callable
 
 from alarino_backend.db_models import Proverb, ProverbWord, Sense, db, Word, Translation
 from alarino_backend.languages import Language
-# normalize_word_text and normalize_text live in alarino_backend.normalization
-# so the TypeDecorators in db_models.py can use them without a circular import.
+# Normalization and alphabet validation live in alarino_backend.normalization
+# (no DB dependency) so the TypeDecorators in db_models.py and offline data
+# tooling can use them without importing the Flask/DB stack.
 # Re-exported here for callers that import them from this module.
-from alarino_backend.normalization import normalize_text, normalize_word_text  # noqa: F401
+from alarino_backend.normalization import (  # noqa: F401
+    is_valid_english_text,
+    is_valid_english_word,
+    is_valid_yoruba_text,
+    is_valid_yoruba_word,
+    normalize_text,
+    normalize_word_text,
+)
 from alarino_backend.runtime import logger
-
-# Define valid Yoruba character sets
-_YORUBA_CONSONANTS = "bdfghjklmnprstwygbṣ"  # Standard consonants (excluding c, q, v, x, z)
-_YORUBA_VOWELS = "aàáeèéẹẹ̀ẹ́iìíoòóọọ̀ọ́uùú"  # Standard vowels with tone marks
-_YORUBA_NASAL_VOWELS = "mḿm̀nńǹ"  # Nasal vowels with tone marks
-_YORUBA_CHARACTER_SET = _YORUBA_CONSONANTS + _YORUBA_VOWELS + _YORUBA_NASAL_VOWELS
 
 
 def add_word(language: Language, word_text: str):
@@ -94,84 +95,6 @@ def add_proverb(yoruba_proverb: str, english_proverb: str):
             )
             position += 1
 
-
-def _is_valid_yoruba(text: str, extra_chars: str) -> bool:
-    """
-    Generic validation helper for Yoruba text.
-    Args:
-        text: The text to validate.
-        extra_chars: Additional characters to allow.
-    Returns:
-        bool: Whether the text is valid.
-    """
-    if not text:
-        return False
-    # Normalize input to NFC so the codepoints align with the (NFC) char class
-    # below. Without this, NFD input that is canonically valid Yoruba would be
-    # rejected because its decomposed codepoints don't appear in the char set.
-    text = unicodedata.normalize('NFC', text.strip().lower())
-    valid_chars = unicodedata.normalize('NFC', _YORUBA_CHARACTER_SET + extra_chars)
-    escaped_chars = re.escape(valid_chars)
-    pattern = f"^[{escaped_chars}]+$"
-    return bool(re.match(pattern, text, re.UNICODE))
-
-
-def is_valid_yoruba_word(word: str) -> bool:
-    """
-    Validates if a word contains only valid Yoruba characters.
-    Args:
-        word: The word to validate.
-    Returns:
-        bool: Whether the word is valid.
-    """
-    return _is_valid_yoruba(word, extra_chars="'- ")
-
-
-def is_valid_yoruba_text(text: str) -> bool:
-    """
-    Validates if a text contains only valid Yoruba characters and punctuation.
-    Args:
-        text: The text to validate.
-    Returns:
-        bool: Whether the text is valid.
-    """
-    return _is_valid_yoruba(text, extra_chars="' -.,?!;:")
-
-
-def is_valid_english_word(word: str) -> bool:
-    """
-    Validates if a word contains only valid English characters
-    Args:
-        word: The word to validate
-    Returns:
-        bool: Whether the word contains only valid English characters
-    """
-    # NFC normalize for consistency with the Yoruba validators. ASCII is
-    # invariant under NFC/NFD, so this is a no-op for ASCII input but ensures
-    # any stray combining marks in input are handled the same way storage does.
-    word = unicodedata.normalize("NFC", word.strip().lower())
-    if not word:
-        return False
-
-    # Simple regex pattern for English text (letters, apostrophes, hyphens, spaces)
-    pattern = r'^[a-z\'\- ]+$'
-    return bool(re.match(pattern, word, re.UNICODE))
-
-def is_valid_english_text(text: str) -> bool:
-    """
-    Validates if a text contains only valid English characters and punctuation.
-    Args:
-        text: The text to validate.
-    Returns:
-        bool: Whether the text is valid.
-    """
-    text = unicodedata.normalize("NFC", text.strip().lower())
-    if not text:
-        return False
-
-    # Simple regex pattern for English text (letters, apostrophes, hyphens, spaces, and punctuation)
-    pattern = r"^[a-z' .,?!;:-]+$"
-    return bool(re.match(pattern, text, re.UNICODE))
 
 class AmbiguousSenseError(ValueError):
     """Raised when a write path that doesn't specify a sense is asked to
