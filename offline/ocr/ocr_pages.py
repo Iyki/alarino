@@ -42,7 +42,11 @@ MODELS = {
     "gemini-2.5-flash-lite": ("gemini", "gemini-2.5-flash-lite"),
     "gemma-4-31b": ("openrouter", "google/gemma-4-31b-it:free"),
     "gemma-4-26b-a4b": ("openrouter", "google/gemma-4-26b-a4b-it:free"),
-    "gemma-3-27b": ("openrouter", "google/gemma-3-27b-it:free"),
+    "nemotron-12b-vl": ("openrouter", "nvidia/nemotron-nano-12b-v2-vl:free"),
+    "nemotron-30b-omni": ("openrouter", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"),
+    # Paid but cheap (~$1-2 per full book pass); the strongest open VLs.
+    "qwen3-vl-235b": ("openrouter", "qwen/qwen3-vl-235b-a22b-instruct"),
+    "qwen3-vl-32b": ("openrouter", "qwen/qwen3-vl-32b-instruct"),
 }
 
 KEY_ENV = {"gemini": "GEMINI_API_KEY", "openrouter": "OPENROUTER_API_KEY"}
