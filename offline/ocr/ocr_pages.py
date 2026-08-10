@@ -38,8 +38,10 @@ except ModuleNotFoundError:
 # Friendly alias -> (provider, provider model id). Anything not listed can be
 # used with an explicit "provider:model_id" --model value.
 MODELS = {
-    "gemini-2.5-flash": ("gemini", "gemini-2.5-flash"),
-    "gemini-2.5-flash-lite": ("gemini", "gemini-2.5-flash-lite"),
+    # gemini-flash-latest tracks the newest stable Flash (2.5-flash is retired
+    # for new API users).
+    "gemini-flash": ("gemini", "gemini-flash-latest"),
+    "gemini-flash-lite": ("gemini", "gemini-flash-lite-latest"),
     "gemma-4-31b": ("openrouter", "google/gemma-4-31b-it:free"),
     "gemma-4-26b-a4b": ("openrouter", "google/gemma-4-26b-a4b-it:free"),
     "nemotron-12b-vl": ("openrouter", "nvidia/nemotron-nano-12b-v2-vl:free"),
