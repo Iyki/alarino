@@ -10,6 +10,7 @@ Nothing in here runs in production or is imported by the backend.
 offline/
   ocr/
     ocr_pages.py     # OCR page scans with a selectable vision model
+    compare_runs.py  # cross-model diff: unanimous / diacritic / divergent
   scans/             # input page images (gitignored)
   out/               # OCR output, one subfolder per model (gitignored)
 ```
@@ -35,6 +36,18 @@ Useful flags:
 Output goes to `out/<model-alias>/<page>.txt`, with a `manifest.jsonl` per
 model recording timing and token usage, so results from different models can
 be diffed page-by-page for the bake-off.
+
+After OCRing the same pages with 2+ models, compare them:
+
+```bash
+python offline/ocr/compare_runs.py --out offline/out
+```
+
+This aligns entries across models by headword and buckets each entry as
+unanimous, diacritic_dispute (same base letters, different tone marks or
+subdots), divergent, or partial, writing per-page detail to
+`out/comparison/<page>.json`. Models are treated as optional votes: pages
+are compared across whichever model transcripts exist.
 
 The OCR prompt's alphabet and the output normalization both come from
 `alarino_backend.normalization` (the same module the app's storage layer
