@@ -148,7 +148,7 @@ def test_rejects_rows_with_wrong_column_count(db_app):
     failed = response["data"]["failed_pairs"]
     assert len(failed) == 2
     assert all(
-        "exactly two values" in f["reason"] for f in failed
+        "exactly 2 values" in f["reason"] for f in failed
     )
 
 
@@ -170,3 +170,116 @@ def test_empty_input_returns_empty_response(db_app):
     assert response["data"]["successful_pairs"] == []
     assert response["data"]["failed_pairs"] == []
     assert Word.query.count() == 0
+
+
+# ---- Extended format (header row with pos/provenance/confidence) ----
+
+
+def test_header_with_only_required_columns_behaves_like_legacy(db_app):
+    response, status = translation_service.bulk_upload_words(
+        db, "english,yoruba\nhello,bawo", dry_run=False
+    )
+    assert status == 200
+    assert response["data"]["successful_pairs"] == [
+        {"english": "hello", "yoruba": "bawo"}
+    ]
+    assert Word.query.count() == 2
+
+
+def test_extended_dry_run_reports_metadata(db_app):
+    response, status = translation_service.bulk_upload_words(
+        db,
+        "english,yoruba,pos,provenance,confidence\n"
+        "hello,bawo,interj,cms-dict-1913:n150,0.9",
+        dry_run=True,
+    )
+    assert status == 200
+    assert response["data"]["successful_pairs"] == [
+        {
+            "english": "hello",
+            "yoruba": "bawo",
+            "pos": "interj",
+            "provenance": "cms-dict-1913:n150",
+            "confidence": 0.9,
+        }
+    ]
+    assert Word.query.count() == 0
+
+
+def test_extended_live_run_persists_metadata(db_app):
+    response, status = translation_service.bulk_upload_words(
+        db,
+        "english,yoruba,pos,provenance,confidence\n"
+        "house,ile,n,cms-dict-1913:n100,0.8",
+        dry_run=False,
+    )
+    assert status == 200
+    translation = Translation.query.one()
+    assert translation.confidence == 0.8
+    assert translation.provenance == "cms-dict-1913:n100"
+    # POS lands on both words' default senses.
+    for word in Word.query.all():
+        sense = Sense.query.filter_by(word_id=word.w_id).one()
+        assert sense.part_of_speech == "n"
+
+
+def test_extended_allows_empty_metadata_cells(db_app):
+    response, status = translation_service.bulk_upload_words(
+        db,
+        "english,yoruba,pos,provenance,confidence\nhouse,ile,,,",
+        dry_run=False,
+    )
+    assert status == 200
+    assert response["data"]["successful_pairs"] == [
+        {"english": "house", "yoruba": "ile"}
+    ]
+    translation = Translation.query.one()
+    assert translation.confidence is None
+    assert translation.provenance is None
+    for sense in Sense.query.all():
+        assert sense.part_of_speech is None
+
+
+def test_extended_rejects_invalid_metadata_rows(db_app):
+    response, status = translation_service.bulk_upload_words(
+        db,
+        "english,yoruba,pos,provenance,confidence\n"
+        "house,ile,nounish,,\n"
+        "hello,bawo,,{},\n"
+        "mad,asinwin,,,1.5\n"
+        "made,da,v,ok,0.9".format("x" * 41),
+        dry_run=False,
+    )
+    assert status == 200
+    assert len(response["data"]["successful_pairs"]) == 1
+    reasons = [f["reason"] for f in response["data"]["failed_pairs"]]
+    assert any("Invalid pos" in r for r in reasons)
+    assert any("Invalid provenance" in r for r in reasons)
+    assert any("not between 0 and 1" in r for r in reasons)
+    # Only the valid row persisted.
+    assert Translation.query.count() == 1
+
+
+def test_extended_pos_does_not_overwrite_existing_sense_pos(db_app):
+    translation_service.bulk_upload_words(
+        db,
+        "english,yoruba,pos,provenance,confidence\nhouse,ile,n,,",
+        dry_run=False,
+    )
+    translation_service.bulk_upload_words(
+        db,
+        "english,yoruba,pos,provenance,confidence\nhouse,ile,v,,",
+        dry_run=False,
+    )
+    for sense in Sense.query.all():
+        assert sense.part_of_speech == "n"
+    assert Translation.query.count() == 1
+
+
+def test_unknown_header_column_is_rejected(db_app):
+    response, status = translation_service.bulk_upload_words(
+        db, "english,yoruba,notes\nhello,bawo,hi", dry_run=True
+    )
+    assert status == 400
+    assert "Unknown bulk upload columns" in response["message"]
+    assert "notes" in response["message"]

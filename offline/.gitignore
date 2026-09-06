@@ -1,0 +1,4 @@
+scans/
+out/
+.env
+__pycache__/
