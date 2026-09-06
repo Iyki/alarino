@@ -42,7 +42,7 @@ FIRST_CONTENT_PAGE = "pg011"
 # model alias -> daily budget of newly transcribed pages.
 # Gemini has its own free-tier quota; the two OpenRouter models share one
 # account limit (1000/day once the account has ever bought $10 of credits).
-GEMINI_MODELS = {"gemini-flash": 230}
+GEMINI_MODELS = {"gemini-3.6-flash": 230}
 OPENROUTER_MODELS = {"gemma-4-31b": 175, "nemotron-12b-vl": 175}
 ALL_MODELS = {**GEMINI_MODELS, **OPENROUTER_MODELS}
 

@@ -21,7 +21,7 @@ Put page images (`.png`/`.jpg`) in `offline/scans/`, put API keys in
 `offline/.env` (copy `offline/.env.example`; the file is gitignored), then:
 
 ```bash
-python offline/ocr/ocr_pages.py --model gemini-2.5-flash offline/scans --out offline/out
+python offline/ocr/ocr_pages.py --model gemini-3.6-flash offline/scans --out offline/out
 ```
 
 Useful flags:

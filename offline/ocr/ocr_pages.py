@@ -4,7 +4,7 @@
 Stdlib only — no dependencies beyond Python 3.10+.
 
 Usage:
-    python offline/ocr/ocr_pages.py --model gemini-2.5-flash offline/scans --out offline/out
+    python offline/ocr/ocr_pages.py --model gemini-3.6-flash offline/scans --out offline/out
 
 API keys are read from the environment: GEMINI_API_KEY for gemini models,
 OPENROUTER_API_KEY for openrouter models. See --list-models.
@@ -38,10 +38,13 @@ except ModuleNotFoundError:
 # Friendly alias -> (provider, provider model id). Anything not listed can be
 # used with an explicit "provider:model_id" --model value.
 MODELS = {
-    # gemini-flash-latest tracks the newest stable Flash (2.5-flash is retired
-    # for new API users).
-    "gemini-flash": ("gemini", "gemini-flash-latest"),
-    "gemini-flash-lite": ("gemini", "gemini-flash-lite-latest"),
+    # Pinned one generation behind the newest Flash: Google gives the newest
+    # model a tiny free-tier quota (gemini-3.8-flash: ~20 requests/day) while
+    # older Flash generations keep ~1,000-1,500/day. Do NOT use
+    # gemini-flash-latest for batch jobs — it floats onto the newest,
+    # tightest-quota model.
+    "gemini-3.6-flash": ("gemini", "gemini-3.6-flash"),
+    "gemini-3.1-flash-lite": ("gemini", "gemini-3.1-flash-lite"),
     "gemma-4-31b": ("openrouter", "google/gemma-4-31b-it:free"),
     "gemma-4-26b-a4b": ("openrouter", "google/gemma-4-26b-a4b-it:free"),
     "nemotron-12b-vl": ("openrouter", "nvidia/nemotron-nano-12b-v2-vl:free"),
@@ -154,7 +157,15 @@ def ocr_gemini(model_id: str, api_key: str, prompt: str, image: Path) -> OcrResu
         },
     }
     start = time.monotonic()
-    resp = http_post_json(url, payload, {"x-goog-api-key": api_key})
+    try:
+        resp = http_post_json(url, payload, {"x-goog-api-key": api_key})
+    except RuntimeError as e:
+        # Pre-thinking models (3.6-flash and older) reject thinkingConfig
+        # with 400 INVALID_ARGUMENT — retry without it.
+        if "HTTP 400" not in str(e):
+            raise
+        del payload["generationConfig"]["thinkingConfig"]
+        resp = http_post_json(url, payload, {"x-goog-api-key": api_key})
     elapsed = time.monotonic() - start
     try:
         candidate = resp["candidates"][0]
@@ -245,7 +256,7 @@ def collect_images(inputs: list[Path]) -> list[Path]:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("inputs", nargs="*", type=Path, help="image files or directories of scans")
-    ap.add_argument("--model", default="gemini-2.5-flash",
+    ap.add_argument("--model", default="gemini-3.6-flash",
                     help="model alias or 'provider:model_id' (see --list-models)")
     ap.add_argument("--out", type=Path, default=Path("offline/out"),
                     help="output root; results go to <out>/<model-alias>/")
