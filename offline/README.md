@@ -49,6 +49,17 @@ subdots), divergent, or partial, writing per-page detail to
 `out/comparison/<page>.json`. Models are treated as optional votes: pages
 are compared across whichever model transcripts exist.
 
+Then build an upload-ready dataset from the entries every model agreed on:
+
+```bash
+python offline/ocr/build_dataset.py --out offline/out
+```
+
+This writes `out/bulk_upload.csv` in the bulk-upload API's extended format
+(`english,yoruba,pos,provenance,confidence` with a header row): POS parsed
+from the printed markers, provenance naming the source book and page, and
+confidence scaled by how many models agreed.
+
 The OCR prompt's alphabet and the output normalization both come from
 `alarino_backend.normalization` (the same module the app's storage layer
 uses), so offline output is always in the exact NFC form the backend expects.

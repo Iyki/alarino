@@ -3,8 +3,11 @@
 
 Takes the comparison reports produced by compare_runs.py, keeps only entries
 where every available model agreed exactly (bucket == "unanimous"), parses
-each entry into word pairs, and writes the two-column no-header CSV that
-POST /api/admin/bulk-upload accepts: english,yoruba per line.
+each entry into word pairs, and writes the extended header CSV that
+POST /api/admin/bulk-upload accepts: english,yoruba,pos,provenance,confidence.
+pos comes from the printed POS markers (n. -> n, v.t. -> v, ...), provenance
+records the source book and page ("cms-dict-1913:n150"), and confidence
+scales with how many models agreed (2 -> 0.9, 3 -> 0.95... capped at 0.95).
 
 Both directions of the dictionary are handled: English→Yorùbá entries
 ("Solely, adv. kiki, nikanṣoṣo.") yield one row per Yorùbá translation;
@@ -33,12 +36,15 @@ except ModuleNotFoundError:
     sys.path.insert(0, str(REPO_ROOT / "alarino_backend" / "src"))
     from alarino_backend import normalization
 
-# Part-of-speech markers as printed in the 1913 dictionary. Longest first so
-# "v.t. and i." wins over "v.t.".
-POS_MARKERS = [
-    "v.t. and i.", "v.i. and t.", "v. aux.", "v.t.", "v.i.", "v.",
-    "adj.", "adv.", "conj.", "interj.", "prep.", "pron.", "n.", "art.",
-]
+# Part-of-speech markers as printed in the 1913 dictionary, mapped to the
+# canonical PartOfSpeech codes the backend's CHECK constraint allows.
+# Ordered longest first so "v.t. and i." wins over "v.t.".
+POS_MARKERS = {
+    "v.t. and i.": "v", "v.i. and t.": "v", "v. aux.": "v",
+    "v.t.": "v", "v.i.": "v", "v.": "v",
+    "adj.": "adj", "adv.": "adv", "conj.": "conj", "interj.": "interj",
+    "prep.": "prep", "pron.": "pron", "n.": "n", "art.": "det",
+}
 _ARTICLE_RE = re.compile(r"^(?:a|an|the|to|of)\s+", re.IGNORECASE)
 
 # A gloss containing any of these reads as a definition fragment ("usually of
@@ -49,24 +55,34 @@ _GLOSS_STOPWORDS = {
 }
 
 
-def translation_candidates(body: str) -> list[str]:
-    """Extract translation tokens from everything after the headword: split
-    on commas/semicolons, then strip leading POS markers from each token."""
+# A POS marker can be matched anywhere it stands as its own token: markers
+# contain periods and legitimate Yorùbá/English words never do, so this
+# cannot fire inside a translation. Longest-first alternation makes
+# "v.t. and i." win over "v.t.".
+_SECTION_RE = re.compile(
+    r"(?:^|\s)(" + "|".join(re.escape(m) for m in POS_MARKERS) + r")(?=\s|$)"
+)
+
+
+def translation_candidates(body: str) -> list[tuple[str | None, str]]:
+    """Extract (pos, token) pairs from everything after the headword. The
+    text is sectioned at POS markers — in the printed entry a marker governs
+    every translation until the next one ("Sole, n. atẹlẹsẹ. v.t. fi atẹsẹ
+    si. adj. nikanṣoṣo.") — then each section splits on commas/semicolons."""
     after_head = body.split(",", 1)[1] if "," in body else ""
-    tokens = []
-    for raw in re.split(r"[,;]", after_head):
-        token = raw.strip()
-        stripped = True
-        while stripped:
-            stripped = False
-            for marker in POS_MARKERS:  # longest-first
-                if token == marker or token.startswith(marker + " "):
-                    token = token[len(marker):].strip()
-                    stripped = True
-        token = token.strip().strip(".").strip()
-        if token:
-            tokens.append(token)
-    return tokens
+    parts = _SECTION_RE.split(after_head)
+    results = []
+
+    def add_tokens(pos: str | None, text: str) -> None:
+        for raw in re.split(r"[,;]", text):
+            token = raw.strip().strip(".").strip()
+            if token:
+                results.append((pos, token))
+
+    add_tokens(None, parts[0])  # anything before the first marker
+    for marker, text in zip(parts[1::2], parts[2::2]):
+        add_tokens(POS_MARKERS[marker], text)
+    return results
 
 
 def page_direction(entries: list[dict]) -> str:
@@ -78,8 +94,10 @@ def page_direction(entries: list[dict]) -> str:
     return "yo-en" if yoruba_heads > len(entries) / 2 else "en-yo"
 
 
-def pairs_from_entry(head: str, body: str, direction: str) -> tuple[list[tuple[str, str]], str]:
-    """Turn one unanimous entry into (english, yoruba) pairs.
+def pairs_from_entry(head: str, body: str, direction: str) -> tuple[list[tuple[str, str, str]], str]:
+    """Turn one unanimous entry into (english, yoruba, pos) triples, where
+    pos is the canonical PartOfSpeech code or "" when the entry (or section)
+    carried no recognizable marker.
 
     Returns (pairs, reason): pairs may be empty, in which case reason says
     why the whole entry was skipped ("head" = unusable headword). Individual
@@ -92,17 +110,17 @@ def pairs_from_entry(head: str, body: str, direction: str) -> tuple[list[tuple[s
     if direction == "en-yo":
         if not normalization.is_valid_english_word(head):
             return [], "head"
-        for token in candidates:
+        for pos, token in candidates:
             # A capitalized token is a secondary headword ("Sought, Seek,
             # v.t. ..."), not a Yorùbá translation — those are lowercase.
             if token[0].isupper():
                 continue
             if normalization.is_valid_yoruba_word(token):
-                pairs.append((head, token))
+                pairs.append((head, token, pos or ""))
         return pairs, "" if pairs else "no-valid-yoruba"
     if not normalization.is_valid_yoruba_word(head):
         return [], "head"
-    for token in candidates:
+    for pos, token in candidates:
         token = _ARTICLE_RE.sub("", token.lower()).strip()
         words = token.split()
         # Keep short glosses that read as words/terms, not definitions.
@@ -112,7 +130,7 @@ def pairs_from_entry(head: str, body: str, direction: str) -> tuple[list[tuple[s
             and not _GLOSS_STOPWORDS.intersection(words)
             and normalization.is_valid_english_word(token)
         ):
-            pairs.append((token, head))
+            pairs.append((token, head, pos or ""))
     return pairs, "" if pairs else "no-valid-english"
 
 
@@ -127,7 +145,9 @@ def main() -> None:
     if not reports:
         sys.exit("error: no comparison reports found; run compare_runs.py first")
 
-    pairs: dict[tuple[str, str], str] = {}  # pair -> page of first sighting
+    # (english, yoruba) -> {pos, provenance, confidence}; first sighting wins,
+    # except a known POS fills in for an earlier unknown one.
+    pairs: dict[tuple[str, str], dict] = {}
     stats = {"entries": 0, "unanimous": 0, "skipped_head": 0,
              "skipped_no_pairs": 0, "used": 0}
     for report_path in reports:
@@ -144,15 +164,28 @@ def main() -> None:
                 stats["skipped_head" if reason == "head" else "skipped_no_pairs"] += 1
                 continue
             stats["used"] += 1
-            for pair in entry_pairs:
-                pairs.setdefault(pair, report["page"])
+            # More independent models agreeing -> higher confidence.
+            confidence = round(min(0.7 + 0.1 * len(entry["versions"]), 0.95), 2)
+            for english, yoruba, pos in entry_pairs:
+                key = (english, yoruba)
+                if key not in pairs:
+                    pairs[key] = {
+                        "pos": pos,
+                        "provenance": f"cms-dict-1913:{report['page']}",
+                        "confidence": confidence,
+                    }
+                elif pos and not pairs[key]["pos"]:
+                    pairs[key]["pos"] = pos
 
     csv_path = args.csv or args.out / "bulk_upload.csv"
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     with csv_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        for english, yoruba in pairs:
-            writer.writerow([english, yoruba])
+        writer.writerow(["english", "yoruba", "pos", "provenance", "confidence"])
+        for (english, yoruba), meta in pairs.items():
+            writer.writerow([
+                english, yoruba, meta["pos"], meta["provenance"], meta["confidence"],
+            ])
 
     print(f"{stats['entries']} entries -> {stats['unanimous']} unanimous -> "
           f"{stats['used']} usable entries -> {len(pairs)} unique pairs")
