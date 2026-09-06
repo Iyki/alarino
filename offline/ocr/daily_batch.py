@@ -39,12 +39,17 @@ PYTHON = sys.executable
 # orthography — pg000..pg010).
 FIRST_CONTENT_PAGE = "pg011"
 
-# model alias -> daily budget of newly transcribed pages.
-# Gemini has its own free-tier quota; the two OpenRouter models share one
-# account limit (1000/day once the account has ever bought $10 of credits).
-GEMINI_MODELS = {"gemini-3.6-flash": 230}
-OPENROUTER_MODELS = {"gemma-4-31b": 175, "nemotron-12b-vl": 175}
-ALL_MODELS = {**GEMINI_MODELS, **OPENROUTER_MODELS}
+# Each dict is one worker thread of {model alias: daily budget of newly
+# transcribed pages}, models within a thread running sequentially.
+# Panel (2026-09-05): Qwen3-VL 235B is the paid anchor (~$1 per full book
+# pass, no daily cap); gemma + dots are :free and share the OpenRouter
+# account limit (1,000/day on a funded account). Gemini Flash was dropped:
+# its current free tier allows only ~20 requests/day per model.
+THREADS = [
+    {"qwen3-vl-235b": 460},
+    {"gemma-4-31b": 300, "dots-3-note": 300},
+]
+ALL_MODELS = {alias: b for thread in THREADS for alias, b in thread.items()}
 
 
 def content_pages() -> list[Path]:
@@ -111,15 +116,33 @@ def main() -> None:
     pages = content_pages()
     print(f"=== daily batch {today}: {len(pages)} content pages ===")
 
-    # Phase 1: OCR under budgets, Gemini and OpenRouter in parallel.
+    # Phase 1: OCR under budgets, one worker thread per THREADS entry.
     threads = [
-        threading.Thread(target=run_ocr, args=(GEMINI_MODELS, pages, log_dir)),
-        threading.Thread(target=run_ocr, args=(OPENROUTER_MODELS, pages, log_dir)),
+        threading.Thread(target=run_ocr, args=(models, pages, log_dir))
+        for models in THREADS
     ]
     for t in threads:
         t.start()
     for t in threads:
         t.join()
+
+    # Phase 1.5: an empty transcript alongside a substantive one from
+    # another model is a failed OCR (models occasionally return nothing for
+    # a dense page), not a blank scan — delete it so a later run retries.
+    reconciled = 0
+    for page in pages:
+        existing = {
+            m: transcript(m, page.stem)
+            for m in ALL_MODELS if transcript(m, page.stem).exists()
+        }
+        sizes = {m: t.stat().st_size for m, t in existing.items()}
+        if sizes and max(sizes.values()) > 200:
+            for m, size in sizes.items():
+                if size == 0:
+                    existing[m].unlink()
+                    reconciled += 1
+    if reconciled:
+        print(f"reconciled {reconciled} empty transcript(s) for retry")
 
     coverage = {}
     for model in ALL_MODELS:

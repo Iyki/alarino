@@ -47,8 +47,8 @@ MODELS = {
     "gemini-3.1-flash-lite": ("gemini", "gemini-3.1-flash-lite"),
     "gemma-4-31b": ("openrouter", "google/gemma-4-31b-it:free"),
     "gemma-4-26b-a4b": ("openrouter", "google/gemma-4-26b-a4b-it:free"),
-    "nemotron-12b-vl": ("openrouter", "nvidia/nemotron-nano-12b-v2-vl:free"),
-    "nemotron-30b-omni": ("openrouter", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"),
+    # nemotron-nano-12b-v2-vl:free was removed from OpenRouter 2026-09-05.
+    "dots-3-note": ("openrouter", "dots-studio/dots-3-note-preview:free"),
     # Paid but cheap (~$1-2 per full book pass); the strongest open VLs.
     "qwen3-vl-235b": ("openrouter", "qwen/qwen3-vl-235b-a22b-instruct"),
     "qwen3-vl-32b": ("openrouter", "qwen/qwen3-vl-32b-instruct"),
