@@ -9,6 +9,7 @@ from alarino_backend.data.seed_data_utils import add_word, create_translation, i
 from alarino_backend.db_models import Word, DailyWord, Example, Sense, Translation, MissingTranslation, Proverb, ProverbWord
 from alarino_backend.languages import Language
 from alarino_backend.llm_service import get_llm_service
+from alarino_backend.parts_of_speech import ALLOWED_POS_VALUES
 from alarino_backend.response import (
     APIResponse,
     BulkUploadResponseData,
@@ -348,17 +349,56 @@ def get_sitemap_words(db) -> Tuple[Dict, int]:
         return APIResponse.error("An error occurred while fetching sitemap words.", 500).as_response()
 
 
-def _process_translation_pair(row: list, dry_run: bool, successful_pairs: list, failed_pairs: list):
+# Columns the bulk-upload CSV may carry. The first two are required and
+# positional in the legacy header-less format; the rest arrive only via an
+# explicit header row ("english,yoruba,pos,provenance,confidence").
+BULK_UPLOAD_COLUMNS = ("english", "yoruba", "pos", "provenance", "confidence")
+
+
+def _parse_row_metadata(values: dict) -> tuple[dict, str | None]:
+    """Validate the optional pos/provenance/confidence columns of a bulk
+    upload row. Returns (metadata, error): on success error is None and
+    metadata holds only the fields that were present and non-empty."""
+    metadata: dict = {}
+    pos = values.get("pos", "").strip().lower()
+    if pos:
+        if pos not in ALLOWED_POS_VALUES:
+            return {}, f"Invalid pos: '{pos}' (allowed: {', '.join(ALLOWED_POS_VALUES)})"
+        metadata["pos"] = pos
+    provenance = values.get("provenance", "").strip()
+    if provenance:
+        if len(provenance) > 40:
+            return {}, f"Invalid provenance: longer than 40 characters ('{provenance[:40]}...')"
+        metadata["provenance"] = provenance
+    confidence_str = values.get("confidence", "").strip()
+    if confidence_str:
+        try:
+            confidence = float(confidence_str)
+        except ValueError:
+            return {}, f"Invalid confidence: '{confidence_str}' is not a number"
+        if not 0.0 <= confidence <= 1.0:
+            return {}, f"Invalid confidence: {confidence} is not between 0 and 1"
+        metadata["confidence"] = confidence
+    return metadata, None
+
+
+def _process_translation_pair(row: list, columns: tuple, dry_run: bool,
+                              successful_pairs: list, failed_pairs: list):
     """
     Processes a single row from the bulk upload CSV.
     """
     original_line = ",".join(row)
 
-    if len(row) != 2:
-        failed_pairs.append({"line": original_line, "reason": "Invalid format: each line must contain exactly two values"})
+    if len(row) != len(columns):
+        failed_pairs.append({
+            "line": original_line,
+            "reason": f"Invalid format: each line must contain exactly {len(columns)} values",
+        })
         return
 
-    english_word_str, yoruba_word_str = [item.strip().lower() for item in row]
+    values = dict(zip(columns, (item.strip() for item in row)))
+    english_word_str = values["english"].lower()
+    yoruba_word_str = values["yoruba"].lower()
 
     # Validation
     if not is_valid_english_word(english_word_str):
@@ -368,17 +408,29 @@ def _process_translation_pair(row: list, dry_run: bool, successful_pairs: list, 
         failed_pairs.append({"line": original_line, "reason": f"Invalid Yoruba word: '{yoruba_word_str}'"})
         return
 
+    metadata, error = _parse_row_metadata(values)
+    if error:
+        failed_pairs.append({"line": original_line, "reason": error})
+        return
+
+    reported_pair = {"english": english_word_str, "yoruba": yoruba_word_str, **metadata}
     if dry_run:
         # In dry_run, we just validate and report
-        successful_pairs.append({"english": english_word_str, "yoruba": yoruba_word_str})
+        successful_pairs.append(reported_pair)
     else:
         # In a live run, we add the words and translation
         english_word_obj = add_word(language=Language.ENGLISH, word_text=english_word_str)
         yoruba_word_obj = add_word(language=Language.YORUBA, word_text=yoruba_word_str)
-        
+
         if english_word_obj and yoruba_word_obj:
-            create_translation(english_word_obj, yoruba_word_obj)
-            successful_pairs.append({"english": english_word_str, "yoruba": yoruba_word_str})
+            create_translation(
+                english_word_obj,
+                yoruba_word_obj,
+                pos=metadata.get("pos"),
+                confidence=metadata.get("confidence"),
+                provenance=metadata.get("provenance"),
+            )
+            successful_pairs.append(reported_pair)
         else:
             failed_pairs.append({"line": original_line, "reason": "Failed to process one or both words."})
 
@@ -386,17 +438,35 @@ def _process_translation_pair(row: list, dry_run: bool, successful_pairs: list, 
 def bulk_upload_words(db, text_input: str, dry_run: bool) -> tuple[dict, int]:
     """
     Bulk upload words from a comma-separated text input using seed data utils.
+
+    Two formats are accepted:
+    - legacy, header-less: exactly two columns, ``english,yoruba`` per line;
+    - extended: a first row reading ``english,yoruba[,pos][,provenance]
+      [,confidence]`` declares the columns for the rest of the file. The
+      extra columns may appear in any order after the first two and may be
+      empty per-row. pos must be an allowed PartOfSpeech value, provenance
+      at most 40 characters, confidence a float in [0, 1].
     """
     successful_pairs = []
     failed_pairs = []
 
     text_io = io.StringIO(text_input)
-    reader = csv.reader(text_io)
+    rows = [row for row in csv.reader(text_io) if row]
 
-    for row in reader:
-        if not row:
-            continue
-        _process_translation_pair(row, dry_run, successful_pairs, failed_pairs)
+    columns = ("english", "yoruba")
+    if rows and [c.strip().lower() for c in rows[0][:2]] == ["english", "yoruba"]:
+        header = tuple(c.strip().lower() for c in rows[0])
+        unknown = set(header) - set(BULK_UPLOAD_COLUMNS)
+        if unknown:
+            return APIResponse.error(
+                f"Unknown bulk upload columns: {', '.join(sorted(unknown))} "
+                f"(allowed: {', '.join(BULK_UPLOAD_COLUMNS)})", 400
+            ).as_response()
+        columns = header
+        rows = rows[1:]
+
+    for row in rows:
+        _process_translation_pair(row, columns, dry_run, successful_pairs, failed_pairs)
 
     message = "Bulk upload validation completed"
     if not dry_run:

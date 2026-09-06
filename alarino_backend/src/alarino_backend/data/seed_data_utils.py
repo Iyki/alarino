@@ -141,19 +141,32 @@ def _ensure_default_sense(word: Word) -> Sense:
     return sense
 
 
-def create_translation(source: Word, target: Word):
+def create_translation(source: Word, target: Word, *,
+                       pos: str | None = None,
+                       confidence: float | None = None,
+                       provenance: str | None = None):
     """Create a Translation between two Words, attaching to each Word's
     default sense. Raises AmbiguousSenseError if either word has multiple
     curated senses (the bulk-upload format carries no sense info; binding
     to whichever sense_id is lowest would silently corrupt curator intent).
 
+    ``pos`` (a PartOfSpeech value, already validated by the caller) is set
+    on both resolved default senses, but only where the sense has no POS
+    yet — an existing curated POS is never overwritten. ``confidence`` and
+    ``provenance`` are stored on the Translation row.
+
     Idempotent on the (source_sense, target_sense) pair: if a Translation
-    already exists with the resolved sense pair, this is a no-op. Polysemy
-    that targets the same surface words via *different* sense pairs is
-    representable — that's exactly what the unique_translation_sense_pair
-    constraint allows."""
+    already exists with the resolved sense pair, no new row is created and
+    the existing row's metadata is left untouched (POS fill-in still
+    applies). Polysemy that targets the same surface words via *different*
+    sense pairs is representable — that's exactly what the
+    unique_translation_sense_pair constraint allows."""
     source_sense = _ensure_default_sense(source)
     target_sense = _ensure_default_sense(target)
+    if pos:
+        for sense in (source_sense, target_sense):
+            if sense.part_of_speech is None:
+                sense.part_of_speech = pos
     existing = Translation.query.filter_by(
         source_sense_id=source_sense.sense_id,
         target_sense_id=target_sense.sense_id,
@@ -165,6 +178,8 @@ def create_translation(source: Word, target: Word):
         target_word=target,
         source_sense_id=source_sense.sense_id,
         target_sense_id=target_sense.sense_id,
+        confidence=confidence,
+        provenance=provenance,
     )
     db.session.add(translation)
 
