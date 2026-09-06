@@ -146,15 +146,26 @@ def ocr_gemini(model_id: str, api_key: str, prompt: str, image: Path) -> OcrResu
                 ]
             }
         ],
-        "generationConfig": {"temperature": 0},
+        # OCR is pure transcription: no reasoning budget, ample output room.
+        "generationConfig": {
+            "temperature": 0,
+            "maxOutputTokens": 8192,
+            "thinkingConfig": {"thinkingBudget": 0},
+        },
     }
     start = time.monotonic()
     resp = http_post_json(url, payload, {"x-goog-api-key": api_key})
     elapsed = time.monotonic() - start
     try:
-        text = resp["candidates"][0]["content"]["parts"][0]["text"]
+        candidate = resp["candidates"][0]
     except (KeyError, IndexError) as e:
         raise RuntimeError(f"unexpected Gemini response: {json.dumps(resp)[:500]}") from e
+    parts = candidate.get("content", {}).get("parts", [])
+    text = "".join(part.get("text", "") for part in parts)
+    # A blank scan page legitimately yields empty content with a normal
+    # finish; anything else empty (SAFETY, MAX_TOKENS, ...) is an error.
+    if not text and candidate.get("finishReason") != "STOP":
+        raise RuntimeError(f"unexpected Gemini response: {json.dumps(resp)[:500]}")
     return OcrResult(text, resp.get("usageMetadata", {}), elapsed)
 
 
@@ -183,7 +194,7 @@ def ocr_openrouter(model_id: str, api_key: str, prompt: str, image: Path) -> Ocr
     if "error" in resp:
         raise RuntimeError(f"OpenRouter error: {json.dumps(resp['error'])[:500]}")
     try:
-        text = resp["choices"][0]["message"]["content"]
+        text = resp["choices"][0]["message"]["content"] or ""
     except (KeyError, IndexError) as e:
         raise RuntimeError(f"unexpected OpenRouter response: {json.dumps(resp)[:500]}") from e
     return OcrResult(text, resp.get("usage", {}), elapsed)
