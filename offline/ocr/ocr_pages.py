@@ -239,6 +239,9 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=Path("offline/out"),
                     help="output root; results go to <out>/<model-alias>/")
     ap.add_argument("--limit", type=int, help="only process the first N images")
+    ap.add_argument("--budget", type=int,
+                    help="stop after N newly transcribed pages (already-done "
+                         "pages don't count) — for staying inside daily rate limits")
     ap.add_argument("--force", action="store_true", help="re-OCR pages with existing output")
     ap.add_argument("--prompt-file", type=Path, help="file with a custom OCR prompt")
     ap.add_argument("--list-models", action="store_true", help="list model aliases and exit")
@@ -271,19 +274,28 @@ def main() -> None:
     ocr = PROVIDERS[provider]
 
     print(f"OCR {len(images)} page(s) with {model_id} ({provider}) -> {out_dir}")
-    failures = 0
+    failures = consecutive_failures = done = 0
     for i, image in enumerate(images, 1):
+        if args.budget and done >= args.budget:
+            print(f"budget of {args.budget} new pages reached, stopping")
+            break
+        if consecutive_failures >= 5:
+            print("5 consecutive failures — provider looks down today, stopping",
+                  file=sys.stderr)
+            break
         dest = out_dir / f"{image.stem}.txt"
         if dest.exists() and not args.force:
-            print(f"[{i}/{len(images)}] {image.name}: exists, skipping")
             continue
         print(f"[{i}/{len(images)}] {image.name} ...", flush=True)
         try:
             result = ocr(model_id, api_key, prompt, image)
         except Exception as e:
             failures += 1
+            consecutive_failures += 1
             print(f"    FAILED: {e}", file=sys.stderr)
             continue
+        consecutive_failures = 0
+        done += 1
         # Same canonicalization the backend applies at storage time.
         text = normalization.normalize_text(result.text)
         dest.write_text(text, encoding="utf-8")

@@ -36,15 +36,23 @@ except ModuleNotFoundError:
     sys.path.insert(0, str(REPO_ROOT / "alarino_backend" / "src"))
     from alarino_backend import normalization
 
-# Part-of-speech markers as printed in the 1913 dictionary, mapped to the
-# canonical PartOfSpeech codes the backend's CHECK constraint allows.
-# Ordered longest first so "v.t. and i." wins over "v.t.".
+# Abbreviation markers as printed in the 1913 dictionary (its front matter
+# lists them on pg010), mapped to the canonical PartOfSpeech codes the
+# backend's CHECK constraint allows. Ordered longest first so
+# "v.t. and i." wins over "v.t.".
 POS_MARKERS = {
-    "v.t. and i.": "v", "v.i. and t.": "v", "v. aux.": "v",
-    "v.t.": "v", "v.i.": "v", "v.": "v",
+    "v.t. and i.": "v", "v.i. and t.": "v", "aux. v.": "v",
+    "v.t.": "v", "v.i.": "v", "p.p.": "v", "v.": "v",
+    "n.pl.": "n", "n.": "n",
     "adj.": "adj", "adv.": "adv", "conj.": "conj", "interj.": "interj",
-    "prep.": "prep", "pron.": "pron", "n.": "n", "art.": "det",
+    "prep.": "prep", "pron.": "pron", "art.": "det",
 }
+# Stripped without changing the current POS section ("sing." qualifies the
+# preceding gloss; "pref." entries are affixes with no canonical POS).
+NEUTRAL_MARKERS = ("sing.", "pref.")
+# Everything from these markers to the next POS marker is a cross-reference
+# or usage example, not a translation — drop those tokens.
+DROP_MARKERS = ("cf.", "e.g.", "see")
 _ARTICLE_RE = re.compile(r"^(?:a|an|the|to|of)\s+", re.IGNORECASE)
 
 # A gloss containing any of these reads as a definition fragment ("usually of
@@ -55,33 +63,46 @@ _GLOSS_STOPWORDS = {
 }
 
 
-# A POS marker can be matched anywhere it stands as its own token: markers
-# contain periods and legitimate Yorùbá/English words never do, so this
-# cannot fire inside a translation. Longest-first alternation makes
-# "v.t. and i." win over "v.t.".
-_SECTION_RE = re.compile(
-    r"(?:^|\s)(" + "|".join(re.escape(m) for m in POS_MARKERS) + r")(?=\s|$)"
+# A marker can be matched anywhere it stands as its own token: markers
+# contain periods (or are "see") and legitimate Yorùbá/English translations
+# never are, so this cannot fire inside a translation. Longest-first
+# alternation makes "v.t. and i." win over "v.t.".
+_ALL_MARKERS = sorted(
+    [*POS_MARKERS, *NEUTRAL_MARKERS, *DROP_MARKERS], key=len, reverse=True
 )
+_SECTION_RE = re.compile(
+    r"(?:^|\s)(" + "|".join(re.escape(m) for m in _ALL_MARKERS) + r")(?=\s|$)"
+)
+_DROP = object()  # section sentinel: tokens here are not translations
 
 
 def translation_candidates(body: str) -> list[tuple[str | None, str]]:
     """Extract (pos, token) pairs from everything after the headword. The
-    text is sectioned at POS markers — in the printed entry a marker governs
-    every translation until the next one ("Sole, n. atẹlẹsẹ. v.t. fi atẹsẹ
-    si. adj. nikanṣoṣo.") — then each section splits on commas/semicolons."""
+    text is sectioned at the printed markers — a POS marker governs every
+    translation until the next one ("Sole, n. atẹlẹsẹ. v.t. fi atẹsẹ si.
+    adj. nikanṣoṣo."), cross-reference sections (cf., e.g.) are dropped —
+    then each section splits on commas/semicolons."""
     after_head = body.split(",", 1)[1] if "," in body else ""
     parts = _SECTION_RE.split(after_head)
     results = []
+    current_pos: object = None
 
-    def add_tokens(pos: str | None, text: str) -> None:
+    def add_tokens(text: str) -> None:
+        if current_pos is _DROP:
+            return
         for raw in re.split(r"[,;]", text):
             token = raw.strip().strip(".").strip()
             if token:
-                results.append((pos, token))
+                results.append((current_pos, token))
 
-    add_tokens(None, parts[0])  # anything before the first marker
+    add_tokens(parts[0])  # anything before the first marker
     for marker, text in zip(parts[1::2], parts[2::2]):
-        add_tokens(POS_MARKERS[marker], text)
+        if marker in DROP_MARKERS:
+            current_pos = _DROP
+        elif marker in POS_MARKERS:
+            current_pos = POS_MARKERS[marker]
+        # NEUTRAL_MARKERS: stripped, section POS unchanged
+        add_tokens(text)
     return results
 
 
@@ -139,9 +160,17 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=Path("offline/out"),
                     help="output root holding comparison/ (CSV goes to <out>/bulk_upload.csv)")
     ap.add_argument("--csv", type=Path, help="explicit output CSV path")
+    ap.add_argument("--pages", nargs="+",
+                    help="only harvest these pages (default: every comparison report)")
     args = ap.parse_args()
 
     reports = sorted((args.out / "comparison").glob("*.json"))
+    if args.pages:
+        wanted = set(args.pages)
+        reports = [r for r in reports if r.stem in wanted]
+        missing = wanted - {r.stem for r in reports}
+        if missing:
+            sys.exit(f"error: no comparison report for: {', '.join(sorted(missing))}")
     if not reports:
         sys.exit("error: no comparison reports found; run compare_runs.py first")
 
