@@ -64,6 +64,21 @@ The OCR prompt's alphabet and the output normalization both come from
 `alarino_backend.normalization` (the same module the app's storage layer
 uses), so offline output is always in the exact NFC form the backend expects.
 
+## Full-book runs
+
+`daily_batch.py` drives the whole pipeline for the 458-page CMS 1913 scan
+under daily rate-limit budgets — OCR (Gemini parallel to the OpenRouter
+models), compare, harvest fully-transcribed pages, dry-run-gated upload,
+uploaded-pages ledger. Run it once a day until coverage is complete:
+
+```bash
+python offline/ocr/daily_batch.py
+```
+
+Page images come from extracting the PDF's embedded scans at native
+resolution (pymupdf), not re-rasterizing:
+`doc.extract_image(...)` per page into `scans/pages/pgNNN.*`.
+
 ## Sources
 
 - CMS *Dictionary of the Yoruba Language* (1913), archive.org — public domain.
