@@ -38,11 +38,13 @@ except ModuleNotFoundError:
 # Friendly alias -> (provider, provider model id). Anything not listed can be
 # used with an explicit "provider:model_id" --model value.
 MODELS = {
-    # Pinned one generation behind the newest Flash: Google gives the newest
-    # model a tiny free-tier quota (gemini-3.8-flash: ~20 requests/day) while
-    # older Flash generations keep ~1,000-1,500/day. Do NOT use
-    # gemini-flash-latest for batch jobs — it floats onto the newest,
+    # Gemini free-tier quotas are per model and tiny for recent Flash
+    # generations (~20 requests/day for 3.6/3.8) — usable only as a slow
+    # drip. 3.8-flash is the best OCR quality we've measured on this task;
+    # 3.1-flash-lite keeps a generous quota but drops tone marks. Never use
+    # gemini-flash-latest for batch jobs: it floats onto the newest,
     # tightest-quota model.
+    "gemini-3.8-flash": ("gemini", "gemini-3.8-flash"),
     "gemini-3.6-flash": ("gemini", "gemini-3.6-flash"),
     "gemini-3.1-flash-lite": ("gemini", "gemini-3.1-flash-lite"),
     "gemma-4-31b": ("openrouter", "google/gemma-4-31b-it:free"),

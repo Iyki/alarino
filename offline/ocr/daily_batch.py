@@ -48,6 +48,9 @@ FIRST_CONTENT_PAGE = "pg011"
 THREADS = [
     {"qwen3-vl-235b": 460},
     {"gemma-4-31b": 300, "dots-3-note": 300},
+    # Best-quality model, but its free tier allows only ~20 requests/day —
+    # a slow drip that steadily upgrades pages to 3-of-4 vote status.
+    {"gemini-3.8-flash": 15},
 ]
 ALL_MODELS = {alias: b for thread in THREADS for alias, b in thread.items()}
 
