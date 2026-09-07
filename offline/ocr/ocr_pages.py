@@ -4,7 +4,7 @@
 Stdlib only — no dependencies beyond Python 3.10+.
 
 Usage:
-    python offline/ocr/ocr_pages.py --model gemini-2.5-flash offline/scans --out offline/out
+    python offline/ocr/ocr_pages.py --model gemini-3.6-flash offline/scans --out offline/out
 
 API keys are read from the environment: GEMINI_API_KEY for gemini models,
 OPENROUTER_API_KEY for openrouter models. See --list-models.
@@ -38,14 +38,19 @@ except ModuleNotFoundError:
 # Friendly alias -> (provider, provider model id). Anything not listed can be
 # used with an explicit "provider:model_id" --model value.
 MODELS = {
-    # gemini-flash-latest tracks the newest stable Flash (2.5-flash is retired
-    # for new API users).
-    "gemini-flash": ("gemini", "gemini-flash-latest"),
-    "gemini-flash-lite": ("gemini", "gemini-flash-lite-latest"),
+    # Gemini free-tier quotas are per model and tiny for recent Flash
+    # generations (~20 requests/day for 3.6/3.8) — usable only as a slow
+    # drip. 3.8-flash is the best OCR quality we've measured on this task;
+    # 3.1-flash-lite keeps a generous quota but drops tone marks. Never use
+    # gemini-flash-latest for batch jobs: it floats onto the newest,
+    # tightest-quota model.
+    "gemini-3.8-flash": ("gemini", "gemini-3.8-flash"),
+    "gemini-3.6-flash": ("gemini", "gemini-3.6-flash"),
+    "gemini-3.1-flash-lite": ("gemini", "gemini-3.1-flash-lite"),
     "gemma-4-31b": ("openrouter", "google/gemma-4-31b-it:free"),
     "gemma-4-26b-a4b": ("openrouter", "google/gemma-4-26b-a4b-it:free"),
-    "nemotron-12b-vl": ("openrouter", "nvidia/nemotron-nano-12b-v2-vl:free"),
-    "nemotron-30b-omni": ("openrouter", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"),
+    # nemotron-nano-12b-v2-vl:free was removed from OpenRouter 2026-09-05.
+    "dots-3-note": ("openrouter", "dots-studio/dots-3-note-preview:free"),
     # Paid but cheap (~$1-2 per full book pass); the strongest open VLs.
     "qwen3-vl-235b": ("openrouter", "qwen/qwen3-vl-235b-a22b-instruct"),
     "qwen3-vl-32b": ("openrouter", "qwen/qwen3-vl-32b-instruct"),
@@ -94,6 +99,11 @@ RETRY_STATUSES = {429, 500, 502, 503}
 MAX_RETRIES = 5
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 
+# Every API attempt (retries included) increments this — the accounting
+# behind --max-requests, which exists for providers with tiny daily quotas
+# where even failed attempts are spent quota (Gemini free tier).
+request_count = 0
+
 
 @dataclass
 class OcrResult:
@@ -103,8 +113,10 @@ class OcrResult:
 
 
 def http_post_json(url: str, payload: dict, headers: dict) -> dict:
+    global request_count
     body = json.dumps(payload).encode("utf-8")
     for attempt in range(MAX_RETRIES + 1):
+        request_count += 1
         req = urllib.request.Request(
             url, data=body, headers={"Content-Type": "application/json", **headers}
         )
@@ -146,15 +158,34 @@ def ocr_gemini(model_id: str, api_key: str, prompt: str, image: Path) -> OcrResu
                 ]
             }
         ],
-        "generationConfig": {"temperature": 0},
+        # OCR is pure transcription: no reasoning budget, ample output room.
+        "generationConfig": {
+            "temperature": 0,
+            "maxOutputTokens": 8192,
+            "thinkingConfig": {"thinkingBudget": 0},
+        },
     }
     start = time.monotonic()
-    resp = http_post_json(url, payload, {"x-goog-api-key": api_key})
+    try:
+        resp = http_post_json(url, payload, {"x-goog-api-key": api_key})
+    except RuntimeError as e:
+        # Pre-thinking models (3.6-flash and older) reject thinkingConfig
+        # with 400 INVALID_ARGUMENT — retry without it.
+        if "HTTP 400" not in str(e):
+            raise
+        del payload["generationConfig"]["thinkingConfig"]
+        resp = http_post_json(url, payload, {"x-goog-api-key": api_key})
     elapsed = time.monotonic() - start
     try:
-        text = resp["candidates"][0]["content"]["parts"][0]["text"]
+        candidate = resp["candidates"][0]
     except (KeyError, IndexError) as e:
         raise RuntimeError(f"unexpected Gemini response: {json.dumps(resp)[:500]}") from e
+    parts = candidate.get("content", {}).get("parts", [])
+    text = "".join(part.get("text", "") for part in parts)
+    # A blank scan page legitimately yields empty content with a normal
+    # finish; anything else empty (SAFETY, MAX_TOKENS, ...) is an error.
+    if not text and candidate.get("finishReason") != "STOP":
+        raise RuntimeError(f"unexpected Gemini response: {json.dumps(resp)[:500]}")
     return OcrResult(text, resp.get("usageMetadata", {}), elapsed)
 
 
@@ -183,7 +214,7 @@ def ocr_openrouter(model_id: str, api_key: str, prompt: str, image: Path) -> Ocr
     if "error" in resp:
         raise RuntimeError(f"OpenRouter error: {json.dumps(resp['error'])[:500]}")
     try:
-        text = resp["choices"][0]["message"]["content"]
+        text = resp["choices"][0]["message"]["content"] or ""
     except (KeyError, IndexError) as e:
         raise RuntimeError(f"unexpected OpenRouter response: {json.dumps(resp)[:500]}") from e
     return OcrResult(text, resp.get("usage", {}), elapsed)
@@ -234,11 +265,17 @@ def collect_images(inputs: list[Path]) -> list[Path]:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("inputs", nargs="*", type=Path, help="image files or directories of scans")
-    ap.add_argument("--model", default="gemini-2.5-flash",
+    ap.add_argument("--model", default="gemini-3.6-flash",
                     help="model alias or 'provider:model_id' (see --list-models)")
     ap.add_argument("--out", type=Path, default=Path("offline/out"),
                     help="output root; results go to <out>/<model-alias>/")
     ap.add_argument("--limit", type=int, help="only process the first N images")
+    ap.add_argument("--budget", type=int,
+                    help="stop after N newly transcribed pages (already-done "
+                         "pages don't count) — for staying inside daily rate limits")
+    ap.add_argument("--max-requests", type=int,
+                    help="stop before starting a page once this many API attempts "
+                         "(retries included) have been made — hard quota guard")
     ap.add_argument("--force", action="store_true", help="re-OCR pages with existing output")
     ap.add_argument("--prompt-file", type=Path, help="file with a custom OCR prompt")
     ap.add_argument("--list-models", action="store_true", help="list model aliases and exit")
@@ -271,19 +308,32 @@ def main() -> None:
     ocr = PROVIDERS[provider]
 
     print(f"OCR {len(images)} page(s) with {model_id} ({provider}) -> {out_dir}")
-    failures = 0
+    failures = consecutive_failures = done = 0
     for i, image in enumerate(images, 1):
+        if args.budget and done >= args.budget:
+            print(f"budget of {args.budget} new pages reached, stopping")
+            break
+        if args.max_requests and request_count >= args.max_requests:
+            print(f"request cap of {args.max_requests} reached "
+                  f"({request_count} attempts made), stopping")
+            break
+        if consecutive_failures >= 5:
+            print("5 consecutive failures — provider looks down today, stopping",
+                  file=sys.stderr)
+            break
         dest = out_dir / f"{image.stem}.txt"
         if dest.exists() and not args.force:
-            print(f"[{i}/{len(images)}] {image.name}: exists, skipping")
             continue
         print(f"[{i}/{len(images)}] {image.name} ...", flush=True)
         try:
             result = ocr(model_id, api_key, prompt, image)
         except Exception as e:
             failures += 1
+            consecutive_failures += 1
             print(f"    FAILED: {e}", file=sys.stderr)
             continue
+        consecutive_failures = 0
+        done += 1
         # Same canonicalization the backend applies at storage time.
         text = normalization.normalize_text(result.text)
         dest.write_text(text, encoding="utf-8")

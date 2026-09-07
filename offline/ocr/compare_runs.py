@@ -36,7 +36,7 @@ except ModuleNotFoundError:
     sys.path.insert(0, str(REPO_ROOT / "alarino_backend" / "src"))
     from alarino_backend import normalization
 
-DEFAULT_MODELS = ["gemini-flash", "gemma-4-31b", "nemotron-12b-vl"]
+DEFAULT_MODELS = ["qwen3-vl-235b", "gemma-4-31b", "dots-3-note", "gemini-3.8-flash"]
 
 def is_entry_start(line: str) -> bool:
     """An entry line starts with a capitalized headword followed by a comma,
