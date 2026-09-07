@@ -49,10 +49,18 @@ THREADS = [
     {"qwen3-vl-235b": 460},
     {"gemma-4-31b": 300, "dots-3-note": 300},
     # Best-quality model, but its free tier allows only ~20 requests/day —
-    # a slow drip that steadily upgrades pages to 3-of-4 vote status.
+    # a slow drip. Per policy it must be present for any unanimous harvest.
     {"gemini-3.8-flash": 15},
 ]
 ALL_MODELS = {alias: b for thread in THREADS for alias, b in thread.items()}
+
+# Models that MUST have transcribed a page before it can be harvested,
+# regardless of how many other models covered it.
+REQUIRED_MODELS = ("gemini-3.8-flash",)
+
+# Extra ocr_pages.py arguments per model. Gemini's hard request cap keeps
+# retries from burning the ~20/day quota on a bad day.
+MODEL_EXTRA_ARGS = {"gemini-3.8-flash": ["--max-requests", "18"]}
 
 
 def content_pages() -> list[Path]:
@@ -75,7 +83,8 @@ def run_ocr(models: dict[str, int], pages: list[Path], log_dir: Path) -> None:
             subprocess.run(
                 [PYTHON, str(OCR_DIR / "ocr_pages.py"),
                  "--model", model, "--out", str(OUT_DIR),
-                 "--budget", str(budget), *map(str, pages)],
+                 "--budget", str(budget),
+                 *MODEL_EXTRA_ARGS.get(model, []), *map(str, pages)],
                 stdout=log, stderr=subprocess.STDOUT, cwd=REPO_ROOT,
             )
 
@@ -153,9 +162,10 @@ def main() -> None:
         coverage[model] = done
         print(f"coverage {model}: {done}/{len(pages)}")
 
-    # Phase 2: rebuild comparisons.
+    # Phase 2: rebuild comparisons across the current panel.
     subprocess.run(
-        [PYTHON, str(OCR_DIR / "compare_runs.py"), "--out", str(OUT_DIR)],
+        [PYTHON, str(OCR_DIR / "compare_runs.py"), "--out", str(OUT_DIR),
+         "--models", *ALL_MODELS],
         cwd=REPO_ROOT, capture_output=True,
     )
 
@@ -168,6 +178,7 @@ def main() -> None:
     ready = [
         p.stem for p in pages
         if p.stem not in ledger
+        and all(transcript(m, p.stem).exists() for m in REQUIRED_MODELS)
         and sum(1 for m in ALL_MODELS if transcript(m, p.stem).exists()) >= args.min_models
         and (OUT_DIR / "comparison" / f"{p.stem}.json").exists()
     ]

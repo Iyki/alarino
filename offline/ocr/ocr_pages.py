@@ -99,6 +99,11 @@ RETRY_STATUSES = {429, 500, 502, 503}
 MAX_RETRIES = 5
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 
+# Every API attempt (retries included) increments this — the accounting
+# behind --max-requests, which exists for providers with tiny daily quotas
+# where even failed attempts are spent quota (Gemini free tier).
+request_count = 0
+
 
 @dataclass
 class OcrResult:
@@ -108,8 +113,10 @@ class OcrResult:
 
 
 def http_post_json(url: str, payload: dict, headers: dict) -> dict:
+    global request_count
     body = json.dumps(payload).encode("utf-8")
     for attempt in range(MAX_RETRIES + 1):
+        request_count += 1
         req = urllib.request.Request(
             url, data=body, headers={"Content-Type": "application/json", **headers}
         )
@@ -266,6 +273,9 @@ def main() -> None:
     ap.add_argument("--budget", type=int,
                     help="stop after N newly transcribed pages (already-done "
                          "pages don't count) — for staying inside daily rate limits")
+    ap.add_argument("--max-requests", type=int,
+                    help="stop before starting a page once this many API attempts "
+                         "(retries included) have been made — hard quota guard")
     ap.add_argument("--force", action="store_true", help="re-OCR pages with existing output")
     ap.add_argument("--prompt-file", type=Path, help="file with a custom OCR prompt")
     ap.add_argument("--list-models", action="store_true", help="list model aliases and exit")
@@ -302,6 +312,10 @@ def main() -> None:
     for i, image in enumerate(images, 1):
         if args.budget and done >= args.budget:
             print(f"budget of {args.budget} new pages reached, stopping")
+            break
+        if args.max_requests and request_count >= args.max_requests:
+            print(f"request cap of {args.max_requests} reached "
+                  f"({request_count} attempts made), stopping")
             break
         if consecutive_failures >= 5:
             print("5 consecutive failures — provider looks down today, stopping",
