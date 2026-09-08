@@ -50,7 +50,7 @@ THREADS = [
     {"gemma-4-31b": 300, "dots-3-note": 300},
     # Best-quality model, but its free tier allows only ~20 requests/day —
     # a slow drip. Per policy it must be present for any unanimous harvest.
-    {"gemini-3.8-flash": 15},
+    {"gemini-3.8-flash": 18},
 ]
 ALL_MODELS = {alias: b for thread in THREADS for alias, b in thread.items()}
 
@@ -58,10 +58,11 @@ ALL_MODELS = {alias: b for thread in THREADS for alias, b in thread.items()}
 # regardless of how many other models covered it.
 REQUIRED_MODELS = ("gemini-3.8-flash",)
 
-# Extra ocr_pages.py arguments per model. Gemini's hard request cap keeps
-# retries from burning the ~20/day quota on a bad day, and --pace keeps
-# attempts under its per-minute window (429s hinted "retry in ~21-41s").
-MODEL_EXTRA_ARGS = {"gemini-3.8-flash": ["--max-requests", "20", "--pace", "31"]}
+# Extra ocr_pages.py arguments per model. Gemini free tier is 5 RPM (per
+# the AI Studio dashboard) with a small daily request quota: --pace 13s
+# stays under the RPM window so requests succeed instead of burning the
+# quota on retries, and --max-requests hard-caps the day's attempts.
+MODEL_EXTRA_ARGS = {"gemini-3.8-flash": ["--max-requests", "20", "--pace", "13"]}
 
 
 def content_pages() -> list[Path]:
