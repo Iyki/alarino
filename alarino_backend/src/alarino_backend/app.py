@@ -150,6 +150,17 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    # Production runs against Neon, which drops idle connections when its
+    # compute scales to zero (~5 min). Without these, the first request after
+    # an idle period picks a dead pooled connection and fails with
+    # "psycopg2.OperationalError: SSL connection has been closed unexpectedly";
+    # /api/words hit this on roughly half of crawler sitemap fetches.
+    # pre_ping validates a connection before use; recycle retires any
+    # connection older than Neon's idle window so it is rarely needed.
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_pre_ping": True,
+        "pool_recycle": 240,
+    }
 
     CORS(app, origins=get_allowed_origins())
 

@@ -53,6 +53,17 @@ def test_expected_routes_are_registered(app):
 def test_sqlalchemy_is_initialized_on_app(app):
     assert "sqlalchemy" in app.extensions
 
+
+def test_engine_validates_and_recycles_pooled_connections(app):
+    # Guards against stale Neon connections surfacing as 500s after idle.
+    options = app.config["SQLALCHEMY_ENGINE_OPTIONS"]
+    assert options["pool_pre_ping"] is True
+    assert options["pool_recycle"] <= 300
+
+    with app.app_context():
+        assert db.engine.pool._pre_ping is True
+        assert db.engine.pool._recycle == options["pool_recycle"]
+
     with app.app_context():
         assert db.session is not None
 
