@@ -59,8 +59,9 @@ ALL_MODELS = {alias: b for thread in THREADS for alias, b in thread.items()}
 REQUIRED_MODELS = ("gemini-3.8-flash",)
 
 # Extra ocr_pages.py arguments per model. Gemini's hard request cap keeps
-# retries from burning the ~20/day quota on a bad day.
-MODEL_EXTRA_ARGS = {"gemini-3.8-flash": ["--max-requests", "18"]}
+# retries from burning the ~20/day quota on a bad day, and --pace keeps
+# attempts under its per-minute window (429s hinted "retry in ~21-41s").
+MODEL_EXTRA_ARGS = {"gemini-3.8-flash": ["--max-requests", "20", "--pace", "31"]}
 
 
 def content_pages() -> list[Path]:

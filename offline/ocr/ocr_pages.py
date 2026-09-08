@@ -15,6 +15,7 @@ import base64
 import json
 import mimetypes
 import os
+import re
 import sys
 import time
 import unicodedata
@@ -104,6 +105,14 @@ IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 # where even failed attempts are spent quota (Gemini free tier).
 request_count = 0
 
+# Minimum seconds between request attempts (--pace) and the retry hint the
+# server sent, e.g. Gemini's "Please retry in 21.07s". Honoring the hint
+# instead of our own faster backoff stops retries from burning attempts
+# against a still-closed per-minute window.
+pace_seconds = 0.0
+_last_request_at = 0.0
+_RETRY_HINT_RE = re.compile(r"retry in ([0-9.]+)\s*s", re.IGNORECASE)
+
 
 @dataclass
 class OcrResult:
@@ -113,10 +122,15 @@ class OcrResult:
 
 
 def http_post_json(url: str, payload: dict, headers: dict) -> dict:
-    global request_count
+    global request_count, _last_request_at
     body = json.dumps(payload).encode("utf-8")
     for attempt in range(MAX_RETRIES + 1):
+        if pace_seconds:
+            wait = _last_request_at + pace_seconds - time.monotonic()
+            if wait > 0:
+                time.sleep(wait)
         request_count += 1
+        _last_request_at = time.monotonic()
         req = urllib.request.Request(
             url, data=body, headers={"Content-Type": "application/json", **headers}
         )
@@ -127,7 +141,10 @@ def http_post_json(url: str, payload: dict, headers: dict) -> dict:
             detail = e.read().decode("utf-8", "replace")[:500]
             if e.code in RETRY_STATUSES and attempt < MAX_RETRIES:
                 wait = min(2**attempt * 5, 120)
-                print(f"    HTTP {e.code}, retrying in {wait}s: {detail}", file=sys.stderr)
+                hint = _RETRY_HINT_RE.search(detail)
+                if hint:  # server told us when the window reopens — believe it
+                    wait = max(wait, float(hint.group(1)) + 2)
+                print(f"    HTTP {e.code}, retrying in {wait:.0f}s: {detail}", file=sys.stderr)
                 time.sleep(wait)
                 continue
             raise RuntimeError(f"HTTP {e.code} from {url}: {detail}") from e
@@ -276,10 +293,16 @@ def main() -> None:
     ap.add_argument("--max-requests", type=int,
                     help="stop before starting a page once this many API attempts "
                          "(retries included) have been made — hard quota guard")
+    ap.add_argument("--pace", type=float, default=0.0,
+                    help="minimum seconds between API attempts — stay under a "
+                         "provider's requests-per-minute window")
     ap.add_argument("--force", action="store_true", help="re-OCR pages with existing output")
     ap.add_argument("--prompt-file", type=Path, help="file with a custom OCR prompt")
     ap.add_argument("--list-models", action="store_true", help="list model aliases and exit")
     args = ap.parse_args()
+
+    global pace_seconds
+    pace_seconds = args.pace
 
     if args.list_models:
         for alias, (provider, model_id) in MODELS.items():
