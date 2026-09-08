@@ -21,7 +21,7 @@ Put page images (`.png`/`.jpg`) in `offline/scans/`, put API keys in
 `offline/.env` (copy `offline/.env.example`; the file is gitignored), then:
 
 ```bash
-python offline/ocr/ocr_pages.py --model gemini-2.5-flash offline/scans --out offline/out
+python offline/ocr/ocr_pages.py --model gemini-3.6-flash offline/scans --out offline/out
 ```
 
 Useful flags:
@@ -63,6 +63,21 @@ confidence scaled by how many models agreed.
 The OCR prompt's alphabet and the output normalization both come from
 `alarino_backend.normalization` (the same module the app's storage layer
 uses), so offline output is always in the exact NFC form the backend expects.
+
+## Full-book runs
+
+`daily_batch.py` drives the whole pipeline for the 458-page CMS 1913 scan
+under daily rate-limit budgets — OCR (Gemini parallel to the OpenRouter
+models), compare, harvest fully-transcribed pages, dry-run-gated upload,
+uploaded-pages ledger. Run it once a day until coverage is complete:
+
+```bash
+python offline/ocr/daily_batch.py
+```
+
+Page images come from extracting the PDF's embedded scans at native
+resolution (pymupdf), not re-rasterizing:
+`doc.extract_image(...)` per page into `scans/pages/pgNNN.*`.
 
 ## Sources
 
