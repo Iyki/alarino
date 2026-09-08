@@ -38,7 +38,6 @@ include = ["alarino_backend*"]
 "alarino_backend.data" = [
   "datasets/*",
   "readme.md",
-  "sitemap.xml",
 ]
 
 [tool.pytest.ini_options]

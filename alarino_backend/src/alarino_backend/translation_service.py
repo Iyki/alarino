@@ -327,9 +327,8 @@ def get_random_proverb(db):
 def get_sitemap_words(db) -> Tuple[Dict, int]:
     """Return all English words that have at least one Yoruba translation.
 
-    Used by the frontend's /sitemap.xml route. Mirrors the query in
-    data/generate_sitemap.py, returning a sorted, de-duplicated list of the
-    normalized (lowercase, stripped) word strings.
+    Used by the frontend's /sitemap.xml route. Returns a sorted,
+    de-duplicated list of the normalized (lowercase, stripped) word strings.
     """
     try:
         rows = (

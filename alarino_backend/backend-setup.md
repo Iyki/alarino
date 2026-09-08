@@ -20,7 +20,6 @@ python -m alarino_backend.app
 ### Run Data Scripts
 
 ```bash
-python -m alarino_backend.data.generate_sitemap
 python -m alarino_backend.data.proverbs_loader
 python -m alarino_backend.data.word_translations_loader
 ```
