@@ -83,7 +83,7 @@ def run_ocr(models: dict[str, int], pages: list[Path], log_dir: Path) -> None:
         log_path = log_dir / f"{model}.log"
         with log_path.open("w") as log:
             subprocess.run(
-                [PYTHON, str(OCR_DIR / "ocr_pages.py"),
+                [PYTHON, "-u", str(OCR_DIR / "ocr_pages.py"),
                  "--model", model, "--out", str(OUT_DIR),
                  "--budget", str(budget),
                  *MODEL_EXTRA_ARGS.get(model, []), *map(str, pages)],
