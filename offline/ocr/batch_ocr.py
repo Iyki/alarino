@@ -175,6 +175,8 @@ def fetch(args) -> None:
     dest_dir.mkdir(parents=True, exist_ok=True)
     written = skipped = failed = 0
 
+    reference_dir = OUT_DIR / "qwen3-vl-235b"
+
     def handle(item: dict) -> None:
         nonlocal written, skipped, failed
         key = item.get("key") or item.get("metadata", {}).get("key")
@@ -191,6 +193,16 @@ def fetch(args) -> None:
         except (KeyError, IndexError):
             failed += 1
             print(f"  {key}: no usable response", file=sys.stderr)
+            return
+        # Batch serving sometimes stops early, returning a fraction of the
+        # page (observed: ~700B for a ~2.5KB page). Reject transcripts far
+        # shorter than another model's transcript of the same page so the
+        # page stays "missing" and a resubmit round retries it.
+        ref = reference_dir / f"{key}.txt"
+        if ref.exists() and len(text) < 0.5 * ref.stat().st_size:
+            failed += 1
+            print(f"  {key}: truncated ({len(text)}B vs reference "
+                  f"{ref.stat().st_size}B), rejected", file=sys.stderr)
             return
         dest = dest_dir / f"{key}.txt"
         if dest.exists():
