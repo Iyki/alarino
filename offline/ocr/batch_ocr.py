@@ -119,7 +119,14 @@ def upload_file(path: Path) -> str:
 
 
 def submit(args) -> None:
-    pages = missing_pages()
+    if args.pages:
+        by_stem = {p.stem: p for p in PAGES_DIR.iterdir() if p.suffix.lower() in MIME}
+        try:
+            pages = [by_stem[s] for s in args.pages]
+        except KeyError as e:
+            sys.exit(f"error: no such page {e}")
+    else:
+        pages = missing_pages()
     if args.limit:
         pages = pages[: args.limit]
     if not pages:
@@ -164,7 +171,7 @@ def fetch(args) -> None:
     state = meta.get("state")
     if state != "BATCH_STATE_SUCCEEDED":
         sys.exit(f"job not finished: {state}")
-    dest_dir = OUT_DIR / MODEL
+    dest_dir = Path(args.dest_dir) if args.dest_dir else OUT_DIR / MODEL
     dest_dir.mkdir(parents=True, exist_ok=True)
     written = skipped = failed = 0
 
@@ -219,12 +226,18 @@ def main() -> None:
     sub = ap.add_subparsers(dest="cmd", required=True)
     p_submit = sub.add_parser("submit", help="submit pages missing a transcript")
     p_submit.add_argument("--limit", type=int, help="submit only the first N pages")
+    p_submit.add_argument("--pages", nargs="+",
+                          help="submit exactly these page stems (even if transcripts "
+                               "exist) — e.g. for batch-vs-interactive quality checks")
     p_submit.set_defaults(func=submit)
     p_status = sub.add_parser("status", help="show job state")
     p_status.add_argument("job")
     p_status.set_defaults(func=status)
     p_fetch = sub.add_parser("fetch", help="download results into out/<model>/")
     p_fetch.add_argument("job")
+    p_fetch.add_argument("--dest-dir",
+                         help="write transcripts here instead of out/<model>/ "
+                              "(e.g. out/gemini-3.8-flash-batch for quality checks)")
     p_fetch.set_defaults(func=fetch)
     args = ap.parse_args()
     args.func(args)
