@@ -105,6 +105,20 @@ def upload_batch(csv_path: Path) -> tuple[bool, str]:
     header, rows = lines[0], lines[1:]
     app = app_module.create_app()
     with app.app_context():
+        # Neon auto-suspends idle computes and drops connections made during
+        # wake-up — ping until it's warm before starting real work.
+        import time
+        from sqlalchemy import text as sql_text
+        from sqlalchemy.exc import OperationalError as OpError
+        for _ in range(5):
+            try:
+                db.session.execute(sql_text("SELECT 1"))
+                db.session.remove()
+                break
+            except OpError:
+                db.session.remove()
+                time.sleep(5)
+
         dry, status = ts.bulk_upload_words(db, "\n".join(lines), dry_run=True)
         rejected = dry["data"]["failed_pairs"] if status == 200 else None
         if status != 200 or rejected:
