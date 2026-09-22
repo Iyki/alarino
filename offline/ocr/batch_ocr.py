@@ -84,7 +84,15 @@ def build_jsonl(pages: list[Path], dest: Path) -> None:
                             "data": base64.b64encode(page.read_bytes()).decode(),
                         }},
                     ]}],
-                    "generation_config": {"temperature": 0, "maxOutputTokens": 8192},
+                    # thinkingBudget 0 is essential: thoughts count against
+                    # maxOutputTokens, and without it batch responses burned
+                    # ~8k tokens thinking and truncated the transcript
+                    # (finishReason MAX_TOKENS with ~300 text tokens).
+                    "generation_config": {
+                        "temperature": 0,
+                        "maxOutputTokens": 8192,
+                        "thinkingConfig": {"thinkingBudget": 0},
+                    },
                 },
             }
             f.write(json.dumps(line) + "\n")
@@ -198,8 +206,10 @@ def fetch(args) -> None:
         # page (observed: ~700B for a ~2.5KB page). Reject transcripts far
         # shorter than another model's transcript of the same page so the
         # page stays "missing" and a resubmit round retries it.
+        # Skip the check for near-blank reference pages (blank versos):
+        # empty batch output there is correct, not truncated.
         ref = reference_dir / f"{key}.txt"
-        if ref.exists() and len(text) < 0.5 * ref.stat().st_size:
+        if ref.exists() and ref.stat().st_size >= 300 and len(text) < 0.5 * ref.stat().st_size:
             failed += 1
             print(f"  {key}: truncated ({len(text)}B vs reference "
                   f"{ref.stat().st_size}B), rejected", file=sys.stderr)
