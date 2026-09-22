@@ -112,15 +112,27 @@ def upload_batch(csv_path: Path) -> tuple[bool, str]:
                            f"rejected={len(rejected or [])}) — batch held for review")
         # Upload in chunks so no transaction holds one Neon connection for
         # minutes (long single-transaction uploads die with mid-flight SSL
-        # drops). The server is idempotent, so retrying a chunk is safe.
+        # drops). Release the session's connection between chunks — pool
+        # pre-ping only helps at checkout — and retry a chunk once on a
+        # drop; the server is idempotent, so retries are safe.
+        from sqlalchemy.exc import OperationalError
         total = 0
         for i in range(0, len(rows), 100):
             chunk = "\n".join([header] + rows[i:i + 100])
-            live, status = ts.bulk_upload_words(db, chunk, dry_run=False)
+            for attempt in (1, 2):
+                try:
+                    live, status = ts.bulk_upload_words(db, chunk, dry_run=False)
+                    break
+                except OperationalError:
+                    db.session.remove()
+                    if attempt == 2:
+                        return False, (f"live upload FAILED on rows {i}-{i + 100} "
+                                       f"after {total} uploaded — rerun to resume")
             if status != 200 or live["data"]["failed_pairs"]:
                 return False, (f"live upload FAILED on rows {i}-{i + 100} "
                                f"(status={status}) after {total} uploaded — rerun to resume")
             total += len(live["data"]["successful_pairs"])
+            db.session.remove()  # fresh, pre-pinged connection per chunk
         return True, f"uploaded {total} pairs"
 
 
