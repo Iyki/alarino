@@ -101,18 +101,27 @@ def upload_batch(csv_path: Path) -> tuple[bool, str]:
     import alarino_backend.translation_service as ts
     from alarino_backend import db
 
-    text = csv_path.read_text()
+    lines = csv_path.read_text().splitlines()
+    header, rows = lines[0], lines[1:]
     app = app_module.create_app()
     with app.app_context():
-        dry, status = ts.bulk_upload_words(db, text, dry_run=True)
+        dry, status = ts.bulk_upload_words(db, "\n".join(lines), dry_run=True)
         rejected = dry["data"]["failed_pairs"] if status == 200 else None
         if status != 200 or rejected:
             return False, (f"dry-run FAILED (status={status}, "
                            f"rejected={len(rejected or [])}) — batch held for review")
-        live, status = ts.bulk_upload_words(db, text, dry_run=False)
-        if status != 200 or live["data"]["failed_pairs"]:
-            return False, f"live upload FAILED (status={status}) — investigate"
-        return True, f"uploaded {len(live['data']['successful_pairs'])} pairs"
+        # Upload in chunks so no transaction holds one Neon connection for
+        # minutes (long single-transaction uploads die with mid-flight SSL
+        # drops). The server is idempotent, so retrying a chunk is safe.
+        total = 0
+        for i in range(0, len(rows), 100):
+            chunk = "\n".join([header] + rows[i:i + 100])
+            live, status = ts.bulk_upload_words(db, chunk, dry_run=False)
+            if status != 200 or live["data"]["failed_pairs"]:
+                return False, (f"live upload FAILED on rows {i}-{i + 100} "
+                               f"(status={status}) after {total} uploaded — rerun to resume")
+            total += len(live["data"]["successful_pairs"])
+        return True, f"uploaded {total} pairs"
 
 
 def main() -> None:
