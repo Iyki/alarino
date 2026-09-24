@@ -131,8 +131,9 @@ def upload_batch(csv_path: Path) -> tuple[bool, str]:
         # drop; the server is idempotent, so retries are safe.
         from sqlalchemy.exc import OperationalError
         total = 0
-        for i in range(0, len(rows), 100):
-            chunk = "\n".join([header] + rows[i:i + 100])
+        chunk_rows = 25  # keep each transaction well inside Neon's kill window
+        for i in range(0, len(rows), chunk_rows):
+            chunk = "\n".join([header] + rows[i:i + chunk_rows])
             for attempt in (1, 2):
                 try:
                     live, status = ts.bulk_upload_words(db, chunk, dry_run=False)
@@ -140,10 +141,10 @@ def upload_batch(csv_path: Path) -> tuple[bool, str]:
                 except OperationalError:
                     db.session.remove()
                     if attempt == 2:
-                        return False, (f"live upload FAILED on rows {i}-{i + 100} "
+                        return False, (f"live upload FAILED on rows {i}-{i + chunk_rows} "
                                        f"after {total} uploaded — rerun to resume")
             if status != 200 or live["data"]["failed_pairs"]:
-                return False, (f"live upload FAILED on rows {i}-{i + 100} "
+                return False, (f"live upload FAILED on rows {i}-{i + chunk_rows} "
                                f"(status={status}) after {total} uploaded — rerun to resume")
             total += len(live["data"]["successful_pairs"])
             db.session.remove()  # fresh, pre-pinged connection per chunk
