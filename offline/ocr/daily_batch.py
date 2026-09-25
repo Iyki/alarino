@@ -131,7 +131,10 @@ def upload_batch(csv_path: Path) -> tuple[bool, str]:
         # drop; the server is idempotent, so retries are safe.
         from sqlalchemy.exc import OperationalError
         total = 0
-        chunk_rows = 25  # keep each transaction well inside Neon's kill window
+        # One row per transaction. Neon kills multi-statement transactions
+        # unpredictably (even 25 rows / ~30s failed repeatedly) while
+        # single-row transactions succeed reliably at ~1.3s each.
+        chunk_rows = 1
         for i in range(0, len(rows), chunk_rows):
             chunk = "\n".join([header] + rows[i:i + chunk_rows])
             for attempt in (1, 2):
