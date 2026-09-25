@@ -101,18 +101,54 @@ def upload_batch(csv_path: Path) -> tuple[bool, str]:
     import alarino_backend.translation_service as ts
     from alarino_backend import db
 
-    text = csv_path.read_text()
+    lines = csv_path.read_text().splitlines()
+    header, rows = lines[0], lines[1:]
     app = app_module.create_app()
     with app.app_context():
-        dry, status = ts.bulk_upload_words(db, text, dry_run=True)
+        # Neon auto-suspends idle computes and drops connections made during
+        # wake-up — ping until it's warm before starting real work.
+        import time
+        from sqlalchemy import text as sql_text
+        from sqlalchemy.exc import OperationalError as OpError
+        for _ in range(5):
+            try:
+                db.session.execute(sql_text("SELECT 1"))
+                db.session.remove()
+                break
+            except OpError:
+                db.session.remove()
+                time.sleep(5)
+
+        dry, status = ts.bulk_upload_words(db, "\n".join(lines), dry_run=True)
         rejected = dry["data"]["failed_pairs"] if status == 200 else None
         if status != 200 or rejected:
             return False, (f"dry-run FAILED (status={status}, "
                            f"rejected={len(rejected or [])}) — batch held for review")
-        live, status = ts.bulk_upload_words(db, text, dry_run=False)
-        if status != 200 or live["data"]["failed_pairs"]:
-            return False, f"live upload FAILED (status={status}) — investigate"
-        return True, f"uploaded {len(live['data']['successful_pairs'])} pairs"
+        # Upload in chunks so no transaction holds one Neon connection for
+        # minutes (long single-transaction uploads die with mid-flight SSL
+        # drops). Release the session's connection between chunks — pool
+        # pre-ping only helps at checkout — and retry a chunk once on a
+        # drop; the server is idempotent, so retries are safe.
+        from sqlalchemy.exc import OperationalError
+        total = 0
+        chunk_rows = 25  # keep each transaction well inside Neon's kill window
+        for i in range(0, len(rows), chunk_rows):
+            chunk = "\n".join([header] + rows[i:i + chunk_rows])
+            for attempt in (1, 2):
+                try:
+                    live, status = ts.bulk_upload_words(db, chunk, dry_run=False)
+                    break
+                except OperationalError:
+                    db.session.remove()
+                    if attempt == 2:
+                        return False, (f"live upload FAILED on rows {i}-{i + chunk_rows} "
+                                       f"after {total} uploaded — rerun to resume")
+            if status != 200 or live["data"]["failed_pairs"]:
+                return False, (f"live upload FAILED on rows {i}-{i + chunk_rows} "
+                               f"(status={status}) after {total} uploaded — rerun to resume")
+            total += len(live["data"]["successful_pairs"])
+            db.session.remove()  # fresh, pre-pinged connection per chunk
+        return True, f"uploaded {total} pairs"
 
 
 def main() -> None:
