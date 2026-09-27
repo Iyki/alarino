@@ -48,9 +48,10 @@ FIRST_CONTENT_PAGE = "pg011"
 THREADS = [
     {"qwen3-vl-235b": 460},
     {"gemma-4-31b": 300, "dots-3-note": 300},
-    # Best-quality model, but its free tier allows only ~20 requests/day —
-    # a slow drip. Per policy it must be present for any unanimous harvest.
-    {"gemini-3.8-flash": 18},
+    # Best-quality model; per policy it must be present for any unanimous
+    # harvest. Paid interactive API (no batch), ~$0.005/page with thinking
+    # off. 110/day finishes the remaining pages in ~3 runs.
+    {"gemini-3.8-flash": 110},
 ]
 ALL_MODELS = {alias: b for thread in THREADS for alias, b in thread.items()}
 
@@ -62,7 +63,7 @@ REQUIRED_MODELS = ("gemini-3.8-flash",)
 # the AI Studio dashboard) with a small daily request quota: --pace 13s
 # stays under the RPM window so requests succeed instead of burning the
 # quota on retries, and --max-requests hard-caps the day's attempts.
-MODEL_EXTRA_ARGS = {"gemini-3.8-flash": ["--max-requests", "20", "--pace", "13"]}
+MODEL_EXTRA_ARGS = {"gemini-3.8-flash": ["--max-requests", "130", "--pace", "13"]}
 
 
 def content_pages() -> list[Path]:
