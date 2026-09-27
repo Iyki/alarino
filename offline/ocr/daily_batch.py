@@ -137,15 +137,18 @@ def upload_batch(csv_path: Path) -> tuple[bool, str]:
         chunk_rows = 1
         for i in range(0, len(rows), chunk_rows):
             chunk = "\n".join([header] + rows[i:i + chunk_rows])
-            for attempt in (1, 2):
+            # Back off up to ~5 minutes per row so a transient network or
+            # DNS outage on this machine doesn't abort the whole batch.
+            for attempt in range(1, 6):
                 try:
                     live, status = ts.bulk_upload_words(db, chunk, dry_run=False)
                     break
                 except OperationalError:
                     db.session.remove()
-                    if attempt == 2:
+                    if attempt == 5:
                         return False, (f"live upload FAILED on rows {i}-{i + chunk_rows} "
                                        f"after {total} uploaded — rerun to resume")
+                    time.sleep(10 * 2 ** (attempt - 1))
             if status != 200 or live["data"]["failed_pairs"]:
                 return False, (f"live upload FAILED on rows {i}-{i + chunk_rows} "
                                f"(status={status}) after {total} uploaded — rerun to resume")
