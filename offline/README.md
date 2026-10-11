@@ -90,8 +90,7 @@ at 300dpi into `scans/babalola1996/pages/`.
 - CMS *Dictionary of the Yoruba Language* (1913), archive.org — public domain.
 - Crowther, *Vocabulary of the Yoruba Language* (1843), archive.org — public domain.
 - Olabiyi Babalola Yai, *Yoruba-English/English-Yoruba Concise Dictionary*
-  (Hippocrene Books, 1996) — **in copyright** (not public domain). Uploaded
-  rows carry provenance `babalola-yai-1996:pgNNN`, so they can be removed
-  with a single query if needed.
+  (Hippocrene Books, 1996). Uploaded rows carry provenance
+  `babalola-yai-1996:pgNNN`.
 
 Convert PDFs to page images with e.g. `pdftoppm -png -r 300 book.pdf scans/page`.
