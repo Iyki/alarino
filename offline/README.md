@@ -66,22 +66,32 @@ uses), so offline output is always in the exact NFC form the backend expects.
 
 ## Full-book runs
 
-`daily_batch.py` drives the whole pipeline for the 458-page CMS 1913 scan
-under daily rate-limit budgets — OCR (Gemini parallel to the OpenRouter
-models), compare, harvest fully-transcribed pages, dry-run-gated upload,
+`daily_batch.py` drives the whole pipeline for one book under daily
+rate-limit budgets — OCR (Gemini parallel to the OpenRouter models),
+compare, harvest fully-transcribed pages, dry-run-gated upload,
 uploaded-pages ledger. Run it once a day until coverage is complete:
 
 ```bash
-python offline/ocr/daily_batch.py
+caffeinate -i python offline/ocr/daily_batch.py --book cms1913
+caffeinate -i python offline/ocr/daily_batch.py --book babalola1996
 ```
 
-Page images come from extracting the PDF's embedded scans at native
-resolution (pymupdf), not re-rasterizing:
-`doc.extract_image(...)` per page into `scans/pages/pgNNN.*`.
+Per-book settings (page folder, content pages, entry layout, which pages
+are Yorùbá→English, provenance tag) live in `offline/ocr/books.py`;
+`compare_runs.py` and `build_dataset.py` take the same `--book` flag.
+
+Page images: the CMS scan's embedded page images were extracted at native
+resolution (`doc.extract_image(...)` into `scans/pages/`); the Babalola
+scan stores pages as many small image fragments, so its pages are rendered
+at 300dpi into `scans/babalola1996/pages/`.
 
 ## Sources
 
 - CMS *Dictionary of the Yoruba Language* (1913), archive.org — public domain.
 - Crowther, *Vocabulary of the Yoruba Language* (1843), archive.org — public domain.
+- Olabiyi Babalola Yai, *Yoruba-English/English-Yoruba Concise Dictionary*
+  (Hippocrene Books, 1996) — **in copyright** (not public domain). Uploaded
+  rows carry provenance `babalola-yai-1996:pgNNN`, so they can be removed
+  with a single query if needed.
 
 Convert PDFs to page images with e.g. `pdftoppm -png -r 300 book.pdf scans/page`.
