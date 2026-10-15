@@ -30,14 +30,23 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OCR_DIR = REPO_ROOT / "offline" / "ocr"
-PAGES_DIR = REPO_ROOT / "offline" / "scans" / "pages"
-OUT_DIR = REPO_ROOT / "offline" / "out"
-LEDGER = OUT_DIR / "uploaded_pages.json"
 PYTHON = sys.executable
 
-# Dictionary content starts after the front matter (title, preface, notes on
-# orthography — pg000..pg010).
-FIRST_CONTENT_PAGE = "pg011"
+sys.path.insert(0, str(OCR_DIR))
+from books import BOOKS  # noqa: E402
+
+# Set per run by use_book(); default to the CMS book for importers.
+BOOK = BOOKS["cms1913"]
+PAGES_DIR = BOOK.pages_dir
+OUT_DIR = BOOK.out_dir
+LEDGER = OUT_DIR / "uploaded_pages.json"
+
+
+def use_book(key: str) -> None:
+    global BOOK, PAGES_DIR, OUT_DIR, LEDGER
+    BOOK = BOOKS[key]
+    PAGES_DIR, OUT_DIR = BOOK.pages_dir, BOOK.out_dir
+    LEDGER = OUT_DIR / "uploaded_pages.json"
 
 # Each dict is one worker thread of {model alias: daily budget of newly
 # transcribed pages}, models within a thread running sequentially.
@@ -48,9 +57,10 @@ FIRST_CONTENT_PAGE = "pg011"
 THREADS = [
     {"qwen3-vl-235b": 460},
     {"gemma-4-31b": 300, "dots-3-note": 300},
-    # Best-quality model, but its free tier allows only ~20 requests/day —
-    # a slow drip. Per policy it must be present for any unanimous harvest.
-    {"gemini-3.8-flash": 18},
+    # Best-quality model; per policy it must be present for any unanimous
+    # harvest. Paid interactive API (no batch), ~$0.005/page with thinking
+    # off. 110/day finishes the remaining pages in ~3 runs.
+    {"gemini-3.8-flash": 110},
 ]
 ALL_MODELS = {alias: b for thread in THREADS for alias, b in thread.items()}
 
@@ -62,14 +72,14 @@ REQUIRED_MODELS = ("gemini-3.8-flash",)
 # the AI Studio dashboard) with a small daily request quota: --pace 13s
 # stays under the RPM window so requests succeed instead of burning the
 # quota on retries, and --max-requests hard-caps the day's attempts.
-MODEL_EXTRA_ARGS = {"gemini-3.8-flash": ["--max-requests", "20", "--pace", "13"]}
+MODEL_EXTRA_ARGS = {"gemini-3.8-flash": ["--max-requests", "130", "--pace", "13"]}
 
 
 def content_pages() -> list[Path]:
     return sorted(
         p for p in PAGES_DIR.iterdir()
         if p.suffix.lower() in (".png", ".jpg", ".jpeg")
-        and p.stem >= FIRST_CONTENT_PAGE
+        and p.stem in BOOK.content
     )
 
 
@@ -131,18 +141,24 @@ def upload_batch(csv_path: Path) -> tuple[bool, str]:
         # drop; the server is idempotent, so retries are safe.
         from sqlalchemy.exc import OperationalError
         total = 0
-        chunk_rows = 25  # keep each transaction well inside Neon's kill window
+        # One row per transaction. Neon kills multi-statement transactions
+        # unpredictably (even 25 rows / ~30s failed repeatedly) while
+        # single-row transactions succeed reliably at ~1.3s each.
+        chunk_rows = 1
         for i in range(0, len(rows), chunk_rows):
             chunk = "\n".join([header] + rows[i:i + chunk_rows])
-            for attempt in (1, 2):
+            # Back off up to ~5 minutes per row so a transient network or
+            # DNS outage on this machine doesn't abort the whole batch.
+            for attempt in range(1, 6):
                 try:
                     live, status = ts.bulk_upload_words(db, chunk, dry_run=False)
                     break
                 except OperationalError:
                     db.session.remove()
-                    if attempt == 2:
+                    if attempt == 5:
                         return False, (f"live upload FAILED on rows {i}-{i + chunk_rows} "
                                        f"after {total} uploaded — rerun to resume")
+                    time.sleep(10 * 2 ** (attempt - 1))
             if status != 200 or live["data"]["failed_pairs"]:
                 return False, (f"live upload FAILED on rows {i}-{i + chunk_rows} "
                                f"(status={status}) after {total} uploaded — rerun to resume")
@@ -155,16 +171,19 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--no-upload", action="store_true",
                     help="run OCR and comparison, but skip harvesting/uploading")
+    ap.add_argument("--book", default="cms1913", choices=sorted(BOOKS),
+                    help="which scanned dictionary to process")
     ap.add_argument("--min-models", type=int, default=3,
                     help="transcripts required before a page is harvested "
                          "(default 3; drop to 2 for the endgame)")
     args = ap.parse_args()
+    use_book(args.book)
 
     today = datetime.date.today().isoformat()
     log_dir = OUT_DIR / "logs" / today
     log_dir.mkdir(parents=True, exist_ok=True)
     pages = content_pages()
-    print(f"=== daily batch {today}: {len(pages)} content pages ===")
+    print(f"=== daily batch {today} [{BOOK.key}]: {len(pages)} content pages ===")
 
     # Phase 1: OCR under budgets, one worker thread per THREADS entry.
     threads = [
@@ -202,7 +221,7 @@ def main() -> None:
 
     # Phase 2: rebuild comparisons across the current panel.
     subprocess.run(
-        [PYTHON, str(OCR_DIR / "compare_runs.py"), "--out", str(OUT_DIR),
+        [PYTHON, str(OCR_DIR / "compare_runs.py"), "--book", BOOK.key,
          "--models", *ALL_MODELS],
         cwd=REPO_ROOT, capture_output=True,
     )
@@ -227,7 +246,7 @@ def main() -> None:
     batch_csv = OUT_DIR / "batches" / f"{today}.csv"
     batch_csv.parent.mkdir(parents=True, exist_ok=True)
     build = subprocess.run(
-        [PYTHON, str(OCR_DIR / "build_dataset.py"), "--out", str(OUT_DIR),
+        [PYTHON, str(OCR_DIR / "build_dataset.py"), "--book", BOOK.key,
          "--csv", str(batch_csv), "--pages", *ready],
         cwd=REPO_ROOT, capture_output=True, text=True,
     )

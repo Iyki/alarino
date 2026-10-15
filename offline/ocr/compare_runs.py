@@ -36,6 +36,9 @@ except ModuleNotFoundError:
     sys.path.insert(0, str(REPO_ROOT / "alarino_backend" / "src"))
     from alarino_backend import normalization
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from books import BOOKS  # noqa: E402
+
 DEFAULT_MODELS = ["qwen3-vl-235b", "gemma-4-31b", "dots-3-note", "gemini-3.8-flash"]
 
 def is_entry_start(line: str) -> bool:
@@ -78,9 +81,43 @@ def _segment_lines(text: str) -> list[str]:
     return [line for line in lines if line]
 
 
-def parse_entries(text: str) -> list[dict]:
+def parse_bracketed_entries(text: str) -> list[dict]:
+    """Parse "headword [respelling] pos gloss" entries (Babalola style).
+
+    The bracketed respelling is an English-reader pronunciation aid, not
+    Yorùbá text, so it is dropped before comparison: models transcribing it
+    differently must not break unanimity on the parts we harvest. Lines
+    without a "[" are wrapped glosses and fold into the previous entry;
+    bare page numbers and single section letters ("A") are skipped.
+    """
+    entries: list[dict] = []
+    for raw in text.splitlines():
+        line = " ".join(raw.split())
+        if not line or line.isdigit() or (len(line) == 1 and line.isupper()):
+            continue
+        if "[" not in line:
+            if entries:
+                entries[-1]["body"] += " " + line
+            continue
+        head, _, after = line.partition("[")
+        head = head.strip()
+        if "]" in after:
+            rest = after.split("]", 1)[1]
+        else:  # unclosed bracket, e.g. "[akoko n time": drop one word
+            rest = after.split(" ", 1)[1] if " " in after else ""
+        entries.append({"head": head, "body": f"{head} {rest.strip()}"})
+    for e in entries:
+        e["head"] = normalization.normalize_text(e["head"])
+        e["body"] = normalization.normalize_text(" ".join(e["body"].split()))
+        e["key"] = strip_diacritics(e["head"])
+    return entries
+
+
+def parse_entries(text: str, style: str = "cms") -> list[dict]:
     """Split a transcript into entries, folding wrapped continuation lines
     into the preceding entry. Returns [{head, body}] in page order."""
+    if style == "bracketed":
+        return parse_bracketed_entries(text)
     entries: list[dict] = []
     for line in _segment_lines(text):
         if is_entry_start(line) or not entries:
@@ -118,9 +155,10 @@ def diacritic_diff_words(bodies: list[str]) -> list[dict]:
     return diffs
 
 
-def compare_page(page: str, out_root: Path, models: list[str]) -> dict | None:
+def compare_page(page: str, out_root: Path, models: list[str],
+                 style: str = "cms") -> dict | None:
     transcripts = {
-        m: parse_entries((out_root / m / f"{page}.txt").read_text())
+        m: parse_entries((out_root / m / f"{page}.txt").read_text(), style)
         for m in models
         if (out_root / m / f"{page}.txt").is_file()
     }
@@ -175,9 +213,13 @@ def compare_page(page: str, out_root: Path, models: list[str]) -> dict | None:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("pages", nargs="*", help="page names (default: all found)")
-    ap.add_argument("--out", type=Path, default=Path("offline/out"))
+    ap.add_argument("--book", default="cms1913", choices=sorted(BOOKS),
+                    help="book whose transcripts to compare (sets --out and entry style)")
+    ap.add_argument("--out", type=Path, help="override the book's output root")
     ap.add_argument("--models", nargs="+", default=DEFAULT_MODELS)
     args = ap.parse_args()
+    book = BOOKS[args.book]
+    args.out = args.out or book.out_dir
 
     pages = args.pages or sorted(
         {f.stem for m in args.models for f in (args.out / m).glob("*.txt")}
@@ -190,7 +232,7 @@ def main() -> None:
 
     totals: dict[str, int] = {}
     for page in pages:
-        report = compare_page(page, args.out, args.models)
+        report = compare_page(page, args.out, args.models, book.entry_style)
         if report is None:
             print(f"{page}: fewer than 2 transcripts, skipped")
             continue

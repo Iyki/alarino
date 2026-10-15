@@ -36,6 +36,9 @@ except ModuleNotFoundError:
     sys.path.insert(0, str(REPO_ROOT / "alarino_backend" / "src"))
     from alarino_backend import normalization
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from books import BOOKS  # noqa: E402
+
 # Abbreviation markers as printed in the 1913 dictionary (its front matter
 # lists them on pg010), mapped to the canonical PartOfSpeech codes the
 # backend's CHECK constraint allows. Ordered longest first so
@@ -106,6 +109,25 @@ def translation_candidates(body: str) -> list[tuple[str | None, str]]:
     return results
 
 
+# Bare POS codes used by bracketed-style books ("akin [akeen] n hero").
+BARE_POS = {
+    "n": "n", "v": "v", "adj": "adj", "adv": "adv", "conj": "conj",
+    "interj": "interj", "prep": "prep", "pron": "pron", "num": "num",
+}
+
+
+def bracketed_candidates(head: str, body: str) -> list[tuple[str | None, str]]:
+    """(pos, token) pairs for a "headword pos gloss, gloss" body (the
+    respelling was already removed by compare_runs). Concise entries carry
+    one POS, so only the first word after the headword is read as POS."""
+    rest = body[len(head):].strip() if body.startswith(head) else body
+    words = rest.split(" ", 1)
+    pos = BARE_POS.get(words[0].lower().strip("."))
+    gloss = words[1] if pos and len(words) > 1 else ("" if pos else rest)
+    return [(pos, t.strip().strip(".").strip())
+            for t in re.split(r"[,;]", gloss) if t.strip().strip(".")]
+
+
 def page_direction(entries: list[dict]) -> str:
     """'en-yo' or 'yo-en', decided by majority over ALL of a page's headwords.
     Page-level (not per-entry) because undiacritized Yorùbá headwords like
@@ -115,7 +137,8 @@ def page_direction(entries: list[dict]) -> str:
     return "yo-en" if yoruba_heads > len(entries) / 2 else "en-yo"
 
 
-def pairs_from_entry(head: str, body: str, direction: str) -> tuple[list[tuple[str, str, str]], str]:
+def pairs_from_entry(head: str, body: str, direction: str,
+                     style: str = "cms") -> tuple[list[tuple[str, str, str]], str]:
     """Turn one unanimous entry into (english, yoruba, pos) triples, where
     pos is the canonical PartOfSpeech code or "" when the entry (or section)
     carried no recognizable marker.
@@ -125,8 +148,26 @@ def pairs_from_entry(head: str, body: str, direction: str) -> tuple[list[tuple[s
     candidate tokens that fail validation are silently dropped — unanimity
     makes the survivors trustworthy, not the whole line.
     """
-    head = head.strip().strip(".").lower()
-    candidates = translation_candidates(body)
+    if style == "bracketed":
+        candidates = bracketed_candidates(head, body)
+        # Variant headwords share an entry: "yanrìn, ìyanrìn [..] n sand".
+        heads = [h.strip().strip(".").lower() for h in head.split(",") if h.strip()]
+        pairs: list[tuple[str, str, str]] = []
+        any_valid_head = False
+        for h in heads:
+            got, reason = _pairs_for_head(h, candidates, direction)
+            any_valid_head |= reason != "head"
+            pairs.extend(got)
+        if pairs:
+            return pairs, ""
+        return [], ("no-valid-yoruba" if direction == "en-yo" else "no-valid-english") \
+            if any_valid_head else "head"
+    return _pairs_for_head(head.strip().strip(".").lower(),
+                           translation_candidates(body), direction)
+
+
+def _pairs_for_head(head: str, candidates: list[tuple[str | None, str]],
+                    direction: str) -> tuple[list[tuple[str, str, str]], str]:
     pairs = []
     if direction == "en-yo":
         if not normalization.is_valid_english_word(head):
@@ -157,12 +198,16 @@ def pairs_from_entry(head: str, body: str, direction: str) -> tuple[list[tuple[s
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--out", type=Path, default=Path("offline/out"),
-                    help="output root holding comparison/ (CSV goes to <out>/bulk_upload.csv)")
+    ap.add_argument("--book", default="cms1913", choices=sorted(BOOKS),
+                    help="book to harvest (sets --out, provenance, entry style, direction)")
+    ap.add_argument("--out", type=Path,
+                    help="override the book's output root (holding comparison/)")
     ap.add_argument("--csv", type=Path, help="explicit output CSV path")
     ap.add_argument("--pages", nargs="+",
                     help="only harvest these pages (default: every comparison report)")
     args = ap.parse_args()
+    book = BOOKS[args.book]
+    args.out = args.out or book.out_dir
 
     reports = sorted((args.out / "comparison").glob("*.json"))
     if args.pages:
@@ -181,14 +226,18 @@ def main() -> None:
              "skipped_no_pairs": 0, "used": 0}
     for report_path in reports:
         report = json.loads(report_path.read_text())
-        direction = page_direction(report["entries"])
+        if book.yo_en is not None:
+            direction = "yo-en" if report["page"] in book.yo_en else "en-yo"
+        else:
+            direction = page_direction(report["entries"])
         for entry in report["entries"]:
             stats["entries"] += 1
             if entry["bucket"] != "unanimous":
                 continue
             stats["unanimous"] += 1
             body = next(iter(entry["versions"].values()))
-            entry_pairs, reason = pairs_from_entry(entry["head"], body, direction)
+            entry_pairs, reason = pairs_from_entry(
+                entry["head"], body, direction, book.entry_style)
             if not entry_pairs:
                 stats["skipped_head" if reason == "head" else "skipped_no_pairs"] += 1
                 continue
@@ -200,7 +249,7 @@ def main() -> None:
                 if key not in pairs:
                     pairs[key] = {
                         "pos": pos,
-                        "provenance": f"cms-dict-1913:{report['page']}",
+                        "provenance": f"{book.provenance}:{report['page']}",
                         "confidence": confidence,
                     }
                 elif pos and not pairs[key]["pos"]:
