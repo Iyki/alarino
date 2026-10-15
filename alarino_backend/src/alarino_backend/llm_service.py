@@ -27,7 +27,7 @@ class GradientLLMService(LLMService):
     def __init__(
         self,
         access_key: Optional[str] = None,
-        model: str = "openai-gpt-oss-120b",
+        model: str = "gemma-4-31B-it",
         max_retries: int = 3,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
     ):
