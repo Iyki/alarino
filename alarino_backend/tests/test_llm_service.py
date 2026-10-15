@@ -110,5 +110,5 @@ def test_call_translate_llm_sends_supported_message_shape():
                 "content": "translate this",
             }
         ],
-        "model": "openai-gpt-oss-120b",
+        "model": "gemma-4-31B-it",
     }
